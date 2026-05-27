@@ -43,13 +43,32 @@
 8. **Privacy Policy modal** — в Profile, cyber-стиль
 9. **Мелкие шрифты** — увеличены до читаемых (8→10px)
 
-### Фаза 4 — Publishing prep
+### Фаза 4 — Онбординг (ЭТА СЕССИЯ)
+✅ **ЗАВЕРШЁН**
+
+1. **Onboarding.tsx** — 4-экранный компонент с анимациями
+   - Screen 0: Приветствие 🚀
+   - Screen 1: TAP механика (4 пункта)
+   - Screen 2: Обзор игр (4 игры)
+   - Screen 3: Валюты + опциональный ввод ника
+   
+2. **i18n расширение** — добавлены 20+ ключей на 5 языков:
+   - `common.skip`, `common.next`, `common.done`
+   - `onboarding.welcome`, `onboarding.tap1-4`, `onboarding.gameWheel` и т.д.
+   
+3. **Интеграция** с App.tsx (уже была, компонент просто создан и заполнен):
+   - Import на line 47 ✓
+   - State `onboarded` на line 292 ✓
+   - AsyncStorage load на line 404 ✓
+   - Render и callback на line 2858-2861 ✓
+
+### Фаза 5 — Publishing prep
 - `dapp-store/privacy.html` — готовый HTML для деплоя
 - `dapp-store/SUBMISSION-GUIDE.md` — гайд по сабмиту
 
 ### Git
-- 3 коммита в master: perf+i18n base → UX redesign → i18n completion
-- Последний: `ab784b3`
+- 4 коммита в master: perf+i18n base → UX redesign → i18n completion → onboarding
+- Последний: `c875a26`
 
 ---
 
@@ -65,10 +84,10 @@
 | 5 | Пополнить publisher кошелёк ~0.1 SOL mainnet | 5 мин |
 
 ### 🟡 Код (следующие задачи)
-- **UX аудит игровых экранов** — FortuneWheel, Arena, SpaceRunner изнутри
-- **Онбординг** — первый запуск, объяснение TAP-механики
+- ✅ **Онбординг** — ЗАВЕРШЁН
 - **Mainnet migration** — переключение после Pre-Season
 - **dApp Store CLI** — установка и сабмит (после скриншотов/иконок)
+- **UX аудит остальных игр** — HorseRace, TreasureHunt, SeekerLands, Tournament, PvPArena
 
 ### dApp Store CLI команды
 ```powershell
