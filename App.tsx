@@ -1197,6 +1197,27 @@ function AppInner() {
     particleRef.current?.emit(SCREEN_W / 2, SCREEN_H * 0.4, 'crit');
   }
 
+  // ── navigation ─────────────────────────────────────────────────────────────
+  const MAIN_TABS: Screen[] = ['home', 'games', 'shop', 'tournament', 'profile'];
+  const showBack = !MAIN_TABS.includes(screen);
+  function goBack() {
+    const map: Partial<Record<Screen, Screen>> = {
+      wallet:      'profile',
+      news:        'home',
+      earn:        'shop',
+      skora:       'shop',
+      wheel:       'games',
+      treasure:    'games',
+      arena:       'games',
+      lands:       'games',
+      pvp:         'games',
+      leaderboard: 'tournament',
+      signal:      'home',
+      quests:      'home',
+    };
+    setScreen(map[screen] ?? 'home');
+  }
+
 
   // ── effects ────────────────────────────────────────────────────────────────
 
@@ -1438,10 +1459,20 @@ function AppInner() {
 
         {screen !== 'home' && (
           <View style={styles.compactHeader}>
-            <View style={styles.compactBalance}>
-              <Text style={styles.compactBalanceNum}>{orb.toLocaleString()}</Text>
-              <Text style={styles.compactBalanceLbl}>ORB</Text>
-            </View>
+            {showBack ? (
+              <TouchableOpacity style={styles.compactBackRow} onPress={goBack} activeOpacity={0.7}>
+                <Text style={styles.compactBackArrow}>‹</Text>
+                <View>
+                  <Text style={styles.compactBalanceNum}>{orb.toLocaleString()}</Text>
+                  <Text style={styles.compactBalanceLbl}>ORB</Text>
+                </View>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.compactBalance}>
+                <Text style={styles.compactBalanceNum}>{orb.toLocaleString()}</Text>
+                <Text style={styles.compactBalanceLbl}>ORB</Text>
+              </View>
+            )}
             <View style={styles.compactChipRow}>
               <View style={styles.compactChip}>
                 <Text style={styles.compactChipTxt}>⚡ {energy}</Text>
@@ -1592,6 +1623,15 @@ function AppInner() {
                   </Animated.View>
                 )}
               </View>
+
+              {/* ── TAP hint ── */}
+              <Text style={styles.homeTapHint}>
+                {energy === 0
+                  ? `⚡ Энергия восстанавливается через ${energyTick}с`
+                  : boostActive
+                  ? '🔥 BOOST активен — ×3 за каждый тап!'
+                  : '✦ Нажимай орб · Зарабатывай ORB'}
+              </Text>
 
               {/* ── Planet Galaxy ── */}
               <View style={styles.homePlanetGrid}>
@@ -2122,7 +2162,7 @@ function AppInner() {
                     colors={['rgba(20,184,166,0.2)', 'rgba(2,5,16,0.98)']}
                     style={styles.walletHeader}
                   >
-                    <Text style={styles.walletHeaderIcon}>◎</Text>
+                    <Text style={styles.walletHeaderIcon}>💎</Text>
                     <Text style={styles.walletHeaderTitle}>SOLANA WALLET</Text>
                     <Text style={styles.walletHeaderSub}>Connect to earn SKORA token</Text>
                   </LinearGradient>
@@ -2163,7 +2203,7 @@ function AppInner() {
                     {[
                       { icon: '🎮', text: 'Earn ORB by playing SEEKER QUEST LEAGUE' },
                       { icon: '⚗️', text: 'Convert 10,000 ORB → 1 SKORA token' },
-                      { icon: '◎',  text: 'SKORA is an SPL token on Solana blockchain' },
+                      { icon: '🌐',  text: 'SKORA is an SPL token on Solana blockchain' },
                       { icon: '📈', text: 'Future listing on MEXC & top exchanges' },
                       { icon: '📱', text: 'Built for Seeker Phone — Solana Mobile' },
                     ].map((item, i) => (
@@ -2519,7 +2559,7 @@ function AppInner() {
               {/* ── Quick nav: только то что нет в navbar ── */}
               <View style={styles.profileActions}>
                 <TouchableOpacity style={styles.profileActionBtn} onPress={() => setScreen('wallet')}>
-                  <Text style={styles.profileActionIcon}>◎</Text>
+                  <Text style={styles.profileActionIcon}>💎</Text>
                   <Text style={styles.profileActionLabel}>Wallet</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.profileActionBtn} onPress={() => setScreen('news')}>
@@ -2567,7 +2607,7 @@ function AppInner() {
                         <Text style={[styles.profileBadgeIcon, !claimed && { opacity: 0.35 }]}>{a.icon}</Text>
                         <Text style={[styles.profileBadgeLabel, !claimed && { color: '#334155' }]}>{a.label}</Text>
                         {!claimed && (
-                          <Text style={{ color: '#475569', fontSize: 8, fontWeight: '900', letterSpacing: 1, marginTop: 4 }}>
+                          <Text style={{ color: '#475569', fontSize: 10, fontWeight: '700', letterSpacing: 0.5, marginTop: 4 }}>
                             +{a.orb >= 1000 ? `${a.orb / 1000}K` : a.orb} ORB{a.tickets > 0 ? `  +${a.tickets}🎫` : ''}
                           </Text>
                         )}
@@ -2962,6 +3002,8 @@ const styles = StyleSheet.create({
   compactHeader:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
                       paddingHorizontal: 20, paddingVertical: 8, marginBottom: 6 },
   compactBalance:   { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  compactBackRow:   { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  compactBackArrow: { color: '#7C3AED', fontSize: 32, fontWeight: '300', lineHeight: 34, marginRight: 2 },
   compactBalanceNum:{ color: '#FACC15', fontSize: 20, fontWeight: '900', letterSpacing: 1 },
   compactBalanceLbl:{ color: '#6D28D9', fontSize: 10, fontWeight: '900', letterSpacing: 2 },
   compactChipRow:   { flexDirection: 'row', gap: 6 },
@@ -2983,8 +3025,8 @@ const styles = StyleSheet.create({
   },
 
   // Shop Hub grid
-  shopHubGrid:      { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
-  shopHubCard:      { width: '48%', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(99,60,200,0.25)' },
+  shopHubGrid:      { flexDirection: 'row', gap: 8, marginBottom: 4 },
+  shopHubCard:      { flex: 1, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(99,60,200,0.25)' },
   shopHubCardGrad:  { padding: 12, gap: 4, minHeight: 92 },
   shopHubIcon:      { fontSize: 24 },
   shopHubName:      { fontSize: 13, fontWeight: '900', letterSpacing: 1.5, marginTop: 2 },
@@ -3323,7 +3365,7 @@ const styles = StyleSheet.create({
   profileStat4Card:   { flex: 1, borderRadius: 16, padding: 12, alignItems: 'center',
                         borderWidth: 1, borderColor: '#1E293B' },
   profileStat4Num:    { fontSize: 17, fontWeight: '900' },
-  profileStat4Lbl:    { color: '#475569', fontSize: 8, letterSpacing: 1, marginTop: 3, fontWeight: '700' },
+  profileStat4Lbl:    { color: '#475569', fontSize: 10, letterSpacing: 1, marginTop: 3, fontWeight: '700' },
 
   profileSection:     { backgroundColor: '#0B1120', borderRadius: 20, padding: 16,
                         borderWidth: 1, borderColor: '#1E293B', gap: 10 },
@@ -3352,7 +3394,7 @@ const styles = StyleSheet.create({
                         borderColor: 'rgba(124,58,237,0.25)', gap: 3 },
   profileBadgeLocked: { backgroundColor: '#080E1E', borderColor: '#1E293B' },
   profileBadgeIcon:   { fontSize: 20 },
-  profileBadgeLabel:  { color: '#94A3B8', fontSize: 8, fontWeight: '700', textAlign: 'center' },
+  profileBadgeLabel:  { color: '#94A3B8', fontSize: 9, fontWeight: '700', textAlign: 'center' },
   profileBadgeCheck:  { color: '#22C55E', fontSize: 10, fontWeight: '900' },
   profileBadgeBar:    { width: '100%', height: 2, backgroundColor: '#1E293B', borderRadius: 1, overflow: 'hidden' },
   profileBadgeBarFill:{ height: 2, backgroundColor: '#A855F7', borderRadius: 1 },
@@ -3456,7 +3498,9 @@ const styles = StyleSheet.create({
   homeXpFill:       { height: '100%', borderRadius: 999 },
   homeXpLabel:      { color: '#475569', fontSize: 9, fontWeight: '800' },
 
-  homeOrbArea:      { alignItems: 'center', justifyContent: 'center', height: 220, marginBottom: 12 },
+  homeOrbArea:      { alignItems: 'center', justifyContent: 'center', height: 210, marginBottom: 4 },
+  homeTapHint:      { textAlign: 'center', color: '#475569', fontSize: 11, fontWeight: '600',
+                      letterSpacing: 0.5, marginBottom: 14 },
   homeOrbRing:      { position: 'absolute', width: 240, height: 240, borderRadius: 120, borderWidth: 2, borderColor: '#FB923C' },
   homeOrbPulse:     { alignItems: 'center', justifyContent: 'center' },
   homeOrb:          { width: 180, height: 180, borderRadius: 90, backgroundColor: '#5B21B6', alignItems: 'center', justifyContent: 'center', borderWidth: 2.5, borderColor: 'rgba(192,132,252,0.6)', shadowColor: '#7C3AED', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 40, elevation: 40 },
@@ -3473,13 +3517,13 @@ const styles = StyleSheet.create({
   homeComboText:    { color: '#FACC15', fontSize: 13, fontWeight: '900', letterSpacing: 1 },
 
   homeActionRow:    { flexDirection: 'row', gap: 10, marginBottom: 14 },
-  homeBoostBtn:     { flex: 1, borderRadius: 16, overflow: 'hidden' },
+  homeBoostBtn:     { borderRadius: 16, overflow: 'hidden' },
   homeWheelBtn:     { flex: 1, borderRadius: 16, overflow: 'hidden' },
   homeBoostGrad:    { paddingVertical: 13, alignItems: 'center' },
   homeBoostText:    { color: '#FFF', fontSize: 13, fontWeight: '900', letterSpacing: 1 },
 
   homeQuestCard:    { backgroundColor: 'rgba(8,13,32,0.88)', borderRadius: 20, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(99,60,200,0.25)' },
-  homeQuestTitle:   { color: '#475569', fontSize: 10, fontWeight: '800', letterSpacing: 3, marginBottom: 12 },
+  homeQuestTitle:   { color: '#64748B', fontSize: 12, fontWeight: '800', letterSpacing: 2, marginBottom: 12 },
   homeLastReward:   { color: '#334155', fontSize: 11, textAlign: 'center', marginBottom: 8, letterSpacing: 0.5 },
 
   energyBarRow:        { flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 8 },
