@@ -8,6 +8,7 @@ import {
   fetchActiveCampaigns, fetchTodayViews, canClaimCampaign, todayEarnedOrb,
   DAILY_AD_ORB_CAP, type AdCampaign, type AdView,
 } from '../lib/ads';
+import { t, useLang } from '../lib/i18n';
 
 const ADVERTISER_EMAIL = 'ads@seekerquest.league';
 const ADVERTISER_TELEGRAM = 'https://t.me/seekerquest_ads';
@@ -20,6 +21,7 @@ type Props = {
 };
 
 export default function EarnHub({ deviceId, onOpenCampaign, onOpenSkoraWallet, orb }: Props) {
+  useLang();
   const [campaigns,   setCampaigns]   = useState<AdCampaign[]>([]);
   const [todayViews,  setTodayViews]  = useState<AdView[]>([]);
   const [loading,     setLoading]     = useState(false);
@@ -73,11 +75,11 @@ export default function EarnHub({ deviceId, onOpenCampaign, onOpenSkoraWallet, o
       <LinearGradient colors={['#0d0025','#1a0040','#3B0764','#831843','#1a0040']} style={s.hero}>
         <View style={s.heroTopRow}>
           <View>
-            <Text style={s.heroTag}>💎  EARN ORB</Text>
-            <Text style={s.heroTitle}>Watch & Earn</Text>
+            <Text style={s.heroTag}>{t('earn.hero')}</Text>
+            <Text style={s.heroTitle}>{t('earn.title')}</Text>
           </View>
           <View style={s.balanceBadge}>
-            <Text style={s.balanceLabel}>Your ORB</Text>
+            <Text style={s.balanceLabel}>{t('earn.yourOrb')}</Text>
             <Text style={s.balanceValue}>{orb.toLocaleString()}</Text>
           </View>
         </View>
@@ -85,7 +87,7 @@ export default function EarnHub({ deviceId, onOpenCampaign, onOpenSkoraWallet, o
         {/* Daily progress bar */}
         <View style={s.dailyBox}>
           <View style={s.dailyHead}>
-            <Text style={s.dailyLabel}>EARNED TODAY</Text>
+            <Text style={s.dailyLabel}>{t('earn.todayLabel')}</Text>
             <Text style={s.dailyValue}>{earnedToday.toLocaleString()} / {DAILY_AD_ORB_CAP.toLocaleString()} ORB</Text>
           </View>
           <View style={s.dailyTrack}>
@@ -99,26 +101,26 @@ export default function EarnHub({ deviceId, onOpenCampaign, onOpenSkoraWallet, o
         <LinearGradient colors={['#064E3B','#0F766E','#0d0025']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.convertCta}>
           <Text style={s.convertIcon}>⚗️</Text>
           <View style={{ flex: 1 }}>
-            <Text style={s.convertTitle}>Convert ORB → SKORA</Text>
-            <Text style={s.convertSub}>{(orb / 10000).toFixed(2)} SKORA available · 10,000 ORB = 1 SKORA</Text>
+            <Text style={s.convertTitle}>{t('earn.convertTitle')}</Text>
+            <Text style={s.convertSub}>{t('earn.convertSub', { n: (orb / 10000).toFixed(2) })}</Text>
           </View>
           <Text style={s.convertArrow}>›</Text>
         </LinearGradient>
       </TouchableOpacity>
 
       {/* ══ Campaign feed ════════════════════════════════════════════════ */}
-      <Text style={s.sectionTitle}>SPONSORED OFFERS</Text>
+      <Text style={s.sectionTitle}>{t('earn.sponsored')}</Text>
 
       {loading && campaigns.length === 0 ? (
         <View style={s.emptyCard}>
           <Text style={s.emptyIcon}>⏳</Text>
-          <Text style={s.emptyTitle}>Loading offers…</Text>
+          <Text style={s.emptyTitle}>{t('earn.loading')}</Text>
         </View>
       ) : campaigns.length === 0 ? (
         <View style={s.emptyCard}>
           <Text style={s.emptyIcon}>📭</Text>
-          <Text style={s.emptyTitle}>No active offers right now</Text>
-          <Text style={s.emptySub}>New campaigns appear daily. Check back soon.</Text>
+          <Text style={s.emptyTitle}>{t('earn.noAdsTitle')}</Text>
+          <Text style={s.emptySub}>{t('earn.noAdsSub')}</Text>
         </View>
       ) : (
         campaigns.map(c => {
@@ -173,7 +175,7 @@ export default function EarnHub({ deviceId, onOpenCampaign, onOpenSkoraWallet, o
                 </View>
               ) : (
                 <LinearGradient colors={[brand, brand + 'AA']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.adFooter}>
-                  <Text style={s.adFooterText}>WATCH & EARN  →</Text>
+                  <Text style={s.adFooterText}>{t('earn.watchAndEarn')}</Text>
                 </LinearGradient>
               )}
             </TouchableOpacity>
@@ -182,7 +184,7 @@ export default function EarnHub({ deviceId, onOpenCampaign, onOpenSkoraWallet, o
       )}
 
       {/* ══ Advertiser CTA ═══════════════════════════════════════════════ */}
-      <Text style={s.sectionTitle}>FOR BRANDS</Text>
+      <Text style={s.sectionTitle}>{t('earn.forBrands')}</Text>
       <LinearGradient colors={['#0F172A','#1E293B','#0F172A']} style={s.advCard}>
         <Text style={s.advTitle}>📣  Reach Seeker Holders</Text>
         <Text style={s.advText}>
@@ -197,7 +199,7 @@ export default function EarnHub({ deviceId, onOpenCampaign, onOpenSkoraWallet, o
         </View>
         <TouchableOpacity onPress={contactAdvertiser} activeOpacity={0.85}>
           <LinearGradient colors={['#7C3AED','#EC4899']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.advBtn}>
-            <Text style={s.advBtnText}>📧  CONTACT US</Text>
+            <Text style={s.advBtnText}>{t('earn.contactUs')}</Text>
           </LinearGradient>
         </TouchableOpacity>
         <Text style={s.advFootnote}>{ADVERTISER_EMAIL}  ·  {ADVERTISER_TELEGRAM.replace('https://', '')}</Text>

@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../lib/supabase';
+import { t, useLang } from '../lib/i18n';
 
 const { width: W } = Dimensions.get('window');
 const TOURNAMENT_ID = 'season-zero';
@@ -32,6 +33,7 @@ type Props = {
 };
 
 export default function Tournament({ deviceId, username, myScore }: Props) {
+  useLang();
   const [scores,    setScores]    = useState<ScoreRow[]>([]);
   const [loading,   setLoading]   = useState(false);
   const [timeLeft,  setTimeLeft]  = useState({ d: 0, h: 0, m: 0, s: 0 });
@@ -160,8 +162,8 @@ export default function Tournament({ deviceId, username, myScore }: Props) {
         }]} />
 
         <Animated.Text style={[s.heroTrophy, { transform: [{ translateY: trophyBob }] }]}>🏆</Animated.Text>
-        <Text style={s.heroTitle}>TOURNAMENT</Text>
-        <Text style={s.heroSeason}>SEASON ZERO  ·  GENESIS LEAGUE</Text>
+        <Text style={s.heroTitle}>{t('cup.title')}</Text>
+        <Text style={s.heroSeason}>{t('tour.season')}</Text>
 
         {/* Countdown blocks */}
         <View style={s.countdown}>
@@ -183,7 +185,7 @@ export default function Tournament({ deviceId, username, myScore }: Props) {
           ))}
         </View>
 
-        <Text style={s.heroHint}>⚡ Until season ends</Text>
+        <Text style={s.heroHint}>{t('tour.until')}</Text>
       </LinearGradient>
 
       {/* ══ PRIZE POOL ═══════════════════════════════════════════════════ */}
@@ -191,9 +193,9 @@ export default function Tournament({ deviceId, username, myScore }: Props) {
         <Animated.View style={{ transform: [{ scale: prizeScale }] }}>
           <Animated.View style={[s.prizeBorder, { borderColor: glowBorder }]}>
             <LinearGradient colors={['#1A0A2E', '#2D0060', '#1A0A2E']} style={s.prizeInner}>
-              <Text style={s.prizeTopLabel}>💎  PRIZE POOL</Text>
+              <Text style={s.prizeTopLabel}>{t('cup.prizePool')}</Text>
               <Text style={s.prizeVal}>
-                {prizePool > 0 ? `${prizePool} SOL` : 'Forming…'}
+                {prizePool > 0 ? `${prizePool} SOL` : t('cup.forming')}
               </Text>
               <Text style={s.prizeHint}>Grows with every Wheel spin · 0.01 SOL each</Text>
             </LinearGradient>
@@ -207,7 +209,7 @@ export default function Tournament({ deviceId, username, myScore }: Props) {
               <Text style={s.myMedal}>{myRank ? getMedal(myRank) : '❓'}</Text>
               <View>
                 <Text style={s.myName}>{username}</Text>
-                <Text style={s.mySub}>{myRank ? getPrize(myRank) : 'Not ranked yet'}</Text>
+                <Text style={s.mySub}>{myRank ? getPrize(myRank) : t('tour.notRanked')}</Text>
               </View>
             </View>
             <View style={s.myRight}>
@@ -219,7 +221,7 @@ export default function Tournament({ deviceId, username, myScore }: Props) {
       </View>
 
       {/* ══ SCORE RULES ══════════════════════════════════════════════════ */}
-      <Text style={[s.sectionTitle, s.px]}>HOW TO EARN POINTS</Text>
+      <Text style={[s.sectionTitle, s.px]}>{t('cup.howToEarn')}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingBottom: 4 }}>
         {SCORE_RULES.map((r, i) => (
@@ -234,7 +236,7 @@ export default function Tournament({ deviceId, username, myScore }: Props) {
 
       {/* ══ LEADERBOARD ══════════════════════════════════════════════════ */}
       <View style={[s.lbHeader, s.px]}>
-        <Text style={s.sectionTitle}>TOP SEEKERS</Text>
+        <Text style={s.sectionTitle}>{t('tour.topSeekers')}</Text>
         <TouchableOpacity onPress={fetchScores} style={s.refreshBtn}>
           <Text style={s.refreshTxt}>{loading ? '⏳' : '🔄'}</Text>
         </TouchableOpacity>
@@ -263,8 +265,8 @@ export default function Tournament({ deviceId, username, myScore }: Props) {
         {scores.length === 0 && !loading && (
           <View style={s.emptyBox}>
             <Text style={s.emptyIcon}>🎯</Text>
-            <Text style={s.emptyTitle}>BE THE FIRST!</Text>
-            <Text style={s.emptySub}>Play games to earn tournament points</Text>
+            <Text style={s.emptyTitle}>{t('tour.beFirst')}</Text>
+            <Text style={s.emptySub}>{t('tour.beFirstSub')}</Text>
           </View>
         )}
         {rest.map((row, i) => (

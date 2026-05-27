@@ -10,6 +10,7 @@ import {
   PVP_STAKES, PVP_DURATION, PVP_FEE_PCT,
   type PvpMatch,
 } from '../lib/pvp';
+import { t, useLang } from '../lib/i18n';
 
 const { width: W } = Dimensions.get('window');
 
@@ -27,6 +28,7 @@ type Props = {
 };
 
 export default function PvPArena({ deviceId, username, orb, onSpendOrb, onEarnOrb, onPaySolEntry, solEntryCost }: Props) {
+  useLang();
   const [premiumEntry, setPremiumEntry] = useState(false);
   // Lobby
   const [phase,      setPhase]      = useState<Phase>('lobby');
@@ -221,22 +223,22 @@ export default function PvPArena({ deviceId, username, orb, onSpendOrb, onEarnOr
       <View style={s.battleRoot}>
         <LinearGradient colors={['#1a0040','#3B0764','#831843','#1a0040']} style={s.battleHero}>
           <Text style={s.battleSub}>
-            {phase === 'playing-create' ? 'CREATING CHALLENGE' : `VS ${targetMatch?.challenger_username}`}
+            {phase === 'playing-create' ? t('pvp.creating') : `VS ${targetMatch?.challenger_username}`}
           </Text>
-          <Text style={s.battleTitle}>TAP BATTLE</Text>
+          <Text style={s.battleTitle}>{t('pvp.tapBattle')}</Text>
           <View style={s.battleRow}>
             <View style={s.battleStatBox}>
               <Text style={[s.battleStatNum, secondsLeft <= 5 && { color: '#EF4444' }]}>{secondsLeft}</Text>
-              <Text style={s.battleStatLbl}>SEC LEFT</Text>
+              <Text style={s.battleStatLbl}>{t('pvp.secLeft')}</Text>
             </View>
             <View style={s.battleStatBox}>
               <Text style={s.battleStatNum}>{taps}</Text>
-              <Text style={s.battleStatLbl}>YOUR TAPS</Text>
+              <Text style={s.battleStatLbl}>{t('pvp.yourTaps')}</Text>
             </View>
             {phase === 'playing-accept' && targetMatch && (
               <View style={s.battleStatBox}>
                 <Text style={[s.battleStatNum, { color: '#FB923C' }]}>{targetMatch.challenger_score}</Text>
-                <Text style={s.battleStatLbl}>TO BEAT</Text>
+                <Text style={s.battleStatLbl}>{t('pvp.toBeat')}</Text>
               </View>
             )}
           </View>
@@ -279,12 +281,12 @@ export default function PvPArena({ deviceId, username, orb, onSpendOrb, onEarnOr
             {waiting ? '⏳' : meWon ? '🏆' : isDraw ? '🤝' : '💀'}
           </Text>
           <Text style={s.resultTitle}>
-            {waiting ? 'WAITING FOR OPPONENT' : meWon ? 'YOU WIN' : isDraw ? 'DRAW' : 'YOU LOSE'}
+            {waiting ? t('pvp.waiting') : meWon ? t('pvp.winResult') : isDraw ? t('pvp.drawResult') : t('pvp.loseResult')}
           </Text>
 
           <View style={s.resultScores}>
             <View style={s.resultScoreBox}>
-              <Text style={s.resultScoreLbl}>YOU</Text>
+              <Text style={s.resultScoreLbl}>{t('pvp.you')}</Text>
               <Text style={s.resultScoreNum}>
                 {resultMatch.challenger_id === deviceId
                   ? resultMatch.challenger_score
@@ -309,7 +311,7 @@ export default function PvPArena({ deviceId, username, orb, onSpendOrb, onEarnOr
           {resultMatch.payout_orb !== null && resultMatch.payout_orb > 0 && (meWon || isDraw) && (
             <View style={s.resultPayout}>
               <Text style={s.resultPayoutLbl}>
-                {isDraw ? 'STAKE REFUNDED' : 'PAYOUT'}
+                {isDraw ? t('pvp.stakeRefunded') : t('pvp.payout')}
               </Text>
               <Text style={s.resultPayoutNum}>+{resultMatch.payout_orb.toLocaleString()} ORB</Text>
               {resultMatch.fee_orb ? (
@@ -320,7 +322,7 @@ export default function PvPArena({ deviceId, username, orb, onSpendOrb, onEarnOr
 
           <TouchableOpacity onPress={() => { setPhase('lobby'); setResultMatch(null); }} activeOpacity={0.85}>
             <LinearGradient colors={['#7C3AED','#5B21B6']} style={s.resultBtn}>
-              <Text style={s.resultBtnText}>BACK TO LOBBY</Text>
+              <Text style={s.resultBtnText}>{t('pvp.backLobby')}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </LinearGradient>
@@ -333,7 +335,7 @@ export default function PvPArena({ deviceId, username, orb, onSpendOrb, onEarnOr
     return (
       <View style={s.battleRoot}>
         <LinearGradient colors={['#0d0025','#1a0040','#0d0025']} style={s.createCard}>
-          <Text style={s.createTitle}>NEW CHALLENGE</Text>
+          <Text style={s.createTitle}>{t('pvp.newChallenge')}</Text>
           <Text style={s.createSub}>Pick your stake. You play first — beat your own score will be hard to top.</Text>
 
           <View style={s.stakeRow}>
@@ -420,8 +422,8 @@ export default function PvPArena({ deviceId, username, orb, onSpendOrb, onEarnOr
       {/* Hero */}
       <LinearGradient colors={['#0d0025','#1a0040','#3B0764','#0d0025']} style={s.lobbyHero}>
         <View>
-          <Text style={s.lobbyTag}>⚔️  PvP ARENA</Text>
-          <Text style={s.lobbyTitle}>Live ORB Battles</Text>
+          <Text style={s.lobbyTag}>{t('pvp.title')}</Text>
+          <Text style={s.lobbyTitle}>{t('pvp.tagline')}</Text>
           <Text style={s.lobbySub}>30-second tap battle. Winner takes 2× minus {Math.round(PVP_FEE_PCT*100)}% fee.</Text>
         </View>
       </LinearGradient>
@@ -429,17 +431,17 @@ export default function PvPArena({ deviceId, username, orb, onSpendOrb, onEarnOr
       {/* Create button */}
       <TouchableOpacity activeOpacity={0.85} onPress={() => setPhase('creating')}>
         <LinearGradient colors={['#A855F7','#EC4899']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.bigCreateBtn}>
-          <Text style={s.bigCreateBtnText}>+  CREATE CHALLENGE</Text>
+          <Text style={s.bigCreateBtnText}>{t('pvp.createChallenge')}</Text>
         </LinearGradient>
       </TouchableOpacity>
 
       {/* Tabs */}
       <View style={s.tabRow}>
         <TouchableOpacity onPress={() => setTab('open')} style={[s.tab, tab === 'open' && s.tabActive]}>
-          <Text style={[s.tabText, tab === 'open' && s.tabTextActive]}>OPEN CHALLENGES</Text>
+          <Text style={[s.tabText, tab === 'open' && s.tabTextActive]}>{t('pvp.tabOpen')}</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => setTab('history')} style={[s.tab, tab === 'history' && s.tabActive]}>
-          <Text style={[s.tabText, tab === 'history' && s.tabTextActive]}>MY HISTORY</Text>
+          <Text style={[s.tabText, tab === 'history' && s.tabTextActive]}>{t('pvp.tabHistory')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -448,12 +450,10 @@ export default function PvPArena({ deviceId, username, orb, onSpendOrb, onEarnOr
         <View style={s.emptyBox}>
           <Text style={s.emptyIcon}>{tab === 'open' ? '🪑' : '📜'}</Text>
           <Text style={s.emptyTitle}>
-            {tab === 'open' ? 'No open challenges yet' : 'No matches yet'}
+            {tab === 'open' ? t('pvp.noOpen') : t('pvp.noHistory')}
           </Text>
           <Text style={s.emptySub}>
-            {tab === 'open'
-              ? 'Be the first to create one!'
-              : 'Create a challenge or accept one to start.'}
+            {tab === 'open' ? t('pvp.beFirst') : t('pvp.createOrAccept')}
           </Text>
         </View>
       ) : (

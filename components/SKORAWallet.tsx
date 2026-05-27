@@ -8,6 +8,7 @@ import {
   SKORA_MINT, SKORA_NETWORK, ORB_PER_SKORA, MIN_CLAIM_ORB,
   orbToSkora, skoraDisplay,
 } from '../lib/skora';
+import { t, useLang } from '../lib/i18n';
 
 // ──────────────────────────────────────────────
 // TYPES
@@ -48,6 +49,7 @@ function shortAddr(addr: string) {
 
 // ──────────────────────────────────────────────
 export default function SKORAWallet({ orb, onSpendOrb, deviceId }: Props) {
+  useLang();
   const [walletInput, setWalletInput] = useState('');
   const [savedWallet, setSavedWallet] = useState('');
   const [claims,      setClaims]      = useState<ClaimRow[]>([]);
@@ -169,25 +171,25 @@ export default function SKORAWallet({ orb, onSpendOrb, deviceId }: Props) {
         <View style={s.balanceRow}>
           <View style={s.balCard}>
             <Text style={s.balValue}>{skoraDisplay(orb)}</Text>
-            <Text style={s.balLabel}>ДОСТУПНО SKORA</Text>
+            <Text style={s.balLabel}>{t('skora.available')}</Text>
           </View>
           <View style={s.balCard}>
             <Text style={[s.balValue, { color: '#FACC15' }]}>{pendingSkora.toFixed(2)}</Text>
-            <Text style={s.balLabel}>В ОЧЕРЕДИ</Text>
+            <Text style={s.balLabel}>{t('skora.pending')}</Text>
           </View>
           <View style={s.balCard}>
             <Text style={[s.balValue, { color: '#22C55E' }]}>{totalEarned.toFixed(2)}</Text>
-            <Text style={s.balLabel}>ПОЛУЧЕНО</Text>
+            <Text style={s.balLabel}>{t('skora.received')}</Text>
           </View>
         </View>
       </View>
 
       {/* ── Tabs ── */}
       <View style={s.tabRow}>
-        {(['claim', 'info', 'history'] as const).map(t => (
-          <TouchableOpacity key={t} style={[s.tab, tab === t && s.tabActive]} onPress={() => setTab(t)}>
-            <Text style={[s.tabTxt, tab === t && s.tabTxtActive]}>
-              {t === 'claim' ? '💰 Клейм' : t === 'info' ? '📄 Токен' : `📋 История${claims.length ? ` (${claims.length})` : ''}`}
+        {(['claim', 'info', 'history'] as const).map(tabKey => (
+          <TouchableOpacity key={tabKey} style={[s.tab, tab === tabKey && s.tabActive]} onPress={() => setTab(tabKey)}>
+            <Text style={[s.tabTxt, tab === tabKey && s.tabTxtActive]}>
+              {tabKey === 'claim' ? t('skora.tabClaim') : tabKey === 'info' ? t('skora.tabToken') : `${t('skora.tabHistory')}${claims.length ? ` (${claims.length})` : ''}`}
             </Text>
           </TouchableOpacity>
         ))}
@@ -197,11 +199,11 @@ export default function SKORAWallet({ orb, onSpendOrb, deviceId }: Props) {
       {tab === 'claim' && (
         <ScrollView contentContainerStyle={s.section}>
           <View style={s.claimCard}>
-            <Text style={s.claimTitle}>Получи SKORA</Text>
-            <Text style={s.claimDesc}>Обменяй заработанный ORB на реальный SPL-токен SKORA на Solana {SKORA_NETWORK}.</Text>
+            <Text style={s.claimTitle}>{t('skora.claimTitle')}</Text>
+            <Text style={s.claimDesc}>{t('skora.claimDesc', { network: SKORA_NETWORK })}</Text>
 
             {/* Amount selector */}
-            <Text style={s.inputLabel}>Количество ORB для обмена</Text>
+            <Text style={s.inputLabel}>{t('skora.orbAmount')}</Text>
             <View style={s.amountRow}>
               {[10_000, 50_000, 100_000, 500_000].map(amt => (
                 <TouchableOpacity
@@ -219,16 +221,16 @@ export default function SKORAWallet({ orb, onSpendOrb, deviceId }: Props) {
               ))}
             </View>
             <View style={s.orbBalance}>
-              <Text style={s.orbBalTxt}>Твой баланс: <Text style={{ color: '#A855F7', fontWeight: '900' }}>{orb.toLocaleString()} ORB</Text></Text>
+              <Text style={s.orbBalTxt}>{t('skora.orbBalance')} <Text style={{ color: '#A855F7', fontWeight: '900' }}>{orb.toLocaleString()} ORB</Text></Text>
             </View>
 
             {/* Wallet address */}
-            <Text style={s.inputLabel}>Solana-адрес кошелька</Text>
+            <Text style={s.inputLabel}>{t('skora.walletPlaceholder')}</Text>
             <TextInput
               style={s.walletInput}
               value={walletInput}
               onChangeText={setWalletInput}
-              placeholder="Вставь адрес (Phantom / Backpack / Saga)"
+              placeholder={t('skora.walletHint')}
               placeholderTextColor="#334155"
               autoCapitalize="none"
               autoCorrect={false}
@@ -259,12 +261,10 @@ export default function SKORAWallet({ orb, onSpendOrb, deviceId }: Props) {
               onPress={submitClaim}
               disabled={loading || orb < claimAmount || walletInput.length < 32}
             >
-              <Text style={s.claimBtnTxt}>{loading ? '⏳ Отправляем...' : '💎 ПОЛУЧИТЬ SKORA'}</Text>
+              <Text style={s.claimBtnTxt}>{loading ? t('skora.submitting') : t('skora.claimBtn')}</Text>
             </TouchableOpacity>
 
-            <Text style={s.claimNote}>
-              ⏱ Обработка заявок в течение 24ч. Токены отправляются вручную на devnet.
-            </Text>
+            <Text style={s.claimNote}>{t('skora.claimNote')}</Text>
           </View>
         </ScrollView>
       )}
@@ -273,7 +273,7 @@ export default function SKORAWallet({ orb, onSpendOrb, deviceId }: Props) {
       {tab === 'info' && (
         <ScrollView contentContainerStyle={s.section}>
           <View style={s.infoCard}>
-            <Text style={s.infoTitle}>О токене SKORA</Text>
+            <Text style={s.infoTitle}>{t('skora.infoTitle')}</Text>
             {[
               ['Название',   'SKORA'],
               ['Сеть',       'Solana ' + SKORA_NETWORK],
@@ -290,7 +290,7 @@ export default function SKORAWallet({ orb, onSpendOrb, deviceId }: Props) {
             ))}
 
             <View style={s.divider} />
-            <Text style={s.infoTitle}>Как заработать ORB</Text>
+            <Text style={s.infoTitle}>{t('skora.howToEarnTitle')}</Text>
             {[
               ['⚡', 'Тап по Signal',         '10-75 ORB'],
               ['🎰', 'Выигрыш на Wheel',       '500–50K ORB'],
@@ -313,7 +313,7 @@ export default function SKORAWallet({ orb, onSpendOrb, deviceId }: Props) {
       {tab === 'history' && (
         <ScrollView contentContainerStyle={s.section}>
           {claims.length === 0 ? (
-            <Text style={s.emptyTxt}>Заявок пока нет{'\n'}Сыграй и заработай ORB для первого клейма!</Text>
+            <Text style={s.emptyTxt}>{t('skora.historyEmpty')}</Text>
           ) : (
             claims.map(c => (
               <View key={c.id} style={s.claimRow}>

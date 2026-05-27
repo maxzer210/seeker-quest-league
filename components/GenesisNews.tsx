@@ -11,6 +11,7 @@ import {
   calculatePrize, SOL_USD_FALLBACK,
 } from '../lib/genesis';
 import { TREASURY_WALLET } from '../lib/solanaMobile';
+import { t, useLang } from '../lib/i18n';
 
 const { width: W } = Dimensions.get('window');
 
@@ -26,6 +27,7 @@ type Props = {
 };
 
 export default function GenesisNews({ deviceId, isFounder }: Props) {
+  useLang();
   const [now,        setNow]        = useState(Date.now());
   const [pool,       setPool]       = useState<number | null>(null);
   const [scores,     setScores]     = useState<PreSeasonRow[]>([]);
@@ -117,11 +119,11 @@ export default function GenesisNews({ deviceId, isFounder }: Props) {
 
         <View style={s.heroPhaseBadge}>
           <Animated.View style={[s.heroPhaseDot, { opacity: glowOpacity }]} />
-          <Text style={s.heroPhaseText}>GENESIS PRE-SEASON</Text>
+          <Text style={s.heroPhaseText}>{t('genesis.phase')}</Text>
         </View>
 
-        <Text style={s.heroTitle}>SEEKER LEAGUE</Text>
-        <Text style={s.heroTag}>The first season ever. Be a founder.</Text>
+        <Text style={s.heroTitle}>{t('genesis.title')}</Text>
+        <Text style={s.heroTag}>{t('genesis.tagline')}</Text>
 
         {/* Countdown */}
         <View style={s.countdown}>
@@ -142,7 +144,7 @@ export default function GenesisNews({ deviceId, isFounder }: Props) {
             </React.Fragment>
           ))}
         </View>
-        <Text style={s.heroSub}>UNTIL SEASON 1 LAUNCH</Text>
+        <Text style={s.heroSub}>{t('genesis.until')}</Text>
       </LinearGradient>
 
       {/* ══ PRIZE POOL ═══════════════════════════════════════════════════ */}
@@ -150,7 +152,7 @@ export default function GenesisNews({ deviceId, isFounder }: Props) {
         <View style={s.poolWrap}>
           <Animated.View style={[s.poolRing, { transform: [{ rotate: ringRotate }] }]} />
           <LinearGradient colors={['#1A0A2E','#2D0060','#1A0A2E']} style={s.poolBox}>
-            <Text style={s.poolLabel}>💰  ACCUMULATING PRIZE POOL</Text>
+            <Text style={s.poolLabel}>{t('genesis.pool')}</Text>
             <Text style={s.poolValue}>
               {pool === null ? '— SOL' : `${pool.toFixed(3)} SOL`}
             </Text>
@@ -185,9 +187,9 @@ export default function GenesisNews({ deviceId, isFounder }: Props) {
             <View style={s.myLeft}>
               <Text style={s.myRankBadge}>#{myRank}</Text>
               <View>
-                <Text style={s.myTitle}>YOUR PRE-SEASON RANK</Text>
+                <Text style={s.myTitle}>{t('genesis.rankTitle')}</Text>
                 <Text style={s.mySub}>
-                  Estimated prize: <Text style={s.mySolPrize}>{myPrize.toFixed(4)} SOL</Text>
+                  {t('genesis.estimatedPrize')} <Text style={s.mySolPrize}>{myPrize.toFixed(4)} SOL</Text>
                 </Text>
               </View>
             </View>
@@ -204,7 +206,7 @@ export default function GenesisNews({ deviceId, isFounder }: Props) {
           <View style={s.founderHeader}>
             <Text style={s.founderIcon}>{isFounder ? '🏛️' : '🔒'}</Text>
             <Text style={[s.founderTitle, { color: isFounder ? '#FACC15' : '#475569' }]}>
-              {isFounder ? 'FOUNDER ✓' : 'FOUNDER LOCKED'}
+              {isFounder ? t('genesis.founderYes') : t('genesis.founderNo')}
             </Text>
           </View>
           <Text style={s.founderText}>
@@ -217,13 +219,13 @@ export default function GenesisNews({ deviceId, isFounder }: Props) {
       </View>
 
       {/* ══ TOP 10 PROJECTION ════════════════════════════════════════════ */}
-      <Text style={[s.sectionTitle, s.px]}>WHO WINS AT SEASON 1 LAUNCH</Text>
+      <Text style={[s.sectionTitle, s.px]}>{t('genesis.topTitle')}</Text>
       <View style={s.px}>
         {scores.length === 0 && (
           <View style={s.emptyBox}>
             <Text style={s.emptyIcon}>🌱</Text>
-            <Text style={s.emptyTitle}>BE THE FIRST FOUNDER</Text>
-            <Text style={s.emptySub}>No players ranked yet. Tap, play, spin — and own the leaderboard.</Text>
+            <Text style={s.emptyTitle}>{t('genesis.firstFounder')}</Text>
+            <Text style={s.emptySub}>{t('genesis.firstFounderSub')}</Text>
           </View>
         )}
         {scores.slice(0, 10).map((row, i) => {
@@ -249,7 +251,7 @@ export default function GenesisNews({ deviceId, isFounder }: Props) {
       </View>
 
       {/* ══ HOW IT WORKS ═════════════════════════════════════════════════ */}
-      <Text style={[s.sectionTitle, s.px]}>HOW PRE-SEASON WORKS</Text>
+      <Text style={[s.sectionTitle, s.px]}>{t('genesis.howTitle')}</Text>
       <View style={s.px}>
         {[
           { icon: '🎰', title: 'Play & spin',
