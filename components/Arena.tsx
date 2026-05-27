@@ -208,7 +208,7 @@ export default function Arena({ orb, onOrbChange, deviceId, username, onRaidWin 
     const cur = buildings[type];
     if (cur >= 5) return;
     const cost = UPGRADE_COSTS[cur];
-    if (orb < cost) { Alert.alert('Недостаточно ORB', `Нужно ${cost.toLocaleString()} ORB`); return; }
+    if (orb < cost) { Alert.alert(t('arena.alertLowOrb'), t('arena.alertNeedOrb', { n: cost.toLocaleString() })); return; }
     const next = { ...buildings, [type]: cur + 1 };
     setBuildings(next);
     onOrbChange(orb - cost);
@@ -223,10 +223,10 @@ export default function Arena({ orb, onOrbChange, deviceId, username, onRaidWin 
   // ── Shield ────────────────────────────────────────
   function buyShield() {
     if (shieldUntil > Date.now()) {
-      Alert.alert('Щит активен', 'База уже защищена!'); return;
+      Alert.alert(t('arena.alertShieldActive'), t('arena.alertShieldOn')); return;
     }
     if (orb < SHIELD_COST_ORB) {
-      Alert.alert('Недостаточно ORB', `Нужно ${SHIELD_COST_ORB} ORB`); return;
+      Alert.alert(t('arena.alertLowOrb'), t('arena.alertNeedOrb', { n: SHIELD_COST_ORB })); return;
     }
     const until = Date.now() + SHIELD_HOURS * 3_600_000;
     setShieldUntil(until);
@@ -239,7 +239,7 @@ export default function Arena({ orb, onOrbChange, deviceId, username, onRaidWin 
   async function doRaid() {
     if (Date.now() - lastRaidTs < RAID_COOLDOWN) {
       const mins = Math.ceil((RAID_COOLDOWN - (Date.now() - lastRaidTs)) / 60000);
-      Alert.alert('Рейд на перезарядке', `Следующий рейд через ${mins} мин`);
+      Alert.alert(t('arena.alertRaidCooldown'), t('arena.alertRaidWait', { n: mins }));
       return;
     }
     setRaidPhase('searching');
@@ -299,7 +299,7 @@ export default function Arena({ orb, onOrbChange, deviceId, username, onRaidWin 
     setRaidOpp(oppName);
     setRaidWon(won);
     setRaidStolen(stolen);
-    setRaidMsg(won ? `Украдено ${stolen.toLocaleString()} ORB!` : 'Атака отбита! Башни слишком сильны.');
+    setRaidMsg(won ? t('arena.raidWon', { n: stolen.toLocaleString() }) : t('arena.raidLost'));
     setLastRaidTs(Date.now());
     setRaidPhase('result');
     saveState(buildings, shieldUntil, Date.now());
@@ -320,10 +320,10 @@ export default function Arena({ orb, onOrbChange, deviceId, username, onRaidWin 
 
   type BInfo = { key: keyof Buildings; icon: string; name: string; desc: string; stat: string; color: string };
   const BINFO: BInfo[] = [
-    { key: 'hq',        icon: '🏰', name: 'ШТАБ',       desc: 'Усиливает все здания',              stat: `Ур. ${buildings.hq}`,              color: '#F59E0B' },
-    { key: 'generator', icon: '⚡', name: 'ГЕНЕРАТОР',   desc: 'Копит ORB каждый час',              stat: `${orbPerHour} ORB/час`,            color: '#A855F7' },
-    { key: 'vault',     icon: '🏦', name: 'ХРАНИЛИЩЕ',   desc: 'Защищает ORB от рейдов',            stat: `${(vaultProt/1000).toFixed(1)}K защищено`, color: '#22C55E' },
-    { key: 'tower',     icon: '🗼', name: 'БАШНЯ',       desc: 'Снижает урон от атак',              stat: `−${defPct}% урона`,                color: '#38BDF8' },
+    { key: 'hq',        icon: '🏰', name: t('arena.bldgHq'),        desc: t('arena.bldgHqDesc'),   stat: `Lv. ${buildings.hq}`,              color: '#F59E0B' },
+    { key: 'generator', icon: '⚡', name: t('arena.bldgGenerator'),  desc: t('arena.bldgGenDesc'),  stat: `${orbPerHour} ORB/h`,              color: '#A855F7' },
+    { key: 'vault',     icon: '🏦', name: t('arena.bldgVault'),      desc: t('arena.bldgVaultDesc'),stat: `${(vaultProt/1000).toFixed(1)}K`,  color: '#22C55E' },
+    { key: 'tower',     icon: '🗼', name: t('arena.bldgTower'),      desc: t('arena.bldgTowerDesc'),stat: `−${defPct}%`,                      color: '#38BDF8' },
   ];
 
   const spinInterp = searchAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
@@ -336,7 +336,7 @@ export default function Arena({ orb, onOrbChange, deviceId, username, onRaidWin 
         <View style={s.headerTop}>
           <View>
             <Text style={s.headerTitle}>{t('arena.title')}</Text>
-            <Text style={s.headerSub}>Сила базы: {basePower.toLocaleString()} pts</Text>
+            <Text style={s.headerSub}>{t('arena.basePower', { n: basePower.toLocaleString() })}</Text>
           </View>
           <View style={[s.shieldBadge, shielded && s.shieldBadgeActive]}>
             {shielded && (
@@ -424,10 +424,10 @@ export default function Arena({ orb, onOrbChange, deviceId, username, onRaidWin 
                 <Text style={s.collectIcon}>⚡</Text>
                 <View>
                   <Text style={s.collectTitle}>
-                    {pendingOrb > 0 ? `СОБРАТЬ ${pendingOrb.toLocaleString()} ORB` : 'Генератор работает...'}
+                    {pendingOrb > 0 ? t('arena.collect', { n: pendingOrb.toLocaleString() }) : t('arena.generatorWorking')}
                   </Text>
                   <Text style={s.collectSub}>
-                    {pendingOrb > 0 ? 'Нажми чтобы забрать заработанное' : `${orbPerHour} ORB в час · копится`}
+                    {pendingOrb > 0 ? t('arena.tapToCollect') : t('arena.orbPerHour', { n: orbPerHour })}
                   </Text>
                 </View>
                 {pendingOrb > 0 && <Text style={s.collectArrow}>›</Text>}
@@ -436,7 +436,7 @@ export default function Arena({ orb, onOrbChange, deviceId, username, onRaidWin 
           </Animated.View>
 
           {/* Buildings grid */}
-          <Text style={s.sectionLabel}>ЗДАНИЯ  ·  нажми для улучшения</Text>
+          <Text style={s.sectionLabel}>{t('lands.buildings')}</Text>
           <Animated.View style={[s.bGrid, { transform: [{ scale: pulseAnim }] }]}>
             {BINFO.map((b) => {
               const lvl     = buildings[b.key];
@@ -465,7 +465,7 @@ export default function Arena({ orb, onOrbChange, deviceId, username, onRaidWin 
                     {!maxed && (
                       <View style={[s.upgHint, canAfford && s.upgHintReady]}>
                         <Text style={[s.upgHintTxt, canAfford && s.upgHintTxtReady]}>
-                          {canAfford ? `▲  УЛУЧШИТЬ · ${nextCost!.toLocaleString()}` : `🔒 ${nextCost!.toLocaleString()} ORB`}
+                          {canAfford ? t('arena.upgradeReady', { cost: nextCost!.toLocaleString() }) : t('arena.upgradeLocked', { cost: nextCost!.toLocaleString() })}
                         </Text>
                       </View>
                     )}
@@ -482,13 +482,13 @@ export default function Arena({ orb, onOrbChange, deviceId, username, onRaidWin 
             onPress={buyShield}
             activeOpacity={0.85}
           >
-            <Text style={s.shieldFullIcon}>{shielded ? '🛡' : '🛡'}</Text>
+            <Text style={s.shieldFullIcon}>{shielded ? '🛡' : '⚠️'}</Text>
             <View>
               <Text style={s.shieldFullTitle}>
-                {shielded ? `ЩИТ АКТИВЕН · ещё ${shieldHoursLeft}ч` : 'КУПИТЬ ЩИТ · 8 часов'}
+                {shielded ? t('arena.shieldActive', { h: shieldHoursLeft }) : t('arena.buyShield')}
               </Text>
               <Text style={s.shieldFullSub}>
-                {shielded ? 'База защищена от рейдов' : `${SHIELD_COST_ORB} ORB · никто не атакует`}
+                {shielded ? t('arena.shieldActiveDesc') : t('arena.buyShieldDesc', { cost: SHIELD_COST_ORB })}
               </Text>
             </View>
           </TouchableOpacity>
@@ -502,27 +502,27 @@ export default function Arena({ orb, onOrbChange, deviceId, username, onRaidWin 
           {/* Explain card */}
           <View style={s.raidInfoCard}>
             <Text style={s.raidInfoTitle}>{t('arena.howRaid')}</Text>
-            <View style={s.raidInfoRow}><Text style={s.raidInfoIcon}>🎯</Text><Text style={s.raidInfoTxt}>Находим случайного игрока без щита</Text></View>
-            <View style={s.raidInfoRow}><Text style={s.raidInfoIcon}>⚔️</Text><Text style={s.raidInfoTxt}>Твой штаб + башня vs их защита</Text></View>
-            <View style={s.raidInfoRow}><Text style={s.raidInfoIcon}>💰</Text><Text style={s.raidInfoTxt}>Победа → крадёшь 15–35% их ORB</Text></View>
-            <View style={s.raidInfoRow}><Text style={s.raidInfoIcon}>🕐</Text><Text style={s.raidInfoTxt}>Перезарядка: 30 минут</Text></View>
+            <View style={s.raidInfoRow}><Text style={s.raidInfoIcon}>🎯</Text><Text style={s.raidInfoTxt}>{t('arena.raidStep1')}</Text></View>
+            <View style={s.raidInfoRow}><Text style={s.raidInfoIcon}>⚔️</Text><Text style={s.raidInfoTxt}>{t('arena.raidStep2')}</Text></View>
+            <View style={s.raidInfoRow}><Text style={s.raidInfoIcon}>💰</Text><Text style={s.raidInfoTxt}>{t('arena.raidStep3')}</Text></View>
+            <View style={s.raidInfoRow}><Text style={s.raidInfoIcon}>🕐</Text><Text style={s.raidInfoTxt}>{t('arena.raidStep4')}</Text></View>
           </View>
 
           {/* My attack stats */}
           <View style={s.raidStatsRow}>
             <View style={s.raidStatBox}>
               <Text style={s.raidStatVal}>{buildings.hq * 25 + buildings.tower * 10}</Text>
-              <Text style={s.raidStatLabel}>МОЯ АТАКА</Text>
+              <Text style={s.raidStatLabel}>{t('arena.myAttack')}</Text>
             </View>
             <View style={s.raidStatDivider} />
             <View style={s.raidStatBox}>
               <Text style={s.raidStatVal}>{defPct}%</Text>
-              <Text style={s.raidStatLabel}>МОЯ ЗАЩИТА</Text>
+              <Text style={s.raidStatLabel}>{t('arena.myDefense')}</Text>
             </View>
             <View style={s.raidStatDivider} />
             <View style={s.raidStatBox}>
               <Text style={s.raidStatVal}>{(vaultProt/1000).toFixed(1)}K</Text>
-              <Text style={s.raidStatLabel}>ЗАЩИЩЕНО</Text>
+              <Text style={s.raidStatLabel}>{t('arena.protected')}</Text>
             </View>
           </View>
 
@@ -591,7 +591,7 @@ export default function Arena({ orb, onOrbChange, deviceId, username, onRaidWin 
                 <Text style={s.raidResultOpp}>vs {raidOpp}</Text>
                 <Text style={s.raidResultMsg}>{raidMsg}</Text>
                 {raidWon && raidStolen > 0 && (
-                  <Text style={s.raidResultStolen}>+{raidStolen.toLocaleString()} ORB добавлено в баланс</Text>
+                  <Text style={s.raidResultStolen}>{t('arena.orbAdded', { n: raidStolen.toLocaleString() })}</Text>
                 )}
                 <TouchableOpacity style={s.raidResultClose} onPress={() => setRaidPhase('idle')}>
                   <Text style={s.raidResultCloseTxt}>ПРОДОЛЖИТЬ</Text>
@@ -616,9 +616,9 @@ export default function Arena({ orb, onOrbChange, deviceId, username, onRaidWin 
 
           {/* Upgrade to raid better */}
           <View style={s.raidTips}>
-            <Text style={s.raidTipsTitle}>💡 УСИЛИТЬ РЕЙДЫ</Text>
-            <Text style={s.raidTipsTxt}>🏰 Улучши ШТАБ и БАШНЮ на вкладке БАЗА — это повысит силу атаки</Text>
-            <Text style={s.raidTipsTxt}>🏦 Улучши ХРАНИЛИЩЕ — защити свои ORB от чужих рейдов</Text>
+            <Text style={s.raidTipsTitle}>{t('arena.tipsTitle')}</Text>
+            <Text style={s.raidTipsTxt}>{t('arena.tipsTxt1')}</Text>
+            <Text style={s.raidTipsTxt}>{t('arena.tipsTxt2')}</Text>
           </View>
         </View>
       )}
@@ -650,16 +650,16 @@ export default function Arena({ orb, onOrbChange, deviceId, username, onRaidWin 
                     <View key={i} style={[s.modalLvlDot, i <= cur && { backgroundColor: info.color, borderColor: info.color }]} />
                   ))}
                 </View>
-                <Text style={s.modalLvlTxt}>Уровень {cur} / 5</Text>
+                <Text style={s.modalLvlTxt}>{t('arena.levelOf', { cur })}</Text>
 
                 {/* Stats */}
                 <View style={s.modalStatBox}>
-                  <Text style={s.modalStatCur}>Сейчас: {info.stat}</Text>
-                  {!maxed && <Text style={s.modalStatNext}>→ После: {nextStat}</Text>}
+                  <Text style={s.modalStatCur}>{t('arena.statNow', { stat: info.stat })}</Text>
+                  {!maxed && <Text style={s.modalStatNext}>{t('arena.statAfter', { stat: nextStat })}</Text>}
                 </View>
 
                 {maxed ? (
-                  <Text style={s.modalMaxed}>✦ МАКСИМАЛЬНЫЙ УРОВЕНЬ</Text>
+                  <Text style={s.modalMaxed}>{t('arena.maxLevel')}</Text>
                 ) : (
                   <TouchableOpacity
                     style={[s.modalUpgBtn, !canAfford && s.modalUpgBtnDim]}
@@ -672,14 +672,14 @@ export default function Arena({ orb, onOrbChange, deviceId, username, onRaidWin 
                       style={s.modalUpgGrad}
                     >
                       <Text style={s.modalUpgTxt}>
-                        {canAfford ? `▲  УЛУЧШИТЬ  ·  ${cost.toLocaleString()} ORB` : `🔒  Нужно ${cost.toLocaleString()} ORB`}
+                        {canAfford ? t('arena.upgradeCta', { cost: cost.toLocaleString() }) : t('arena.upgradeNeed', { cost: cost.toLocaleString() })}
                       </Text>
                     </LinearGradient>
                   </TouchableOpacity>
                 )}
 
                 <TouchableOpacity style={s.modalClose} onPress={() => setUpgradeKey(null)}>
-                  <Text style={s.modalCloseTxt}>Закрыть</Text>
+                  <Text style={s.modalCloseTxt}>{t('common.close')}</Text>
                 </TouchableOpacity>
               </LinearGradient>
             </View>

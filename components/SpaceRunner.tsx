@@ -356,9 +356,9 @@ export default function SpaceRunner({ onExit, onEarnOrb, onAddScore }: Props) {
       setMultActive(true);
       comboRef.current = 0;
       setComboCount(0);
-      setComboText('⚡ ×2 MULTIPLIER ACTIVE!');
+      setComboText(t('runner.multActive'));
     } else {
-      setComboText(`🔥 NEAR MISS! (${newCombo}/${COMBO_STREAK_REQ})`);
+      setComboText(t('runner.nearMiss', { cur: newCombo, req: COMBO_STREAK_REQ }));
     }
     // +ORB бонус за near-miss
     setScore(s => s + 2);
@@ -591,16 +591,16 @@ export default function SpaceRunner({ onExit, onEarnOrb, onAddScore }: Props) {
           </TouchableOpacity>
 
           <TouchableOpacity onPress={onExit} activeOpacity={0.7} style={{ marginTop: 14 }}>
-            <Text style={s.backBtn}>← BACK TO ARCADE</Text>
+            <Text style={s.backBtn}>{t('runner.backToArcade')}</Text>
           </TouchableOpacity>
 
           <View style={s.tipsBox}>
             <Text style={s.tipsTitle}>{t('runner.howToPlay')}</Text>
-            <Text style={s.tip}>👆  Drag finger to move ship</Text>
-            <Text style={s.tip}>{theme.obstacleEmoji}  Dodge falling obstacles · +5 ORB</Text>
-            <Text style={s.tip}>💎  Catch gems · +{GEM_REWARD} ORB</Text>
-            <Text style={s.tip}>🔥  3 near-misses = ×2 multiplier</Text>
-            <Text style={s.tip}>⚡  Difficulty ramps every minute</Text>
+            <Text style={s.tip}>{t('runner.tip1')}</Text>
+            <Text style={s.tip}>{t('runner.tip2', { emoji: theme.obstacleEmoji })}</Text>
+            <Text style={s.tip}>{t('runner.tip3', { n: GEM_REWARD })}</Text>
+            <Text style={s.tip}>{t('runner.tip4')}</Text>
+            <Text style={s.tip}>{t('runner.tip5')}</Text>
           </View>
         </View>
       )}

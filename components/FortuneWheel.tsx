@@ -74,6 +74,21 @@ interface Props {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+function segLabel(seg: Segment): string {
+  switch (seg.reward.type) {
+    case 'empty':   return t('fortune.segEmpty');
+    case 'ticket':  return t('fortune.segTickets', { n: seg.reward.amount });
+    case 'x2':      return t('fortune.segX2');
+    case 'boost':   return t('fortune.segBoost');
+    case 'jackpot': return t('fortune.segJackpot');
+    case 'orb': {
+      const n = seg.reward.amount;
+      return `${n >= 1000 ? (n / 1000).toFixed(0) + 'K' : n} ORB`;
+    }
+    default: return seg.label;
+  }
+}
+
 function todayKey() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -335,7 +350,7 @@ export default function FortuneWheel({
             {jackpot.toLocaleString()}
           </Animated.Text>
           <Text style={s.jackpotUnit}>ORB</Text>
-          <Text style={s.jackpotSub}>Растёт с каждым платным спином</Text>
+          <Text style={s.jackpotSub}>{t('fortune.jackpotGrow')}</Text>
         </LinearGradient>
 
         {/* ── Free spins counter ── */}
@@ -450,7 +465,7 @@ export default function FortuneWheel({
               style={s.btnGrad}
             >
               <Text style={[s.btnText, freeLeft === 0 && s.btnTextDim]}>
-                {spinning ? '◌  КРУТИТСЯ...' : `🎰  БЕСПЛАТНО (${freeLeft})`}
+                {spinning ? t('fortune.spinning') : t('fortune.freeBtn', { n: freeLeft })}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -477,15 +492,15 @@ export default function FortuneWheel({
                 (paidSpinDisabled || (!onBeforePaidSpin && orb < PAID_SPIN_ORB)) && s.btnTextDim,
                 onBeforePaidSpin && !paidSpinDisabled && { color: '#000' },
               ]}>
-                {onBeforePaidSpin ? '🎰  ' : '💰  ЕЩЁ СПИН ('}
-                {paidSpinCostLabel ?? `${(PAID_SPIN_ORB / 1000).toFixed(0)}K ORB`}
-                {onBeforePaidSpin ? '' : ')'}
+                {onBeforePaidSpin
+                ? `🎰  ${paidSpinCostLabel ?? `${(PAID_SPIN_ORB / 1000).toFixed(0)}K ORB`}`
+                : t('fortune.paidBtn', { cost: paidSpinCostLabel ?? `${(PAID_SPIN_ORB / 1000).toFixed(0)}K ORB` })}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
 
-        <Text style={s.solNote}>💡 Платный спин: {paidSpinCostLabel ?? '10K ORB'} → джекпот растёт</Text>
+        <Text style={s.solNote}>{t('fortune.solNote', { cost: paidSpinCostLabel ?? '10K ORB' })}</Text>
         {paidSpinStatus ? <Text style={s.solStatus}>{paidSpinStatus}</Text> : null}
 
         {/* ── Last result ── */}
@@ -493,14 +508,14 @@ export default function FortuneWheel({
           <View style={[s.resultCard, { borderColor: lastResult.glow + '60' }]}>
             <Text style={s.resultEmoji}>{lastResult.emoji}</Text>
             <View style={{ flex: 1 }}>
-              <Text style={[s.resultLabel, { color: lastResult.glow }]}>{lastResult.label}</Text>
+              <Text style={[s.resultLabel, { color: lastResult.glow }]}>{segLabel(lastResult)}</Text>
               <Text style={s.resultSub}>
                 {lastResult.reward.type === 'empty'   ? t('fortune.noLuck') :
                  lastResult.reward.type === 'jackpot' ? t('fortune.jackpotResult') :
-                 lastResult.reward.type === 'boost'   ? '🔥 Буст ×3 активирован на 30 минут' :
-                 lastResult.reward.type === 'x2'      ? '✨ Множитель ×2 на 30 минут!' :
-                 lastResult.reward.type === 'ticket'  ? `+${lastResult.reward.amount} тикета добавлено` :
-                 `+${lastResult.reward.amount.toLocaleString()} ORB зачислено`}
+                 lastResult.reward.type === 'boost'   ? t('fortune.resultBoost') :
+                 lastResult.reward.type === 'x2'      ? t('fortune.resultX2') :
+                 lastResult.reward.type === 'ticket'  ? t('fortune.resultTicket', { n: lastResult.reward.amount }) :
+                 t('fortune.resultOrb', { n: lastResult.reward.amount.toLocaleString() })}
               </Text>
             </View>
           </View>
@@ -514,13 +529,13 @@ export default function FortuneWheel({
           ).map((seg, i) => (
             <View key={i} style={s.prizeRow}>
               <Text style={{ fontSize: 18, width: 28 }}>{seg.emoji}</Text>
-              <Text style={[s.prizeLabel, { color: seg.glow }]}>{seg.label}</Text>
+              <Text style={[s.prizeLabel, { color: seg.glow }]}>{segLabel(seg)}</Text>
               <View style={[s.prizeChance, { borderColor: seg.glow + '40' }]}>
                 <Text style={[s.prizeChanceText, { color: seg.glow }]}>
-                  {seg.reward.type === 'empty' ? 'часто' :
-                   seg.weight >= 12 ? 'часто' :
-                   seg.weight >= 6  ? 'редко' :
-                   seg.weight >= 3  ? 'очень редко' : '💎 ультра'}
+                  {seg.reward.type === 'empty' ? t('fortune.chanceOften') :
+                   seg.weight >= 12 ? t('fortune.chanceOften') :
+                   seg.weight >= 6  ? t('fortune.chanceRare') :
+                   seg.weight >= 3  ? t('fortune.chanceVeryRare') : t('fortune.chanceUltra')}
                 </Text>
               </View>
             </View>
@@ -557,10 +572,10 @@ export default function FortuneWheel({
             </Text>
             <Text style={s.winAmount}>
               {lastResult.reward.type === 'orb'     ? `+${lastResult.reward.amount.toLocaleString()} ORB` :
-               lastResult.reward.type === 'ticket'  ? `+${lastResult.reward.amount} тикета` :
+               lastResult.reward.type === 'ticket'  ? t('fortune.winTicket', { n: lastResult.reward.amount }) :
                lastResult.reward.type === 'jackpot' ? `+${jackpot.toLocaleString()} ORB` :
-               lastResult.reward.type === 'boost'   ? '🔥 БУСТ ×3' :
-               lastResult.reward.type === 'x2'      ? '✨ МНОЖИТЕЛЬ ×2' : ''}
+               lastResult.reward.type === 'boost'   ? t('fortune.winBoost') :
+               lastResult.reward.type === 'x2'      ? t('fortune.winX2') : ''}
             </Text>
           </Animated.View>
         </View>
