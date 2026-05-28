@@ -24,19 +24,22 @@ export const PREMIUM_UPGRADE_LAMPORTS = Math.round(PREMIUM_UPGRADE_SOL * LAMPORT
 export const PVP_ENTRY_SOL = 0.01;
 export const PVP_ENTRY_LAMPORTS = Math.round(PVP_ENTRY_SOL * LAMPORTS_PER_SOL);
 
-// ── PREMIUM SHOP (SOL-priced items) ─────────────────────────────────────────
-// Rare/premium upgrades and instant unlocks priced in SOL for Founders/whales.
-export const PREMIUM_INSTANT_LEVEL_SOL = 0.01;
-export const PREMIUM_INSTANT_LEVEL_LAMPORTS = Math.round(PREMIUM_INSTANT_LEVEL_SOL * LAMPORTS_PER_SOL);
-
-export const PREMIUM_SKIN_SOL = 0.01;
-export const PREMIUM_SKIN_LAMPORTS = Math.round(PREMIUM_SKIN_SOL * LAMPORTS_PER_SOL);
-
-export const PREMIUM_BOOST_PACK_SOL = 0.01;
-export const PREMIUM_BOOST_PACK_LAMPORTS = Math.round(PREMIUM_BOOST_PACK_SOL * LAMPORTS_PER_SOL);
-
+// ── PREMIUM SHOP (SOL-priced items, tiered by impact) ──────────────────────
+// Tier 1 — Defensive utility (cheapest)
 export const PREMIUM_SHIELD_PACK_SOL = 0.01;
 export const PREMIUM_SHIELD_PACK_LAMPORTS = Math.round(PREMIUM_SHIELD_PACK_SOL * LAMPORTS_PER_SOL);
+
+// Tier 2 — Temporary boost
+export const PREMIUM_BOOST_PACK_SOL = 0.02;
+export const PREMIUM_BOOST_PACK_LAMPORTS = Math.round(PREMIUM_BOOST_PACK_SOL * LAMPORTS_PER_SOL);
+
+// Tier 3 — Permanent progression
+export const PREMIUM_INSTANT_LEVEL_SOL = 0.03;
+export const PREMIUM_INSTANT_LEVEL_LAMPORTS = Math.round(PREMIUM_INSTANT_LEVEL_SOL * LAMPORTS_PER_SOL);
+
+// Tier 4 — Big instant ORB drop (top)
+export const PREMIUM_SKIN_SOL = 0.05;
+export const PREMIUM_SKIN_LAMPORTS = Math.round(PREMIUM_SKIN_SOL * LAMPORTS_PER_SOL);
 
 // Treasury receives 0.01 SOL per Wheel paid spin.
 // Must be DIFFERENT from the user's wallet, otherwise it's a self-transfer (only fee deducted).

@@ -1870,15 +1870,15 @@ function AppInner() {
 
               </View>
 
-              {/* ── PREMIUM ITEMS (rare, SOL-priced) ── */}
+              {/* ── PREMIUM ITEMS (rare, SOL-priced, tiered) ── */}
               <Text style={styles.shopSectionTitle}>💎  PREMIUM ITEMS  ·  SOL ONLY</Text>
               <View style={styles.premiumGrid}>
                 {([
-                  { id: 'instantLevel', icon: '⬆',  name: 'INSTANT LEVEL', desc: '+1 LV instantly · +500 ORB',  color: '#FACC15' },
-                  { id: 'boostPack',    icon: '🔥', name: 'MEGA BOOST',     desc: '×3 ORB for 30 seconds',        color: '#FB923C' },
-                  { id: 'shieldPack',   icon: '🛡', name: 'SHIELD PACK',    desc: '+3 streak shields',            color: '#22C55E' },
-                  { id: 'rareSkin',     icon: '💎', name: 'RARE BUNDLE',    desc: '10 000 ORB instant drop',      color: '#EC4899' },
-                ] as { id: PremiumItem; icon: string; name: string; desc: string; color: string }[]).map(p => (
+                  { id: 'shieldPack',   icon: '🛡', name: 'SHIELD PACK',    desc: '+3 streak shields',         color: '#22C55E', price: PREMIUM_SHIELD_PACK_SOL,   tier: 'BASIC'   },
+                  { id: 'boostPack',    icon: '🔥', name: 'MEGA BOOST',     desc: '×3 ORB for 30 seconds',     color: '#FB923C', price: PREMIUM_BOOST_PACK_SOL,    tier: 'RARE'    },
+                  { id: 'instantLevel', icon: '⬆',  name: 'INSTANT LEVEL', desc: '+1 LV · +500 ORB',          color: '#FACC15', price: PREMIUM_INSTANT_LEVEL_SOL, tier: 'EPIC'    },
+                  { id: 'rareSkin',     icon: '💎', name: 'MEGA BUNDLE',    desc: '10 000 ORB instant drop',   color: '#EC4899', price: PREMIUM_SKIN_SOL,          tier: 'LEGEND'  },
+                ] as { id: PremiumItem; icon: string; name: string; desc: string; color: string; price: number; tier: string }[]).map(p => (
                   <TouchableOpacity
                     key={p.id}
                     onPress={() => paySolForPremiumItem(p.id)}
@@ -1891,6 +1891,11 @@ function AppInner() {
                       start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                       style={[styles.premiumCardGrad, { borderColor: p.color + '66' }]}
                     >
+                      {/* Tier badge top-right */}
+                      <View style={[styles.premiumTierBadge, { borderColor: p.color + '88', backgroundColor: p.color + '22' }]}>
+                        <Text style={[styles.premiumTierTxt, { color: p.color }]}>{p.tier}</Text>
+                      </View>
+
                       <View style={[styles.premiumIconWrap, { borderColor: p.color + '88', backgroundColor: p.color + '22' }]}>
                         <Text style={styles.premiumIcon}>{p.icon}</Text>
                       </View>
@@ -1898,7 +1903,7 @@ function AppInner() {
                       <Text style={styles.premiumDesc} numberOfLines={2}>{p.desc}</Text>
                       <View style={[styles.premiumPriceTag, { borderColor: p.color + '99' }]}>
                         <Text style={[styles.premiumPriceTxt, { color: p.color }]}>
-                          {solShopPending ? '⏳' : `⚡ 0.01 SOL`}
+                          {solShopPending ? '⏳' : `⚡ ${p.price} SOL`}
                         </Text>
                       </View>
                     </LinearGradient>
@@ -1907,7 +1912,7 @@ function AppInner() {
               </View>
 
               <Text style={styles.shopSectionHint}>
-                ✦ Премиум-предметы доступны только за SOL · мгновенная активация
+                ✦ Чем мощнее эффект, тем выше цена · мгновенная активация
               </Text>
 
               {/* Section divider */}
@@ -3207,6 +3212,9 @@ const styles = StyleSheet.create({
   premiumPriceTag:  { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1,
                       backgroundColor: 'rgba(0,0,0,0.45)', marginTop: 'auto' },
   premiumPriceTxt:  { fontSize: 11, fontWeight: '900', letterSpacing: 1 },
+  premiumTierBadge: { position: 'absolute', top: 6, right: 6, paddingHorizontal: 6, paddingVertical: 2,
+                      borderRadius: 5, borderWidth: 1, zIndex: 5 },
+  premiumTierTxt:   { fontSize: 8, fontWeight: '900', letterSpacing: 1 },
   content:  { flex: 1, paddingHorizontal: 20 },
 
   // streak banner (home screen)
