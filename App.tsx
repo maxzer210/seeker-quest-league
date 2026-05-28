@@ -1594,25 +1594,57 @@ function AppInner() {
                 </TouchableOpacity>
               )}
 
-              {/* ── Galaxy Header: balance + level ── */}
-              <View style={styles.homeGalaxyHeader}>
-                <View>
-                  <Text style={styles.homeGalaxyOrb}>{orb.toLocaleString()}</Text>
-                  <Text style={styles.homeGalaxyOrbLbl}>ORB</Text>
-                </View>
-                <LinearGradient colors={['#7C3AED','#EC4899']} style={styles.homeLevelBadge}>
-                  <Text style={styles.homeLevelText}>LV {level}</Text>
-                </LinearGradient>
-                <View style={{ flex: 1, gap: 3 }}>
-                  <View style={styles.homeXpBarWrap}>
-                    <LinearGradient colors={['#A855F7','#EC4899']} start={{x:0,y:0}} end={{x:1,y:0}}
-                      style={[styles.homeXpFill, { width: `${xp}%` as any }]} />
+              {/* ── HERO CARD: identity + level + balance ── */}
+              <LinearGradient
+                colors={['#1a0040', '#3B0764', '#1a0040']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                style={styles.heroCard}
+              >
+                <View style={styles.heroCardTop}>
+                  <View style={styles.heroAvatar}>
+                    <Text style={styles.heroAvatarEmoji}>🌌</Text>
                   </View>
-                  <Text style={styles.homeXpLabel}>{xp}/100 XP</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.heroName} numberOfLines={1}>{username || 'Seeker'}</Text>
+                    <View style={styles.heroLevelRow}>
+                      <LinearGradient colors={['#FACC15', '#F97316']} style={styles.heroLevelChip}>
+                        <Text style={styles.heroLevelChipTxt}>LV {level}</Text>
+                      </LinearGradient>
+                      {isFounder && (
+                        <View style={styles.heroFounderChip}>
+                          <Text style={styles.heroFounderTxt}>💎 FOUNDER</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                  <View style={styles.heroBalance}>
+                    <Text style={styles.heroCardBalanceNum}>{orb.toLocaleString()}</Text>
+                    <Text style={styles.heroCardBalanceLbl}>ORB</Text>
+                  </View>
                 </View>
+
+                {/* XP bar */}
+                <View style={styles.heroXpWrap}>
+                  <View style={styles.heroXpTrack}>
+                    <LinearGradient colors={['#A855F7','#EC4899']} start={{x:0,y:0}} end={{x:1,y:0}}
+                      style={[styles.heroXpFill, { width: `${xp}%` as any }]} />
+                  </View>
+                  <Text style={styles.heroXpTxt}>{xp} / 100 XP</Text>
+                </View>
+              </LinearGradient>
+
+              {/* ── TAP TO EARN — Core Mechanic ── */}
+              <View style={styles.tapHeroWrap}>
+                <Text style={styles.tapHeroTitle}>TAP TO EARN</Text>
+                <Text style={styles.tapHeroSub}>
+                  {energy === 0
+                    ? `⚡ Энергия восстанавливается через ${energyTick}с`
+                    : boostActive
+                    ? '🔥 BOOST ×3 АКТИВЕН — тапай быстрее!'
+                    : '✦ Главная механика игры — нажимай орб, зарабатывай ORB'}
+                </Text>
               </View>
 
-              {/* ── Main TAP orb (Premium by Gemini) ── */}
               <View style={styles.homeOrbArea}>
                 <PremiumTapOrb
                   onTap={handleTap}
@@ -1646,39 +1678,6 @@ function AppInner() {
                     <Text style={styles.homeComboText}>×{COMBO_MULTIPLIERS[comboLevel]} COMBO</Text>
                   </Animated.View>
                 )}
-              </View>
-
-              {/* ── TAP hint ── */}
-              <Text style={styles.homeTapHint}>
-                {energy === 0
-                  ? `⚡ Энергия восстанавливается через ${energyTick}с`
-                  : boostActive
-                  ? '🔥 BOOST активен — ×3 за каждый тап!'
-                  : '✦ Нажимай орб · Зарабатывай ORB'}
-              </Text>
-
-              {/* ── Planet Galaxy ── */}
-              <View style={styles.homePlanetGrid}>
-                {([
-                  { id: 'wheel',      icon: '🎰', name: 'Fortune Wheel', color: '#A855F7' },
-                  { id: 'runner',     icon: '🚀', name: 'Space Runner',   color: '#00E5FF' },
-                  { id: 'arena',      icon: '⚔️', name: 'Arena',          color: '#EF4444' },
-                  { id: 'horse',      icon: '🐎', name: 'Horse Race',      color: '#FB923C' },
-                  { id: 'treasure',   icon: '📦', name: 'Treasure Hunt',   color: '#FACC15' },
-                  { id: 'lands',      icon: '🌾', name: 'Lands',           color: '#22C55E' },
-                  { id: 'pvp',        icon: '⚡', name: 'PvP Battle',      color: '#EC4899' },
-                  { id: 'tournament', icon: '🏆', name: 'Tournament',      color: '#F59E0B' },
-                ] as { id: Screen; icon: string; name: string; color: string }[]).map(p => (
-                  <TouchableOpacity key={p.id} style={styles.homePlanet} onPress={() => setScreen(p.id)} activeOpacity={0.75}>
-                    <LinearGradient
-                      colors={[p.color + '40', p.color + '18']}
-                      style={[styles.homePlanetOrb, { borderColor: p.color + '66' }]}
-                    >
-                      <Text style={styles.homePlanetIcon}>{p.icon}</Text>
-                    </LinearGradient>
-                    <Text style={styles.homePlanetName} numberOfLines={1}>{p.name}</Text>
-                  </TouchableOpacity>
-                ))}
               </View>
 
               {/* Boost button (when available) */}
@@ -1726,6 +1725,38 @@ function AppInner() {
               {lastWheelReward !== '' && (
                 <Text style={styles.homeLastReward}>✦ {lastWheelReward}</Text>
               )}
+
+              {/* ── Play Games CTA ── */}
+              <TouchableOpacity onPress={() => setScreen('games')} activeOpacity={0.85} style={{ marginTop: 14 }}>
+                <LinearGradient
+                  colors={['#06B6D4', '#7C3AED', '#EC4899']}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                  style={styles.playGamesCta}
+                >
+                  <Text style={styles.playGamesIcon}>🎮</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.playGamesTitle}>МИНИ-ИГРЫ ВНУТРИ</Text>
+                    <Text style={styles.playGamesSub}>7 игр · до 50 000 ORB за победу</Text>
+                  </View>
+                  <Text style={styles.playGamesArrow}>›</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              {/* ── Cup CTA ── */}
+              <TouchableOpacity onPress={() => setScreen('tournament')} activeOpacity={0.85} style={{ marginTop: 10, marginBottom: 6 }}>
+                <LinearGradient
+                  colors={['#3B0764', '#7C2D12']}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                  style={styles.cupCta}
+                >
+                  <Text style={styles.cupCtaIcon}>🏆</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cupCtaTitle}>СЕЗОННЫЙ КУБОК</Text>
+                    <Text style={styles.cupCtaSub}>Призовой фонд в SOL · топ-100 получают приз</Text>
+                  </View>
+                  <Text style={styles.cupCtaArrow}>›</Text>
+                </LinearGradient>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -3013,7 +3044,7 @@ function PrizeTier({ rank, reward, color }: { rank: string; reward: string; colo
 const styles = StyleSheet.create({
   container:    { flex: 1, backgroundColor: '#020510', paddingTop: 32 },
   appShake:      { flex: 1 },
-  fullscreenGame:    { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50 },
+  fullscreenGame:    { position: 'absolute', top: -32, left: 0, right: 0, bottom: 0, zIndex: 200 },
   onboardingOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 },
   flashOverlay:  { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#FACC15', zIndex: 999 },
 
@@ -3284,21 +3315,53 @@ const styles = StyleSheet.create({
                    marginTop: 3, shadowColor: '#A855F7', shadowRadius: 6,
                    shadowOpacity: 0.8, elevation: 6, zIndex: 1 },
 
-  // ── Galaxy Home ───────────────────────────────────────────────────────────
-  homeGalaxyHeader: { flexDirection: 'row', alignItems: 'center', gap: 12,
-                      backgroundColor: 'rgba(8,13,32,0.85)', borderRadius: 18,
-                      paddingHorizontal: 16, paddingVertical: 12, marginBottom: 12,
-                      borderWidth: 1, borderColor: 'rgba(124,58,237,0.25)' },
-  homeGalaxyOrb:    { color: '#FACC15', fontSize: 26, fontWeight: '900', lineHeight: 30, letterSpacing: 1 },
-  homeGalaxyOrbLbl: { color: '#6D28D9', fontSize: 9, fontWeight: '900', letterSpacing: 3, marginTop: 1 },
+  // ── Hero Card (identity + level + balance) ────────────────────────────────
+  heroCard:         { borderRadius: 20, padding: 16, marginBottom: 14, gap: 12,
+                      borderWidth: 1, borderColor: 'rgba(168,85,247,0.35)' },
+  heroCardTop:      { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  heroAvatar:       { width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(168,85,247,0.18)',
+                      alignItems: 'center', justifyContent: 'center',
+                      borderWidth: 1.5, borderColor: 'rgba(168,85,247,0.5)' },
+  heroAvatarEmoji:  { fontSize: 26 },
+  heroName:         { color: '#FACC15', fontSize: 18, fontWeight: '900', letterSpacing: 0.5 },
+  heroLevelRow:     { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  heroLevelChip:    { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  heroLevelChipTxt: { color: '#000', fontSize: 10, fontWeight: '900', letterSpacing: 1 },
+  heroFounderChip:  { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
+                      backgroundColor: 'rgba(250,204,21,0.15)',
+                      borderWidth: 1, borderColor: 'rgba(250,204,21,0.5)' },
+  heroFounderTxt:   { color: '#FACC15', fontSize: 9, fontWeight: '900', letterSpacing: 1 },
+  heroBalance:      { alignItems: 'flex-end' },
+  heroCardBalanceNum: { color: '#FACC15', fontSize: 22, fontWeight: '900', lineHeight: 26, letterSpacing: 1 },
+  heroCardBalanceLbl: { color: '#6D28D9', fontSize: 9, fontWeight: '900', letterSpacing: 2, marginTop: 1 },
+  heroXpWrap:       { gap: 4 },
+  heroXpTrack:      { height: 6, backgroundColor: 'rgba(15,23,42,0.7)', borderRadius: 3, overflow: 'hidden' },
+  heroXpFill:       { height: 6, borderRadius: 3 },
+  heroXpTxt:        { color: '#A78BFA', fontSize: 10, fontWeight: '700', letterSpacing: 1, textAlign: 'right' },
 
-  homePlanetGrid:   { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 14 },
-  homePlanet:       { width: (SCREEN_W - 32 - 30) / 4, alignItems: 'center', gap: 5 },
-  homePlanetOrb:    { width: 56, height: 56, borderRadius: 28, alignItems: 'center',
-                      justifyContent: 'center', borderWidth: 1.5 },
-  homePlanetIcon:   { fontSize: 26 },
-  homePlanetName:   { color: '#64748B', fontSize: 9, fontWeight: '700', letterSpacing: 0.3,
-                      textAlign: 'center', width: '100%' },
+  // ── TAP hero ──────────────────────────────────────────────────────────────
+  tapHeroWrap:      { alignItems: 'center', gap: 4, marginBottom: 4, marginTop: 6 },
+  tapHeroTitle:     { color: '#FACC15', fontSize: 16, fontWeight: '900', letterSpacing: 4,
+                      textShadowColor: 'rgba(250,204,21,0.4)', textShadowRadius: 8 },
+  tapHeroSub:       { color: '#94A3B8', fontSize: 11, textAlign: 'center', paddingHorizontal: 30,
+                      lineHeight: 16 },
+
+  // ── Play Games CTA ────────────────────────────────────────────────────────
+  playGamesCta:     { flexDirection: 'row', alignItems: 'center', gap: 12,
+                      paddingHorizontal: 16, paddingVertical: 14, borderRadius: 18 },
+  playGamesIcon:    { fontSize: 30 },
+  playGamesTitle:   { color: '#FFF', fontSize: 14, fontWeight: '900', letterSpacing: 2 },
+  playGamesSub:     { color: 'rgba(255,255,255,0.85)', fontSize: 11, marginTop: 2, fontWeight: '600' },
+  playGamesArrow:   { color: '#FFF', fontSize: 28, fontWeight: '300' },
+
+  // ── Cup CTA ──────────────────────────────────────────────────────────────
+  cupCta:           { flexDirection: 'row', alignItems: 'center', gap: 12,
+                      paddingHorizontal: 16, paddingVertical: 13, borderRadius: 16,
+                      borderWidth: 1, borderColor: 'rgba(250,204,21,0.3)' },
+  cupCtaIcon:       { fontSize: 26 },
+  cupCtaTitle:     { color: '#FACC15', fontSize: 13, fontWeight: '900', letterSpacing: 2 },
+  cupCtaSub:       { color: '#A78BFA', fontSize: 10, marginTop: 2, fontWeight: '600' },
+  cupCtaArrow:     { color: '#FACC15', fontSize: 24, fontWeight: '300' },
 
   // ── Games hub (full-width cards) ──────────────────────────────────────────
   gameFullCard:     { borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(30,41,59,0.8)' },
