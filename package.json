@@ -1,0 +1,41 @@
+{
+  "name": "seeker-quest-league",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "postinstall": "patch-package"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@solana-mobile/mobile-wallet-adapter-protocol": "^2.2.8",
+    "@solana-mobile/mobile-wallet-adapter-protocol-web3js": "^2.2.8",
+    "@solana/web3.js": "^1.98.4",
+    "@supabase/supabase-js": "^2.106.0",
+    "buffer": "^6.0.3",
+    "expo": "~54.0.33",
+    "expo-av": "~16.0.8",
+    "expo-dev-client": "~6.0.21",
+    "expo-linear-gradient": "~15.0.8",
+    "expo-notifications": "~0.32.17",
+    "expo-status-bar": "~3.0.9",
+    "lottie-react-native": "~7.3.1",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-device-info": "^15.0.2",
+    "react-native-get-random-values": "^2.0.0",
+    "react-native-safe-area-context": "^5.8.0",
+    "react-native-url-polyfill": "^3.0.0",
+    "seeker-sdk": "^0.2.1"
+  },
+  "devDependencies": {
+    "@solana/spl-token": "^0.4.14",
+    "@types/react": "~19.1.0",
+    "patch-package": "^8.0.1",
+    "typescript": "~5.9.2"
+  },
+  "private": true
+}

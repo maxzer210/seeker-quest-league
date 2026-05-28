@@ -1,0 +1,17 @@
+{
+  "enabledPlugins": {
+    "expo@claude-plugins-official": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(eas build:list*)",
+      "Bash(eas build:view*)",
+      "Bash(eas whoami)",
+      "Bash(npm ls*)",
+      "Bash(npm view*)",
+      "Bash(npm outdated*)",
+      "mcp__ccd_session__mark_chapter"
+    ]
+  }
+}

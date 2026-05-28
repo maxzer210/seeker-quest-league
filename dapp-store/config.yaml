@@ -1,0 +1,103 @@
+﻿# Solana Mobile dApp Store вЂ” Publisher / App / Release config
+# Schema: https://docs.solanamobile.com/dapp-publishing/intro
+#
+# Run from project root after `dapp-store init`:
+#   npx dapp-store create publisher dapp-store/config.yaml -k <publisher-keypair>
+#   npx dapp-store create app dapp-store/config.yaml -k <publisher-keypair>
+#   npx dapp-store create release dapp-store/config.yaml -k <publisher-keypair> -b <android-tools-dir>
+#   npx dapp-store publish submit dapp-store/config.yaml -k <publisher-keypair>
+
+publisher:
+  name: "Cryptonoframe"
+  address: "REPLACE_WITH_PUBLISHER_NFT_ADDRESS_AFTER_CREATE"
+  website: "https://seekerquest.league"
+  email: "adsskora@gmail.com"
+  media:
+    - purpose: icon
+      uri: ./media/publisher-icon.png
+
+app:
+  name: "Seeker Quest League"
+  address: "REPLACE_WITH_APP_NFT_ADDRESS_AFTER_CREATE"
+  android_package: "com.seekerquest.league"
+  urls:
+    license_url: "https://seekerquest.league/license"
+    copyright_url: "https://seekerquest.league/copyright"
+    privacy_policy_url: "https://seekerquest.league/privacy"
+    website: "https://seekerquest.league"
+  media:
+    - purpose: icon
+      uri: ./media/app-icon.png
+
+release:
+  address: "REPLACE_WITH_RELEASE_NFT_ADDRESS_AFTER_CREATE"
+  media:
+    - purpose: banner
+      uri: ./media/banner-1200x600.png
+    - purpose: featureGraphic
+      uri: ./media/feature-graphic-1024x500.png
+    - purpose: icon
+      uri: ./media/app-icon-512.png
+    - purpose: tile
+      uri: ./media/tile-512x512.png
+    - purpose: screenshot
+      uri: ./media/screenshots/01-home-genesis-pre-season.png
+    - purpose: screenshot
+      uri: ./media/screenshots/02-fortune-wheel.png
+    - purpose: screenshot
+      uri: ./media/screenshots/03-horse-race.png
+    - purpose: screenshot
+      uri: ./media/screenshots/04-space-runner.png
+    - purpose: screenshot
+      uri: ./media/screenshots/05-arena.png
+    - purpose: screenshot
+      uri: ./media/screenshots/06-genesis-news-pool.png
+    - purpose: screenshot
+      uri: ./media/screenshots/07-profile-seeker-verified.png
+    - purpose: screenshot
+      uri: ./media/screenshots/08-tournament-podium.png
+  files:
+    - purpose: install
+      uri: ./media/app-release.apk
+  catalog:
+    en-US:
+      name: "Seeker Quest League"
+      short_description: "Daily SOL tournaments built for Seeker phones"
+      long_description: |
+        Seeker Quest League is the first daily-routine arcade game built
+        natively for the Solana Mobile Seeker phone.
+
+        рџЋ° Play 6 mini-games: Fortune Wheel, Horse Race, Space Runner,
+        Treasure Hunt, Arena, Seeker Lands.
+
+        рџ’° Compete in daily SOL tournaments. The prize pool grows live
+        on-chain with every paid spin. Top players take it home every 24 hours.
+
+        рџџЈ Seeker holders get exclusive perks: +5,000 ORB welcome bonus,
+        2Г— ORB rewards forever (Founders), automatic .skr domain as username.
+
+        рџЄ™ Earn SKORA вЂ” a real SPL token. 10,000 ORB = 1 SKORA, claimable
+        to your wallet.
+
+        вЏ° Just 5 minutes a day. A morning ritual, not a grind.
+
+        Built by Seekers, for Seekers.
+        Genesis Pre-Season is live now. Season 1 launches June 22, 2026.
+      new_in_version: "Initial release. Genesis Pre-Season вЂ” be a Founder."
+      saga_features_localized: "Seeker-exclusive bonuses, .skr domain support, on-chain SOL prizes."
+      copyright: "В© 2026 Cryptonoframe. All rights reserved."
+      sagaFeaturesLocalized: "Exclusive perks for Solana Mobile Seeker holders."
+      google_store_package: ""
+
+solana_mobile_dapp_publisher_portal:
+  google_store_package: ""
+  testing_instructions: |
+    1. Connect a Solana wallet via "Profile в†’ Wallet в†’ CONNECT WITH MWA".
+    2. Make sure the wallet is on Solana devnet for Pre-Season testing.
+    3. Try a free Fortune Wheel spin (uses tickets).
+    4. Try a paid 0.01 SOL spin to test the on-chain payment flow.
+    5. Check the Genesis News tab to see the live prize pool counter.
+
+    Test devnet airdrop: https://faucet.solana.com
+    Test wallet (devnet): any Solana wallet supporting Mobile Wallet Adapter
+                          (Phantom, Solflare, Backpack).

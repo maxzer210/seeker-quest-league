@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Seeker Quest — Icon Generator</title>
+<style>
+  body { background: #0a0a1a; display: flex; flex-direction: column; align-items: center;
+         font-family: sans-serif; padding: 30px; gap: 20px; }
+  h2 { color: #a855f7; margin: 0; }
+  .controls { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  button { background: linear-gradient(135deg, #7c3aed, #9d174d); color: #fff;
+           border: none; border-radius: 12px; padding: 12px 24px; font-size: 15px;
+           font-weight: 700; cursor: pointer; letter-spacing: 1px; }
+  button:hover { opacity: 0.85; }
+  canvas { border-radius: 22%; box-shadow: 0 0 60px rgba(168,85,247,0.6); }
+  p { color: #475569; font-size: 13px; text-align: center; max-width: 500px; }
+</style>
+</head>
+<body>
+<h2>🚀 SEEKER QUEST — Icon Generator</h2>
+<canvas id="c" width="1024" height="1024"></canvas>
+<div class="controls">
+  <button onclick="download('icon.png',1024)">⬇ Скачать icon.png (1024×1024)</button>
+  <button onclick="download('adaptive-icon.png',1024)">⬇ adaptive-icon.png</button>
+  <button onclick="download('splash-icon.png',512)">⬇ splash-icon.png (512×512)</button>
+</div>
+<p>Скачанные файлы положи в папку <strong>assets/</strong> проекта, заменив существующие.</p>
+
+<script>
+function drawIcon(canvas, size) {
+  const ctx = canvas.getContext('2d');
+  canvas.width  = size;
+  canvas.height = size;
+  const cx = size / 2, cy = size / 2, r = size / 2;
+
+  // ── Background: radial + diagonal gradient ──────────────────────────────
+  const bg = ctx.createRadialGradient(cx, cy * 0.6, 0, cx, cy, r);
+  bg.addColorStop(0,   '#3B0764');
+  bg.addColorStop(0.4, '#2D0060');
+  bg.addColorStop(0.75,'#831843');
+  bg.addColorStop(1,   '#1a0040');
+  ctx.fillStyle = bg;
+  roundRect(ctx, 0, 0, size, size, size * 0.22);
+  ctx.fill();
+
+  // ── Shimmer diagonal stripe ──────────────────────────────────────────────
+  ctx.save();
+  const shine = ctx.createLinearGradient(0, 0, size, size);
+  shine.addColorStop(0,    'rgba(255,255,255,0)');
+  shine.addColorStop(0.40, 'rgba(255,255,255,0)');
+  shine.addColorStop(0.48, 'rgba(255,200,255,0.13)');
+  shine.addColorStop(0.52, 'rgba(255,255,255,0.22)');
+  shine.addColorStop(0.60, 'rgba(255,200,255,0.08)');
+  shine.addColorStop(1,    'rgba(255,255,255,0)');
+  ctx.fillStyle = shine;
+  roundRect(ctx, 0, 0, size, size, size * 0.22);
+  ctx.fill();
+  ctx.restore();
+
+  // ── Glow ring behind S ───────────────────────────────────────────────────
+  const glow = ctx.createRadialGradient(cx, cy * 0.9, 0, cx, cy * 0.9, size * 0.38);
+  glow.addColorStop(0,   'rgba(168,85,247,0.55)');
+  glow.addColorStop(0.5, 'rgba(236,72,153,0.22)');
+  glow.addColorStop(1,   'rgba(168,85,247,0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(cx, cy * 0.9, size * 0.38, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ── Letter S ────────────────────────────────────────────────────────────
+  const fontSize = size * 0.62;
+  ctx.save();
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+
+  // Outer pink glow
+  ctx.shadowColor   = '#EC4899';
+  ctx.shadowBlur    = size * 0.12;
+  ctx.font          = `900 ${fontSize}px 'Arial Black', Arial, sans-serif`;
+  ctx.fillStyle     = 'rgba(236,72,153,0.35)';
+  ctx.fillText('S', cx, cy);
+
+  // White core with purple shadow
+  ctx.shadowColor   = '#A855F7';
+  ctx.shadowBlur    = size * 0.06;
+  ctx.fillStyle     = '#ffffff';
+  ctx.fillText('S', cx, cy);
+  ctx.restore();
+
+  // ── Brand text ──────────────────────────────────────────────────────────
+  const labelSize = size * 0.062;
+  ctx.save();
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font         = `700 ${labelSize}px Arial, sans-serif`;
+  ctx.letterSpacing = `${size * 0.012}px`;
+  ctx.fillStyle    = 'rgba(255,255,255,0.55)';
+  ctx.shadowColor  = '#A855F7';
+  ctx.shadowBlur   = size * 0.025;
+  ctx.fillText('SEEKER QUEST', cx, cy + fontSize * 0.56 + labelSize * 0.6);
+  ctx.restore();
+
+  // ── Bottom accent line ───────────────────────────────────────────────────
+  const lineY  = size * 0.92;
+  const lineW  = size * 0.28;
+  const lineGr = ctx.createLinearGradient(cx - lineW, lineY, cx + lineW, lineY);
+  lineGr.addColorStop(0,   'rgba(168,85,247,0)');
+  lineGr.addColorStop(0.5, 'rgba(236,72,153,0.7)');
+  lineGr.addColorStop(1,   'rgba(168,85,247,0)');
+  ctx.strokeStyle = lineGr;
+  ctx.lineWidth   = size * 0.004;
+  ctx.beginPath();
+  ctx.moveTo(cx - lineW, lineY);
+  ctx.lineTo(cx + lineW, lineY);
+  ctx.stroke();
+
+  return canvas;
+}
+
+// Rounded-rect helper (path only, call fill/stroke after)
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function download(filename, size) {
+  const tmp = document.createElement('canvas');
+  drawIcon(tmp, size);
+  const a   = document.createElement('a');
+  a.download = filename;
+  a.href     = tmp.toDataURL('image/png');
+  a.click();
+}
+
+// Draw preview at 1024
+drawIcon(document.getElementById('c'), 1024);
+</script>
+</body>
+</html>
