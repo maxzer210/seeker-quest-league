@@ -49,3 +49,14 @@ skora-config.json
 # dApp Store publisher keypair — DO NOT LOSE, DO NOT COMMIT
 dapp-store/publisher.json
 dapp-store/media/app-release.apk
+
+# Expo / EAS credentials (contains API tokens!)
+credentials.json
+
+# Android signing keystores (NEVER commit — losing means losing app identity)
+*.keystore
+seeker-release.keystore
+
+# Build / dev logs
+*.log
+expo-start.*
