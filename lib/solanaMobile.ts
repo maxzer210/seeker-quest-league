@@ -15,14 +15,28 @@ export const SOLANA_RPC = 'https://api.devnet.solana.com';
 export const WHEEL_SPIN_SOL = 0.01;
 export const WHEEL_SPIN_LAMPORTS = Math.round(WHEEL_SPIN_SOL * LAMPORTS_PER_SOL);
 
-export const ENERGY_REFILL_SOL = 0.005;
+export const ENERGY_REFILL_SOL = 0.01;
 export const ENERGY_REFILL_LAMPORTS = Math.round(ENERGY_REFILL_SOL * LAMPORTS_PER_SOL);
 
 export const PREMIUM_UPGRADE_SOL = 0.01;
 export const PREMIUM_UPGRADE_LAMPORTS = Math.round(PREMIUM_UPGRADE_SOL * LAMPORTS_PER_SOL);
 
-export const PVP_ENTRY_SOL = 0.005;
+export const PVP_ENTRY_SOL = 0.01;
 export const PVP_ENTRY_LAMPORTS = Math.round(PVP_ENTRY_SOL * LAMPORTS_PER_SOL);
+
+// ── PREMIUM SHOP (SOL-priced items) ─────────────────────────────────────────
+// Rare/premium upgrades and instant unlocks priced in SOL for Founders/whales.
+export const PREMIUM_INSTANT_LEVEL_SOL = 0.01;
+export const PREMIUM_INSTANT_LEVEL_LAMPORTS = Math.round(PREMIUM_INSTANT_LEVEL_SOL * LAMPORTS_PER_SOL);
+
+export const PREMIUM_SKIN_SOL = 0.01;
+export const PREMIUM_SKIN_LAMPORTS = Math.round(PREMIUM_SKIN_SOL * LAMPORTS_PER_SOL);
+
+export const PREMIUM_BOOST_PACK_SOL = 0.01;
+export const PREMIUM_BOOST_PACK_LAMPORTS = Math.round(PREMIUM_BOOST_PACK_SOL * LAMPORTS_PER_SOL);
+
+export const PREMIUM_SHIELD_PACK_SOL = 0.01;
+export const PREMIUM_SHIELD_PACK_LAMPORTS = Math.round(PREMIUM_SHIELD_PACK_SOL * LAMPORTS_PER_SOL);
 
 // Treasury receives 0.01 SOL per Wheel paid spin.
 // Must be DIFFERENT from the user's wallet, otherwise it's a self-transfer (only fee deducted).
@@ -130,7 +144,8 @@ export async function connectSolanaWallet(): Promise<SolanaWalletSession> {
   });
 }
 
-export type SolPurpose = 'wheel_spin' | 'energy_refill' | 'shop_upgrade' | 'pvp_entry';
+export type SolPurpose = 'wheel_spin' | 'energy_refill' | 'shop_upgrade' | 'pvp_entry'
+  | 'instant_level' | 'rare_skin' | 'boost_pack' | 'shield_pack';
 
 export async function paySolToTreasury(
   deviceId: string,

@@ -32,6 +32,14 @@ import {
   PREMIUM_UPGRADE_LAMPORTS,
   PVP_ENTRY_SOL,
   PVP_ENTRY_LAMPORTS,
+  PREMIUM_INSTANT_LEVEL_SOL,
+  PREMIUM_INSTANT_LEVEL_LAMPORTS,
+  PREMIUM_SKIN_SOL,
+  PREMIUM_SKIN_LAMPORTS,
+  PREMIUM_BOOST_PACK_SOL,
+  PREMIUM_BOOST_PACK_LAMPORTS,
+  PREMIUM_SHIELD_PACK_SOL,
+  PREMIUM_SHIELD_PACK_LAMPORTS,
   connectSolanaWallet,
   payForWheelSpin,
   paySolToTreasury,
@@ -863,6 +871,63 @@ function AppInner() {
       playSound(sndLevelUp.current);
     } catch (e: any) {
       Alert.alert('SOL payment failed', e?.message ?? 'Could not upgrade.');
+    } finally {
+      setSolShopPending(false);
+      setTimeout(() => setSolShopStatus(''), 8000);
+    }
+  }
+
+  // ── PREMIUM SHOP HANDLER (rare items in SOL) ───────────────────────────
+  type PremiumItem = 'instantLevel' | 'rareSkin' | 'boostPack' | 'shieldPack';
+
+  async function paySolForPremiumItem(item: PremiumItem) {
+    if (!deviceIdRef.current) return;
+    if (TREASURY_WALLET === 'PASTE_TREASURY_WALLET_HERE') {
+      Alert.alert('Treasury wallet required', 'Set TREASURY_WALLET in lib/solanaMobile.ts.');
+      return;
+    }
+    const config: Record<PremiumItem, { lamports: number; sol: number; tag: 'instant_level' | 'rare_skin' | 'boost_pack' | 'shield_pack'; label: string }> = {
+      instantLevel: { lamports: PREMIUM_INSTANT_LEVEL_LAMPORTS, sol: PREMIUM_INSTANT_LEVEL_SOL, tag: 'instant_level', label: 'Instant Level Up' },
+      rareSkin:     { lamports: PREMIUM_SKIN_LAMPORTS,          sol: PREMIUM_SKIN_SOL,          tag: 'rare_skin',     label: 'Rare Skin Pack'   },
+      boostPack:    { lamports: PREMIUM_BOOST_PACK_LAMPORTS,    sol: PREMIUM_BOOST_PACK_SOL,    tag: 'boost_pack',    label: 'Mega Boost ×5'    },
+      shieldPack:   { lamports: PREMIUM_SHIELD_PACK_LAMPORTS,   sol: PREMIUM_SHIELD_PACK_SOL,   tag: 'shield_pack',   label: 'Shield Pack ×3'   },
+    };
+    const cfg = config[item];
+    setSolShopPending(true);
+    try {
+      const r = await paySolToTreasury(
+        deviceIdRef.current, cfg.lamports, cfg.sol, cfg.tag,
+        solStatusLabel(`${cfg.sol} SOL`),
+      );
+      await AsyncStorage.setItem('sk_wallet_addr', r.address);
+      await AsyncStorage.setItem('sk_wallet_auth_token', r.authToken);
+      setWalletAddr(r.address);
+      setWalletAuthToken(r.authToken);
+
+      // Apply rewards
+      if (item === 'instantLevel') {
+        const nl = level + 1;
+        setLevel(nl);
+        setOrb(o => o + 500);
+        setLevelUpText(`⬆ INSTANT LEVEL ${nl}!`);
+        setTimeout(() => setLevelUpText(''), 1800);
+      } else if (item === 'boostPack') {
+        setBoostActive(true);
+        setBoostTime(30); // 30s of ×3 instead of 10s
+      } else if (item === 'shieldPack') {
+        const next = streakShields + 3;
+        setStreakShields(next);
+        try { await AsyncStorage.setItem('streakShields', String(next)); } catch (_) {}
+      } else if (item === 'rareSkin') {
+        // For now: grant 10K ORB compensation; full skin system arrives with NFT theme
+        setOrb(o => o + 10_000);
+      }
+
+      Alert.alert('✓ Purchased', `${cfg.label} активирован!`);
+      particleRef.current?.emit(SCREEN_W / 2, SCREEN_H * 0.4, 'crit');
+      playSound(sndLevelUp.current);
+    } catch (e: any) {
+      Alert.alert('SOL payment failed', e?.message ?? 'Could not purchase.');
     } finally {
       setSolShopPending(false);
       setTimeout(() => setSolShopStatus(''), 8000);
@@ -1804,6 +1869,46 @@ function AppInner() {
                 </TouchableOpacity>
 
               </View>
+
+              {/* ── PREMIUM ITEMS (rare, SOL-priced) ── */}
+              <Text style={styles.shopSectionTitle}>💎  PREMIUM ITEMS  ·  SOL ONLY</Text>
+              <View style={styles.premiumGrid}>
+                {([
+                  { id: 'instantLevel', icon: '⬆',  name: 'INSTANT LEVEL', desc: '+1 LV instantly · +500 ORB',  color: '#FACC15' },
+                  { id: 'boostPack',    icon: '🔥', name: 'MEGA BOOST',     desc: '×3 ORB for 30 seconds',        color: '#FB923C' },
+                  { id: 'shieldPack',   icon: '🛡', name: 'SHIELD PACK',    desc: '+3 streak shields',            color: '#22C55E' },
+                  { id: 'rareSkin',     icon: '💎', name: 'RARE BUNDLE',    desc: '10 000 ORB instant drop',      color: '#EC4899' },
+                ] as { id: PremiumItem; icon: string; name: string; desc: string; color: string }[]).map(p => (
+                  <TouchableOpacity
+                    key={p.id}
+                    onPress={() => paySolForPremiumItem(p.id)}
+                    disabled={solShopPending}
+                    activeOpacity={0.82}
+                    style={styles.premiumCard}
+                  >
+                    <LinearGradient
+                      colors={[p.color + '30', '#0A0A12']}
+                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                      style={[styles.premiumCardGrad, { borderColor: p.color + '66' }]}
+                    >
+                      <View style={[styles.premiumIconWrap, { borderColor: p.color + '88', backgroundColor: p.color + '22' }]}>
+                        <Text style={styles.premiumIcon}>{p.icon}</Text>
+                      </View>
+                      <Text style={[styles.premiumName, { color: p.color }]}>{p.name}</Text>
+                      <Text style={styles.premiumDesc} numberOfLines={2}>{p.desc}</Text>
+                      <View style={[styles.premiumPriceTag, { borderColor: p.color + '99' }]}>
+                        <Text style={[styles.premiumPriceTxt, { color: p.color }]}>
+                          {solShopPending ? '⏳' : `⚡ 0.01 SOL`}
+                        </Text>
+                      </View>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.shopSectionHint}>
+                ✦ Премиум-предметы доступны только за SOL · мгновенная активация
+              </Text>
 
               {/* Section divider */}
               <Text style={styles.shopSectionTitle}>{t('shop.upgrades')}</Text>
@@ -3087,6 +3192,21 @@ const styles = StyleSheet.create({
   shopHubName:      { fontSize: 13, fontWeight: '900', letterSpacing: 1.5, marginTop: 2 },
   shopHubDesc:      { color: '#94A3B8', fontSize: 10, lineHeight: 14 },
   shopSectionTitle: { color: '#A855F7', fontSize: 12, fontWeight: '900', letterSpacing: 2, marginTop: 14, marginBottom: 4 },
+  shopSectionHint:  { color: '#475569', fontSize: 10, textAlign: 'center', marginTop: 6, marginBottom: 8,
+                      fontWeight: '600', letterSpacing: 0.5, fontStyle: 'italic' },
+
+  // ── Premium Shop (SOL-priced) ─────────────────────────────────────────────
+  premiumGrid:      { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },
+  premiumCard:      { width: (SCREEN_W - 40 - 8) / 2 },
+  premiumCardGrad:  { padding: 12, borderRadius: 16, borderWidth: 1.5, alignItems: 'center', gap: 6, minHeight: 168 },
+  premiumIconWrap:  { width: 44, height: 44, borderRadius: 22, borderWidth: 1.5,
+                      alignItems: 'center', justifyContent: 'center' },
+  premiumIcon:      { fontSize: 22 },
+  premiumName:      { fontSize: 12, fontWeight: '900', letterSpacing: 1, marginTop: 2 },
+  premiumDesc:      { color: '#94A3B8', fontSize: 10, textAlign: 'center', lineHeight: 14, minHeight: 28 },
+  premiumPriceTag:  { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1,
+                      backgroundColor: 'rgba(0,0,0,0.45)', marginTop: 'auto' },
+  premiumPriceTxt:  { fontSize: 11, fontWeight: '900', letterSpacing: 1 },
   content:  { flex: 1, paddingHorizontal: 20 },
 
   // streak banner (home screen)
