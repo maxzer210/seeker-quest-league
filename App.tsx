@@ -143,18 +143,18 @@ const UPGRADE_DEFS: Record<UpgradeKey, {
 
 type AchievementState = { streakCount: number; level: number; orb: number; tournamentScore: number };
 type Achievement = {
-  id: string; icon: string; label: string; orb: number; tickets: number;
+  id: string; icon: string; labelKey: string; orb: number; tickets: number;
   check: (s: AchievementState) => boolean;
 };
 const ACHIEVEMENTS: readonly Achievement[] = [
-  { id: 'streak3',   icon: '🔥', label: 'Streak 3 дня',     orb:  500, tickets: 0, check: s => s.streakCount     >=      3 },
-  { id: 'streak7',   icon: '🔥', label: 'Неделя подряд',    orb: 2000, tickets: 2, check: s => s.streakCount     >=      7 },
-  { id: 'level5',    icon: '💎', label: 'Уровень 5',         orb: 1000, tickets: 0, check: s => s.level           >=      5 },
-  { id: 'level10',   icon: '💎', label: 'Уровень 10',        orb: 3000, tickets: 0, check: s => s.level           >=     10 },
-  { id: 'orb10k',    icon: '⭐', label: '10K ORB',           orb:  500, tickets: 1, check: s => s.orb             >= 10_000 },
-  { id: 'orb100k',   icon: '💰', label: '100K ORB',          orb: 5000, tickets: 5, check: s => s.orb             >= 100_000 },
-  { id: 'tour500',   icon: '🏆', label: 'Турнир 500 pts',   orb: 1000, tickets: 1, check: s => s.tournamentScore >=    500 },
-  { id: 'tour2k',    icon: '🏆', label: 'Турнир 2K pts',    orb: 3000, tickets: 3, check: s => s.tournamentScore >=   2000 },
+  { id: 'streak3',   icon: '🔥', labelKey: 'ach.streak3',  orb:  500, tickets: 0, check: s => s.streakCount     >=      3 },
+  { id: 'streak7',   icon: '🔥', labelKey: 'ach.streak7',  orb: 2000, tickets: 2, check: s => s.streakCount     >=      7 },
+  { id: 'level5',    icon: '💎', labelKey: 'ach.level5',   orb: 1000, tickets: 0, check: s => s.level           >=      5 },
+  { id: 'level10',   icon: '💎', labelKey: 'ach.level10',  orb: 3000, tickets: 0, check: s => s.level           >=     10 },
+  { id: 'orb10k',    icon: '⭐', labelKey: 'ach.orb10k',   orb:  500, tickets: 1, check: s => s.orb             >= 10_000 },
+  { id: 'orb100k',   icon: '💰', labelKey: 'ach.orb100k',  orb: 5000, tickets: 5, check: s => s.orb             >= 100_000 },
+  { id: 'tour500',   icon: '🏆', labelKey: 'ach.tour500',  orb: 1000, tickets: 1, check: s => s.tournamentScore >=    500 },
+  { id: 'tour2k',    icon: '🏆', labelKey: 'ach.tour2k',   orb: 3000, tickets: 3, check: s => s.tournamentScore >=   2000 },
 ] as const;
 
 // ─── season config ────────────────────────────────────────────────────────────
@@ -449,7 +449,7 @@ function AppInner() {
     // Show last unlocked celebration
     const last = newly[newly.length - 1];
     setTimeout(() => {
-      winRef.current?.show(orbReward, `🏅 ${last.label.toUpperCase()}`);
+      winRef.current?.show(orbReward, `🏅 ${t(last.labelKey).toUpperCase()}`);
     }, 400);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [streakCount, level, Math.floor(orb / 5000), tournamentScore, claimedAch]);
@@ -2115,13 +2115,13 @@ function AppInner() {
 
               {/* ── TAP TO EARN — Core Mechanic ── */}
               <View style={styles.tapHeroWrap}>
-                <Text style={styles.tapHeroTitle}>TAP TO EARN</Text>
+                <Text style={styles.tapHeroTitle}>{t('home.tapTitle')}</Text>
                 <Text style={styles.tapHeroSub}>
                   {energy === 0
-                    ? `⚡ Энергия восстанавливается через ${energyTick}с`
+                    ? t('home.tapEnergyEmpty', { n: energyTick })
                     : boostActive
-                    ? '🔥 BOOST ×3 АКТИВЕН — тапай быстрее!'
-                    : '✦ Главная механика игры — нажимай орб, зарабатывай ORB'}
+                    ? t('home.tapBoostActive')
+                    : t('home.tapHintMain')}
                 </Text>
               </View>
 
@@ -2215,8 +2215,8 @@ function AppInner() {
                 >
                   <Text style={styles.playGamesIcon}>🎮</Text>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.playGamesTitle}>МИНИ-ИГРЫ ВНУТРИ</Text>
-                    <Text style={styles.playGamesSub}>7 игр · до 50 000 ORB за победу</Text>
+                    <Text style={styles.playGamesTitle}>{t('games.arcade')}</Text>
+                    <Text style={styles.playGamesSub}>{t('home.gamesCtaSub')}</Text>
                   </View>
                   <Text style={styles.playGamesArrow}>›</Text>
                 </LinearGradient>
@@ -2231,8 +2231,8 @@ function AppInner() {
                 >
                   <Text style={styles.cupCtaIcon}>🏆</Text>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.cupCtaTitle}>СЕЗОННЫЙ КУБОК</Text>
-                    <Text style={styles.cupCtaSub}>Призовой фонд в SOL · топ-100 получают приз</Text>
+                    <Text style={styles.cupCtaTitle}>{t('cup.title')}</Text>
+                    <Text style={styles.cupCtaSub}>{t('home.cupCtaSub')}</Text>
                   </View>
                   <Text style={styles.cupCtaArrow}>›</Text>
                 </LinearGradient>
@@ -3005,13 +3005,13 @@ function AppInner() {
 
               {/* All games — uniform full-width cards */}
               {([
-                { id: 'runner',   icon: '🚀', name: 'SPACE RUNNER',  tag: 'FEATURED', desc: 'Уворачивайся от астероидов · Выживай · Зарабатывай комбо', reward: 'до 500 ORB / игра',   color: '#00E5FF' },
-                { id: 'wheel',    icon: '🎰', name: 'FORTUNE WHEEL', tag: 'УДАЧА',    desc: 'Колесо фортуны · Джекпот раз в день',                     reward: 'до 50 000 ORB',       color: '#A855F7' },
-                { id: 'pvp',      icon: '⚡', name: 'PvP ARENA',     tag: 'LIVE',     desc: 'Tap battle в реальном времени · ORB ставки',               reward: 'до 9 500 ORB',        color: '#EC4899' },
-                { id: 'arena',    icon: '⚔️', name: 'SEEKER ARENA',  tag: 'PvP',      desc: 'Рейды · Базы · Защита своей территории',                  reward: 'до 5 000 ORB',        color: '#EF4444' },
-                { id: 'horse',    icon: '🐎', name: 'HORSE RACE',    tag: 'ГОНКА',    desc: 'Скачки PvP · Угадай победителя',                          reward: '+500 ORB / гонка',    color: '#FB923C' },
-                { id: 'treasure', icon: '📦', name: 'TREASURE HUNT', tag: 'EXPLORE',  desc: 'Охота за сундуками · Исследуй карту',                     reward: 'до 1 000 ORB',        color: '#FACC15' },
-                { id: 'lands',    icon: '🌾', name: 'SEEKER LANDS',  tag: 'ПАССИВ',   desc: 'Пассивный доход · Строй здания',                          reward: '600 ORB / час',        color: '#22C55E' },
+                { id: 'runner',   icon: '🚀', name: 'SPACE RUNNER',  tag: t('games.featured'),   desc: t('gameDesc.runner'),   reward: t('gameReward.runner'),   color: '#00E5FF' },
+                { id: 'wheel',    icon: '🎰', name: 'FORTUNE WHEEL', tag: t('gameTag.luck'),     desc: t('gameDesc.wheel'),    reward: t('gameReward.wheel'),    color: '#A855F7' },
+                { id: 'pvp',      icon: '⚡', name: 'PvP ARENA',     tag: 'LIVE',                desc: t('gameDesc.pvp'),      reward: t('gameReward.pvp'),      color: '#EC4899' },
+                { id: 'arena',    icon: '⚔️', name: 'SEEKER ARENA',  tag: 'PvP',                 desc: t('gameDesc.arena'),    reward: t('gameReward.arena'),    color: '#EF4444' },
+                { id: 'horse',    icon: '🐎', name: 'HORSE RACE',    tag: t('gameTag.race'),     desc: t('gameDesc.horse'),    reward: t('gameReward.horse'),    color: '#FB923C' },
+                { id: 'treasure', icon: '📦', name: 'TREASURE HUNT', tag: t('gameTag.explore'),  desc: t('gameDesc.treasure'), reward: t('gameReward.treasure'), color: '#FACC15' },
+                { id: 'lands',    icon: '🌾', name: 'SEEKER LANDS',  tag: t('gameTag.passive'),  desc: t('gameDesc.lands'),    reward: t('gameReward.lands'),    color: '#22C55E' },
               ] as { id: Screen; icon: string; name: string; tag: string; desc: string; reward: string; color: string }[]).map((g, i) => (
                 <TouchableOpacity key={i} style={styles.gameFullCard} onPress={() => setScreen(g.id)} activeOpacity={0.82}>
                   <LinearGradient colors={[g.color + '1A', '#0B1120']} style={styles.gameFullGrad}>
@@ -3282,7 +3282,7 @@ function AppInner() {
                     return (
                       <View key={a.id} style={[styles.profileBadge, !claimed && styles.profileBadgeLocked]}>
                         <Text style={[styles.profileBadgeIcon, !claimed && { opacity: 0.35 }]}>{a.icon}</Text>
-                        <Text style={[styles.profileBadgeLabel, !claimed && { color: '#334155' }]}>{a.label}</Text>
+                        <Text style={[styles.profileBadgeLabel, !claimed && { color: '#334155' }]}>{t(a.labelKey)}</Text>
                         {!claimed && (
                           <Text style={{ color: '#475569', fontSize: 10, fontWeight: '700', letterSpacing: 0.5, marginTop: 4 }}>
                             +{a.orb >= 1000 ? `${a.orb / 1000}K` : a.orb} ORB{a.tickets > 0 ? `  +${a.tickets}🎫` : ''}
