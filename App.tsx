@@ -3467,6 +3467,17 @@ function AppInner() {
         </View>
 
         {/* ═══ FULLSCREEN GAMES (поверх всего) ═══ */}
+        {/* Universal back overlay for fullscreen games */}
+        {(screen === 'runner' || screen === 'horse') && (
+          <TouchableOpacity
+            onPress={() => setScreen('games')}
+            activeOpacity={0.7}
+            style={[styles.fullscreenBackBtn, { top: insets.top + 12 }]}
+          >
+            <Text style={styles.fullscreenBackArrow}>‹</Text>
+          </TouchableOpacity>
+        )}
+
         {screen === 'runner' && (
           <View style={styles.fullscreenGame}>
             <SpaceRunner
@@ -3667,6 +3678,13 @@ const styles = StyleSheet.create({
   container:    { flex: 1, backgroundColor: '#020510', paddingTop: 32 },
   appShake:      { flex: 1 },
   fullscreenGame:    { position: 'absolute', top: -32, left: 0, right: 0, bottom: 0, zIndex: 200 },
+  fullscreenBackBtn: { position: 'absolute', left: 12, zIndex: 250,
+                       width: 44, height: 44, borderRadius: 22,
+                       backgroundColor: 'rgba(15,23,42,0.88)',
+                       borderWidth: 1.5, borderColor: 'rgba(124,58,237,0.5)',
+                       alignItems: 'center', justifyContent: 'center',
+                       shadowColor: '#7C3AED', shadowRadius: 10, shadowOpacity: 0.5, elevation: 6 },
+  fullscreenBackArrow: { color: '#C084FC', fontSize: 32, fontWeight: '300', lineHeight: 34, marginLeft: -2 },
   onboardingOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 },
   flashOverlay:  { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#FACC15', zIndex: 999 },
 

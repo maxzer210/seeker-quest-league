@@ -324,6 +324,13 @@ export default function SpaceRunner({ onExit, onEarnOrb, onAddScore }: Props) {
     return () => clearInterval(id);
   }, [isPlaying, tickGameLoop]);
 
+  // Persist high score if the player navigates away mid-game (parent back btn)
+  useEffect(() => () => {
+    if (isPlayingRef.current && scoreRef.current > highScoreRef.current) {
+      AsyncStorage.setItem(HIGH_SCORE_KEY, String(scoreRef.current)).catch(() => {});
+    }
+  }, []);
+
   // Sync asteroids ref to state (for render)
   useEffect(() => {
     setAsteroids(asteroidsRef.current);
@@ -534,14 +541,9 @@ export default function SpaceRunner({ onExit, onEarnOrb, onAddScore }: Props) {
         </View>
       </View>
 
-      {/* Exit (top-center, under HUD) */}
-      <TouchableOpacity
-        onPress={() => { if (isPlayingRef.current) endGame(); onExit(); }}
-        style={[s.exitBtn, { top: HUD_TOP }]}
-        activeOpacity={0.7}
-      >
-        <Text style={s.exitBtnTxt}>✕</Text>
-      </TouchableOpacity>
+      {/* Back is provided by parent App.tsx as a universal overlay button —
+         in-game exit happens automatically when the user taps it (we end the
+         game on un-mount via endGame in onExit prop, called from App). */}
 
       {/* Near-Miss popup */}
       <Animated.View style={[s.comboPopup, { opacity: comboOpacity }]}>

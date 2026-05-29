@@ -571,25 +571,23 @@ export default function HorseRace({ orb, horsePower, onEarnOrb, onEarnTickets, o
             <View style={s.readyStats}>
               <View style={s.readyStatBox}>
                 <Text style={s.readyStatVal}>+{horsePower}</Text>
-                <Text style={s.readyStatLbl}>за тап</Text>
+                <Text style={s.readyStatLbl}>{t('horse.statTap')}</Text>
               </View>
               <View style={s.readyStatBox}>
                 <Text style={s.readyStatVal}>{RACE_TIME}s</Text>
-                <Text style={s.readyStatLbl}>гонка</Text>
+                <Text style={s.readyStatLbl}>{t('horse.statRace')}</Text>
               </View>
               <View style={s.readyStatBox}>
                 <Text style={s.readyStatVal}>+{WIN_ORB}</Text>
-                <Text style={s.readyStatLbl}>ORB победа</Text>
+                <Text style={s.readyStatLbl}>{t('horse.statWin')}</Text>
               </View>
             </View>
             <TouchableOpacity onPress={startRace} style={s.startBtn} activeOpacity={0.85}>
               <LinearGradient colors={['#7C3AED','#EC4899']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.startGrad}>
-                <Text style={s.startTxt}>🏁  СТАРТ</Text>
+                <Text style={s.startTxt}>🏁  {t('horse.play')}</Text>
               </LinearGradient>
             </TouchableOpacity>
-            <TouchableOpacity style={s.backBtn} onPress={onBack}>
-              <Text style={s.backBtnTxt}>{t('horse.back')}</Text>
-            </TouchableOpacity>
+            {/* Back is handled by parent App.tsx overlay (top-left) */}
           </View>
         )}
 
