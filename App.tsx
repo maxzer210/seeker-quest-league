@@ -2,7 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Audio } from 'expo-av';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Dimensions,
   Linking,
@@ -46,6 +46,7 @@ import {
   FOUNDER_GOLD_LAMPORTS,
   FOUNDER_DIAMOND_SOL,
   FOUNDER_DIAMOND_LAMPORTS,
+  FOUNDER_TIER_FREE_SPINS,
   ORB_TRADE_FEE_PCT,
   ORB_TRADE_BURN_PCT,
   ORB_TRADE_TREASURY_PCT,
@@ -351,6 +352,8 @@ function AppInner() {
   // Founder status — set on first paid spin during Genesis Pre-Season
   const [isFounder, setIsFounder]               = useState(false);
   const [founderTier, setFounderTier]           = useState<FounderTier>('free');
+  const [usernameColor, setUsernameColor]       = useState<string>('#FACC15');
+  const [showColorPicker, setShowColorPicker]   = useState(false);
 
   // Installer source (Solana dApp Store auto-grants Seeker status)
   const [installerInfo, setInstallerInfo]       = useState<InstallerInfo | null>(null);
@@ -377,6 +380,11 @@ function AppInner() {
   const [sendRecipient,    setSendRecipient]    = useState('');
   const [sendAmount,       setSendAmount]       = useState('');
   const [sendPending,      setSendPending]      = useState(false);
+  type TransferRow = {
+    id: string; sender_id: string; recipient_id: string;
+    amount: number; created_at: string;
+  };
+  const [transferHistory, setTransferHistory] = useState<TransferRow[]>([]);
 
   // Daily streak
   const [streakCount, setStreakCount]   = useState(0);
@@ -471,6 +479,9 @@ function AppInner() {
     AsyncStorage.getItem('@founder_tier').then(v => {
       const t = (v ?? 'free') as FounderTier;
       if (['free','silver','gold','diamond'].includes(t)) setFounderTier(t);
+    });
+    AsyncStorage.getItem('@username_color').then(v => {
+      if (v && v.startsWith('#')) setUsernameColor(v);
     });
     AsyncStorage.getItem('@sound_enabled').then(v => {
       // Default ON (null/undefined → enabled). Only '0' explicitly disables.
@@ -956,6 +967,23 @@ function AppInner() {
   }
 
   // ── P2P ORB TRANSFER ────────────────────────────────────────────────────
+  const loadTransferHistory = useCallback(async () => {
+    if (!deviceIdRef.current) return;
+    try {
+      const { data } = await supabase
+        .from('orb_transfers')
+        .select('id, sender_id, recipient_id, amount, created_at')
+        .or(`sender_id.eq.${deviceIdRef.current},recipient_id.eq.${deviceIdRef.current}`)
+        .order('created_at', { ascending: false })
+        .limit(5);
+      if (data) setTransferHistory(data as TransferRow[]);
+    } catch (_) {}
+  }, []);
+
+  useEffect(() => {
+    if (showSendOrbModal) loadTransferHistory();
+  }, [showSendOrbModal, loadTransferHistory]);
+
   async function executeSendOrb() {
     const recipient = sendRecipient.trim();
     const amount    = parseInt(sendAmount, 10);
@@ -1016,9 +1044,9 @@ function AppInner() {
             setOrb(nextOrb);
             syncScore(nextOrb, level, streakCount);
 
-            setShowSendOrbModal(false);
             setSendRecipient('');
             setSendAmount('');
+            await loadTransferHistory();
             Alert.alert('✓ Transfer complete',
               `Sent ${amount.toLocaleString()} ORB\n` +
               `Recipient received: ${data?.received?.toLocaleString() ?? net.toLocaleString()} ORB`,
@@ -1089,7 +1117,7 @@ function AppInner() {
 
             particleRef.current?.emit(SCREEN_W / 2, SCREEN_H * 0.4, 'crit');
             playSound(sndLevelUp.current);
-            winRef.current?.show(0, `${tier.toUpperCase()} FOUNDER UNLOCKED · ×${cfg.mul} ORB FOREVER`);
+            winRef.current?.show(0, t('founder.unlocked', { tier: tier.toUpperCase(), mul: cfg.mul }));
           } catch (e: any) {
             Alert.alert('SOL payment failed', e?.message ?? 'Could not purchase Founder Pass.');
           } finally {
@@ -1617,39 +1645,110 @@ function AppInner() {
         </View>
       </Modal>
 
+      {/* ═══════════ COLOR PICKER MODAL ═══════════ */}
+      <Modal visible={showColorPicker} transparent animationType="fade" statusBarTranslucent
+        onRequestClose={() => setShowColorPicker(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.colorPickerModal}>
+            <View style={styles.colorPickerHeader}>
+              <Text style={styles.colorPickerTitle}>{t('color.title')}</Text>
+              <TouchableOpacity onPress={() => setShowColorPicker(false)} style={styles.sendOrbClose}>
+                <Text style={{ color: '#94A3B8', fontSize: 22, fontWeight: '700' }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.colorPickerSub}>{t('color.sub')}</Text>
+
+            {/* Preview */}
+            <View style={styles.colorPickerPreview}>
+              <Text style={[styles.colorPickerPreviewName, { color: usernameColor, textShadowColor: usernameColor, textShadowRadius: 10 }]}>
+                {username || 'Seeker'}
+              </Text>
+            </View>
+
+            {/* Color grid */}
+            <View style={styles.colorGrid}>
+              {([
+                { color: '#FACC15', name: 'Gold' },
+                { color: '#A855F7', name: 'Purple' },
+                { color: '#EC4899', name: 'Pink' },
+                { color: '#06B6D4', name: 'Cyan' },
+                { color: '#22C55E', name: 'Green' },
+                { color: '#FB923C', name: 'Orange' },
+                { color: '#EF4444', name: 'Red' },
+                { color: '#FFFFFF', name: 'White' },
+                { color: '#F97316', name: 'Sunset' },
+                { color: '#14B8A6', name: 'Teal' },
+                { color: '#E879F9', name: 'Magenta' },
+                { color: '#84CC16', name: 'Lime' },
+              ]).map(c => (
+                <TouchableOpacity
+                  key={c.color}
+                  style={[
+                    styles.colorSwatch,
+                    { backgroundColor: c.color },
+                    usernameColor === c.color && styles.colorSwatchSelected,
+                  ]}
+                  onPress={async () => {
+                    setUsernameColor(c.color);
+                    await AsyncStorage.setItem('@username_color', c.color);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  {usernameColor === c.color && (
+                    <Text style={styles.colorSwatchCheck}>✓</Text>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity onPress={() => setShowColorPicker(false)} activeOpacity={0.85} style={{ marginTop: 20 }}>
+              <LinearGradient
+                colors={['#22D3EE', '#7C3AED']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={styles.colorPickerDone}
+              >
+                <Text style={styles.colorPickerDoneTxt}>{t('color.done')}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* ═══════════ SEND ORB MODAL ═══════════ */}
       <Modal visible={showSendOrbModal} transparent animationType="fade" statusBarTranslucent
         onRequestClose={() => setShowSendOrbModal(false)}>
         <View style={styles.modalBackdrop}>
           <View style={styles.sendOrbModal}>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <View style={styles.sendOrbHeader}>
-              <Text style={styles.sendOrbTitle}>📤  SEND ORB</Text>
+              <Text style={styles.sendOrbTitle}>{t('p2p.title')}</Text>
               <TouchableOpacity onPress={() => setShowSendOrbModal(false)} style={styles.sendOrbClose}>
                 <Text style={{ color: '#94A3B8', fontSize: 22, fontWeight: '700' }}>✕</Text>
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.sendOrbBalance}>Available: <Text style={{ color: '#FACC15', fontWeight: '900' }}>{orb.toLocaleString()} ORB</Text></Text>
+            <Text style={styles.sendOrbBalance}>{t('p2p.available')}: <Text style={{ color: '#FACC15', fontWeight: '900' }}>{orb.toLocaleString()} ORB</Text></Text>
 
             {/* Recipient input */}
-            <Text style={styles.sendOrbLabel}>RECIPIENT</Text>
+            <Text style={styles.sendOrbLabel}>{t('p2p.recipient')}</Text>
             <TextInput
               style={styles.sendOrbInput}
               value={sendRecipient}
               onChangeText={setSendRecipient}
-              placeholder="Username or device ID"
+              placeholder={t('p2p.recipientHint')}
               placeholderTextColor="#475569"
               autoCapitalize="none"
               autoCorrect={false}
             />
 
             {/* Amount input */}
-            <Text style={styles.sendOrbLabel}>AMOUNT (ORB)</Text>
+            <Text style={styles.sendOrbLabel}>{t('p2p.amount')}</Text>
             <TextInput
               style={styles.sendOrbInput}
               value={sendAmount}
-              onChangeText={(t) => setSendAmount(t.replace(/[^0-9]/g, ''))}
-              placeholder={`Min ${ORB_TRADE_MIN.toLocaleString()}`}
+              onChangeText={(txt) => setSendAmount(txt.replace(/[^0-9]/g, ''))}
+              placeholder={t('p2p.amountMin', { n: ORB_TRADE_MIN.toLocaleString() })}
               placeholderTextColor="#475569"
               keyboardType="number-pad"
             />
@@ -1674,23 +1773,23 @@ function AppInner() {
             {sendAmount && parseInt(sendAmount, 10) >= ORB_TRADE_MIN && (
               <View style={styles.sendOrbPreview}>
                 <View style={styles.sendOrbPreviewRow}>
-                  <Text style={styles.sendOrbPreviewKey}>You send</Text>
+                  <Text style={styles.sendOrbPreviewKey}>{t('p2p.youSend')}</Text>
                   <Text style={styles.sendOrbPreviewVal}>{parseInt(sendAmount, 10).toLocaleString()} ORB</Text>
                 </View>
                 <View style={styles.sendOrbPreviewRow}>
-                  <Text style={styles.sendOrbPreviewKey}>Recipient gets</Text>
+                  <Text style={styles.sendOrbPreviewKey}>{t('p2p.receives')}</Text>
                   <Text style={[styles.sendOrbPreviewVal, { color: '#22C55E' }]}>
                     {Math.floor(parseInt(sendAmount, 10) * (1 - ORB_TRADE_FEE_PCT)).toLocaleString()} ORB
                   </Text>
                 </View>
                 <View style={styles.sendOrbPreviewRow}>
-                  <Text style={styles.sendOrbPreviewKey}>🔥 Burned ({Math.round(ORB_TRADE_BURN_PCT * 100)}%)</Text>
+                  <Text style={styles.sendOrbPreviewKey}>{t('p2p.burnedRow', { pct: Math.round(ORB_TRADE_BURN_PCT * 100) })}</Text>
                   <Text style={[styles.sendOrbPreviewVal, { color: '#EF4444' }]}>
                     {Math.floor(parseInt(sendAmount, 10) * ORB_TRADE_BURN_PCT).toLocaleString()} ORB
                   </Text>
                 </View>
                 <View style={styles.sendOrbPreviewRow}>
-                  <Text style={styles.sendOrbPreviewKey}>🏛 Treasury ({Math.round(ORB_TRADE_TREASURY_PCT * 100)}%)</Text>
+                  <Text style={styles.sendOrbPreviewKey}>{t('p2p.treasuryRow', { pct: Math.round(ORB_TRADE_TREASURY_PCT * 100) })}</Text>
                   <Text style={[styles.sendOrbPreviewVal, { color: '#A78BFA' }]}>
                     {Math.floor(parseInt(sendAmount, 10) * ORB_TRADE_TREASURY_PCT).toLocaleString()} ORB
                   </Text>
@@ -1716,14 +1815,47 @@ function AppInner() {
                 <Text style={[styles.sendOrbBtnText,
                   (sendPending || !sendAmount || parseInt(sendAmount || '0', 10) < ORB_TRADE_MIN || parseInt(sendAmount || '0', 10) > orb)
                     && { color: '#475569' }]}>
-                  {sendPending ? '⏳  SENDING...' : '📤  SEND ORB'}
+                  {sendPending ? t('p2p.sending') : t('p2p.sendBtn')}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
 
             <Text style={styles.sendOrbHint}>
-              ✦ Max {ORB_TRADE_MAX_PER_DAY.toLocaleString()} ORB / 24h · 1 transfer per minute
+              {t('p2p.dailyHint', { max: ORB_TRADE_MAX_PER_DAY.toLocaleString() })}
             </Text>
+
+            {/* ── Recent Transfers ── */}
+            {transferHistory.length > 0 && (
+              <View style={styles.transferHistory}>
+                <Text style={styles.transferHistoryTitle}>{t('p2p.historyTitle')}</Text>
+                {transferHistory.map(tx => {
+                  const isSent = tx.sender_id === deviceIdRef.current;
+                  const otherId = isSent ? tx.recipient_id : tx.sender_id;
+                  const shortOther = otherId.length > 12 ? otherId.slice(0, 6) + '…' + otherId.slice(-4) : otherId;
+                  const when = new Date(tx.created_at);
+                  const timeStr = when.toLocaleString(undefined, {
+                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+                  });
+                  return (
+                    <View key={tx.id} style={styles.transferRow}>
+                      <Text style={[styles.transferIcon, { color: isSent ? '#EF4444' : '#22C55E' }]}>
+                        {isSent ? '📤' : '📥'}
+                      </Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.transferOther} numberOfLines={1}>
+                          {isSent ? `${t('p2p.txTo')} ` : `${t('p2p.txFrom')} `}{shortOther}
+                        </Text>
+                        <Text style={styles.transferTime}>{timeStr}</Text>
+                      </View>
+                      <Text style={[styles.transferAmount, { color: isSent ? '#EF4444' : '#22C55E' }]}>
+                        {isSent ? '-' : '+'}{tx.amount.toLocaleString()}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -1948,7 +2080,7 @@ function AppInner() {
                     <Text style={styles.heroAvatarEmoji}>🌌</Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.heroName} numberOfLines={1}>{username || 'Seeker'}</Text>
+                    <Text style={[styles.heroName, founderTier === 'diamond' && { color: usernameColor, textShadowColor: usernameColor, textShadowRadius: 8 }]} numberOfLines={1}>{username || 'Seeker'}</Text>
                     <View style={styles.heroLevelRow}>
                       <LinearGradient colors={['#FACC15', '#F97316']} style={styles.heroLevelChip}>
                         <Text style={styles.heroLevelChipTxt}>LV {level}</Text>
@@ -2154,13 +2286,13 @@ function AppInner() {
               </View>
 
               {/* ── FOUNDER PASS (TIERED — permanent ORB multiplier) ── */}
-              <Text style={styles.shopSectionTitle}>👑  FOUNDER PASS  ·  PERMANENT ×{getFounderMultiplier(founderTier, isFounder)} ORB</Text>
+              <Text style={styles.shopSectionTitle}>👑  {t('founder.title')}  ·  {t('founder.permanent', { mul: getFounderMultiplier(founderTier, isFounder) })}</Text>
               {founderTier === 'diamond' ? (
                 <View style={styles.founderMaxedCard}>
                   <Text style={styles.founderMaxedIcon}>💎</Text>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.founderMaxedTitle}>DIAMOND FOUNDER ✓</Text>
-                    <Text style={styles.founderMaxedSub}>×5 ORB · 10 free spins/day · 1% prize pool · max tier reached</Text>
+                    <Text style={styles.founderMaxedTitle}>{t('founder.maxedTitle')}</Text>
+                    <Text style={styles.founderMaxedSub}>{t('founder.maxedSub')}</Text>
                   </View>
                 </View>
               ) : (
@@ -2191,13 +2323,13 @@ function AppInner() {
                             </View>
                             <Text style={[styles.founderName, { color: p.color }]}>{p.name}</Text>
                             <Text style={styles.founderMul}>×{p.mul} ORB</Text>
-                            <Text style={styles.founderPerk}>{p.spins} free spins/day</Text>
+                            <Text style={styles.founderPerk}>{t('founder.spinsPerDay', { n: p.spins })}</Text>
                             {p.id === 'diamond' && (
-                              <Text style={styles.founderPerk}>+1% prize pool · custom color</Text>
+                              <Text style={styles.founderPerk}>{t('founder.diamondPerk')}</Text>
                             )}
                             <View style={[styles.founderPriceTag, { borderColor: p.color + '99', backgroundColor: p.color + '15' }]}>
                               <Text style={[styles.founderPriceTxt, { color: p.color }]}>
-                                {owned ? '✓ OWNED' : `${p.price} SOL`}
+                                {owned ? t('founder.owned') : `${p.price} SOL`}
                               </Text>
                             </View>
                           </LinearGradient>
@@ -2206,7 +2338,7 @@ function AppInner() {
                     })}
                   </View>
                   <Text style={styles.shopSectionHint}>
-                    ✦ Бонус действует НАВСЕГДА · применяется ко всем ORB-наградам
+                    {t('founder.hint')}
                   </Text>
                 </>
               )}
@@ -2433,6 +2565,7 @@ function AppInner() {
               paidSpinCostLabel={solSpinPending ? 'PAYING...' : `${WHEEL_SPIN_SOL.toFixed(2)} SOL`}
               paidSpinDisabled={solSpinPending}
               paidSpinStatus={solSpinStatus}
+              freeSpinsPerDay={1 + (isFounder ? FOUNDER_TIER_FREE_SPINS[founderTier] : 0)}
             />
           )}
 
@@ -3092,13 +3225,33 @@ function AppInner() {
                   <View style={styles.settingLeft}>
                     <Text style={styles.settingIcon}>📤</Text>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.settingLabel}>Send ORB</Text>
-                      <Text style={styles.settingSub}>Transfer to another player · 5% fee</Text>
+                      <Text style={styles.settingLabel}>{t('p2p.sendOrb')}</Text>
+                      <Text style={styles.settingSub}>{t('p2p.sendOrbSub')}</Text>
                     </View>
                   </View>
                   <Text style={{ fontSize: 16, color: '#22C55E' }}>›</Text>
                 </TouchableOpacity>
               </View>
+
+              {/* ── Username Color (Diamond only) ── */}
+              {founderTier === 'diamond' && (
+                <View style={styles.profileSection}>
+                  <TouchableOpacity
+                    style={styles.settingRow}
+                    onPress={() => setShowColorPicker(true)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.settingLeft}>
+                      <Text style={styles.settingIcon}>🎨</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.settingLabel}>{t('color.profileLabel')}</Text>
+                        <Text style={styles.settingSub}>{t('color.profileSub')}</Text>
+                      </View>
+                    </View>
+                    <View style={[styles.colorPreview, { backgroundColor: usernameColor }]} />
+                  </TouchableOpacity>
+                </View>
+              )}
 
               {/* ── Privacy Policy ── */}
               <View style={styles.profileSection}>
@@ -3599,7 +3752,7 @@ const styles = StyleSheet.create({
 
   // ── Send ORB Modal ────────────────────────────────────────────────────────
   sendOrbModal:        { backgroundColor: '#0A0A12', borderRadius: 22, padding: 22, margin: 18,
-                         width: '88%', maxWidth: 420,
+                         width: '88%', maxWidth: 420, maxHeight: '88%',
                          borderWidth: 1.5, borderColor: 'rgba(34,197,94,0.4)' },
   sendOrbHeader:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   sendOrbTitle:        { color: '#22C55E', fontSize: 18, fontWeight: '900', letterSpacing: 3 },
@@ -3622,6 +3775,40 @@ const styles = StyleSheet.create({
   sendOrbBtn:          { paddingVertical: 14, alignItems: 'center', borderRadius: 14, marginTop: 16 },
   sendOrbBtnText:      { color: '#FFF', fontSize: 14, fontWeight: '900', letterSpacing: 2 },
   sendOrbHint:         { color: '#475569', fontSize: 10, textAlign: 'center', marginTop: 12, fontWeight: '600' },
+
+  // ── Color picker (Diamond exclusive) ──────────────────────────────────────
+  colorPickerModal:    { backgroundColor: '#0A0A12', borderRadius: 22, padding: 22, margin: 18,
+                         width: '88%', maxWidth: 420,
+                         borderWidth: 1.5, borderColor: 'rgba(34,211,238,0.4)' },
+  colorPickerHeader:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  colorPickerTitle:    { color: '#22D3EE', fontSize: 16, fontWeight: '900', letterSpacing: 3 },
+  colorPickerSub:      { color: '#94A3B8', fontSize: 11, marginTop: 6, marginBottom: 14, fontWeight: '600' },
+  colorPickerPreview:  { backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 14, paddingVertical: 16,
+                         alignItems: 'center', marginBottom: 18,
+                         borderWidth: 1, borderColor: 'rgba(34,211,238,0.25)' },
+  colorPickerPreviewName: { fontSize: 22, fontWeight: '900', letterSpacing: 1 },
+  colorGrid:           { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center' },
+  colorSwatch:         { width: 56, height: 56, borderRadius: 28,
+                         borderWidth: 2, borderColor: 'transparent',
+                         alignItems: 'center', justifyContent: 'center' },
+  colorSwatchSelected: { borderColor: '#FFF',
+                         shadowColor: '#FFF', shadowRadius: 8, shadowOpacity: 0.6, elevation: 6 },
+  colorSwatchCheck:    { color: '#000', fontSize: 22, fontWeight: '900' },
+  colorPickerDone:     { paddingVertical: 14, alignItems: 'center', borderRadius: 14 },
+  colorPickerDoneTxt:  { color: '#FFF', fontSize: 14, fontWeight: '900', letterSpacing: 2 },
+  colorPreview:        { width: 24, height: 24, borderRadius: 12,
+                         borderWidth: 1.5, borderColor: '#1E293B' },
+
+  // ── Transfer history (inside Send ORB modal) ──────────────────────────────
+  transferHistory:     { marginTop: 18, paddingTop: 14, borderTopWidth: 1, borderTopColor: 'rgba(34,197,94,0.15)' },
+  transferHistoryTitle:{ color: '#475569', fontSize: 10, letterSpacing: 2, fontWeight: '900', marginBottom: 10 },
+  transferRow:         { flexDirection: 'row', alignItems: 'center', gap: 10,
+                         paddingVertical: 8, paddingHorizontal: 4,
+                         borderBottomWidth: 1, borderBottomColor: 'rgba(30,41,59,0.5)' },
+  transferIcon:        { fontSize: 20, width: 28, textAlign: 'center' },
+  transferOther:       { color: '#E2E8F0', fontSize: 12, fontWeight: '700' },
+  transferTime:        { color: '#475569', fontSize: 10, marginTop: 2 },
+  transferAmount:      { fontSize: 13, fontWeight: '900' },
   content:  { flex: 1, paddingHorizontal: 20 },
 
   // streak banner (home screen)

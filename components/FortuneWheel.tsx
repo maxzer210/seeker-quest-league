@@ -51,7 +51,8 @@ const JACKPOT_GROW       = 5_000; // per paid spin
 const PAID_SPIN_ORB      = 10_000;
 
 // Storage keys
-const KEY_FREE   = 'sk_wheel_free_';   // + today date
+const KEY_FREE   = 'sk_wheel_free_';   // legacy: stored REMAINING (deprecated)
+const KEY_USED   = 'sk_wheel_used_';   // + today date — stores spins USED today
 const KEY_JACK   = 'sk_wheel_jackpot';
 const KEY_MULT   = 'sk_wheel_mult';    // active x2 multiplier expiry
 
@@ -70,6 +71,8 @@ interface Props {
   paidSpinCostLabel?: string;
   paidSpinDisabled?:  boolean;
   paidSpinStatus?:    string;
+  /** Daily free spins limit — base 1 + Founder tier bonus (Silver +3, Gold +5, Diamond +10). */
+  freeSpinsPerDay?:   number;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -120,10 +123,11 @@ export default function FortuneWheel({
   orb, tickets,
   onEarnOrb, onSpendOrb, onEarnTickets, onSpendTickets, onAddTournamentScore, onSpin,
   onBeforePaidSpin, paidSpinCostLabel, paidSpinDisabled, paidSpinStatus,
+  freeSpinsPerDay = FREE_SPINS_PER_DAY,
 }: Props) {
 
   useLang();
-  const [freeLeft,    setFreeLeft]    = useState(FREE_SPINS_PER_DAY);
+  const [freeLeft,    setFreeLeft]    = useState(freeSpinsPerDay);
   const [jackpot,     setJackpot]     = useState(JACKPOT_START);
   const [spinning,    setSpinning]    = useState(false);
   const [lastResult,  setLastResult]  = useState<Segment | null>(null);
@@ -163,8 +167,17 @@ export default function FortuneWheel({
   useEffect(() => {
     (async () => {
       const today = todayKey();
-      const free  = await AsyncStorage.getItem(KEY_FREE + today);
-      setFreeLeft(free !== null ? parseInt(free) : FREE_SPINS_PER_DAY);
+      const usedStr = await AsyncStorage.getItem(KEY_USED + today);
+      let used = usedStr !== null ? parseInt(usedStr, 10) : 0;
+      // One-time migration from legacy "remaining" key
+      if (usedStr === null) {
+        const legacy = await AsyncStorage.getItem(KEY_FREE + today);
+        if (legacy !== null) {
+          used = Math.max(0, FREE_SPINS_PER_DAY - parseInt(legacy, 10));
+          await AsyncStorage.setItem(KEY_USED + today, String(used));
+        }
+      }
+      setFreeLeft(Math.max(0, freeSpinsPerDay - used));
 
       const jack = await AsyncStorage.getItem(KEY_JACK);
       if (jack) setJackpot(parseInt(jack));
@@ -172,7 +185,17 @@ export default function FortuneWheel({
       const multExp = await AsyncStorage.getItem(KEY_MULT);
       if (multExp && parseInt(multExp) > Date.now()) setMultActive(true);
     })();
-  }, []);
+  }, [freeSpinsPerDay]);
+
+  // Recompute free spins when Founder tier changes (props update)
+  useEffect(() => {
+    (async () => {
+      const today = todayKey();
+      const usedStr = await AsyncStorage.getItem(KEY_USED + today);
+      const used = usedStr !== null ? parseInt(usedStr, 10) : 0;
+      setFreeLeft(Math.max(0, freeSpinsPerDay - used));
+    })();
+  }, [freeSpinsPerDay]);
 
   // ── Pointer bounce ──
   useEffect(() => {
@@ -223,7 +246,9 @@ export default function FortuneWheel({
       if (freeLeft <= 0) return;
       newFree = freeLeft - 1;
       setFreeLeft(newFree);
-      await AsyncStorage.setItem(KEY_FREE + today, newFree.toString());
+      // Save USED count (not remaining) so tier upgrades take effect immediately
+      const used = freeSpinsPerDay - newFree;
+      await AsyncStorage.setItem(KEY_USED + today, String(used));
     } else {
       if (onBeforePaidSpin) {
         const paid = await onBeforePaidSpin();
