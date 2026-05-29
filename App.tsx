@@ -40,6 +40,12 @@ import {
   PREMIUM_BOOST_PACK_LAMPORTS,
   PREMIUM_SHIELD_PACK_SOL,
   PREMIUM_SHIELD_PACK_LAMPORTS,
+  FOUNDER_SILVER_SOL,
+  FOUNDER_SILVER_LAMPORTS,
+  FOUNDER_GOLD_SOL,
+  FOUNDER_GOLD_LAMPORTS,
+  FOUNDER_DIAMOND_SOL,
+  FOUNDER_DIAMOND_LAMPORTS,
   connectSolanaWallet,
   payForWheelSpin,
   paySolToTreasury,
@@ -63,7 +69,7 @@ import EarnHub from './components/EarnHub';
 import AdViewer from './components/AdViewer';
 import type { AdCampaign } from './lib/ads';
 import PvPArena from './components/PvPArena';
-import { GENESIS_PHASE, FOUNDER_ORB_MULTIPLIER } from './lib/genesis';
+import { GENESIS_PHASE, FOUNDER_ORB_MULTIPLIER, getFounderMultiplier, type FounderTier } from './lib/genesis';
 import { detectInstallerSource, type InstallerInfo } from './lib/installerCheck';
 import {
   requestNotificationPermission, hasNotificationPermission,
@@ -339,6 +345,7 @@ function AppInner() {
 
   // Founder status — set on first paid spin during Genesis Pre-Season
   const [isFounder, setIsFounder]               = useState(false);
+  const [founderTier, setFounderTier]           = useState<FounderTier>('free');
 
   // Installer source (Solana dApp Store auto-grants Seeker status)
   const [installerInfo, setInstallerInfo]       = useState<InstallerInfo | null>(null);
@@ -450,6 +457,10 @@ function AppInner() {
     loadSavedTheme();
     AsyncStorage.getItem('@founder').then(v => {
       setIsFounder(v === '1');
+    });
+    AsyncStorage.getItem('@founder_tier').then(v => {
+      const t = (v ?? 'free') as FounderTier;
+      if (['free','silver','gold','diamond'].includes(t)) setFounderTier(t);
     });
     AsyncStorage.getItem('@sound_enabled').then(v => {
       // Default ON (null/undefined → enabled). Only '0' explicitly disables.
@@ -934,6 +945,74 @@ function AppInner() {
     }
   }
 
+  // ── FOUNDER PASS HANDLER ────────────────────────────────────────────────
+  type FounderPassTier = 'silver' | 'gold' | 'diamond';
+
+  async function paySolForFounderPass(tier: FounderPassTier) {
+    if (!deviceIdRef.current) return;
+    if (TREASURY_WALLET === 'PASTE_TREASURY_WALLET_HERE') {
+      Alert.alert('Treasury wallet required', 'Set TREASURY_WALLET in lib/solanaMobile.ts.');
+      return;
+    }
+    // Prevent downgrade / re-buy of same or lower tier
+    const order: FounderTier[] = ['free', 'silver', 'gold', 'diamond'];
+    if (order.indexOf(tier) <= order.indexOf(founderTier)) {
+      Alert.alert('Already owned', `You already have ${founderTier.toUpperCase()} or higher.`);
+      return;
+    }
+    const config: Record<FounderPassTier, { lamports: number; sol: number; tag: 'founder_silver'|'founder_gold'|'founder_diamond'; mul: number; spins: number }> = {
+      silver:  { lamports: FOUNDER_SILVER_LAMPORTS,  sol: FOUNDER_SILVER_SOL,  tag: 'founder_silver',  mul: 3,  spins: 3  },
+      gold:    { lamports: FOUNDER_GOLD_LAMPORTS,    sol: FOUNDER_GOLD_SOL,    tag: 'founder_gold',    mul: 4,  spins: 5  },
+      diamond: { lamports: FOUNDER_DIAMOND_LAMPORTS, sol: FOUNDER_DIAMOND_SOL, tag: 'founder_diamond', mul: 5,  spins: 10 },
+    };
+    const cfg = config[tier];
+
+    Alert.alert(
+      `${tier.toUpperCase()} FOUNDER PASS`,
+      `Pay ${cfg.sol} SOL for permanent ×${cfg.mul} ORB + ${cfg.spins} free spins/day forever?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: `Buy ${cfg.sol} SOL`, onPress: async () => {
+          setSolShopPending(true);
+          try {
+            const r = await paySolToTreasury(
+              deviceIdRef.current!, cfg.lamports, cfg.sol, cfg.tag,
+              solStatusLabel(`${cfg.sol} SOL`),
+            );
+            await AsyncStorage.setItem('sk_wallet_addr', r.address);
+            await AsyncStorage.setItem('sk_wallet_auth_token', r.authToken);
+            setWalletAddr(r.address);
+            setWalletAuthToken(r.authToken);
+
+            // Upgrade Founder status + tier
+            setIsFounder(true);
+            await AsyncStorage.setItem('@founder', '1');
+            setFounderTier(tier);
+            await AsyncStorage.setItem('@founder_tier', tier);
+
+            // Best-effort sync to backend
+            try {
+              await supabase.from('founder_passes').upsert({
+                device_id: deviceIdRef.current!,
+                tier,
+                tx_signature: null, // tx sig comes from wheel_sol_payments by ref
+              });
+            } catch (_) {}
+
+            particleRef.current?.emit(SCREEN_W / 2, SCREEN_H * 0.4, 'crit');
+            playSound(sndLevelUp.current);
+            winRef.current?.show(0, `${tier.toUpperCase()} FOUNDER UNLOCKED · ×${cfg.mul} ORB FOREVER`);
+          } catch (e: any) {
+            Alert.alert('SOL payment failed', e?.message ?? 'Could not purchase Founder Pass.');
+          } finally {
+            setSolShopPending(false);
+            setTimeout(() => setSolShopStatus(''), 8000);
+          }
+        }},
+      ],
+    );
+  }
+
   async function payForPvPEntry(): Promise<boolean> {
     if (!deviceIdRef.current) return false;
     if (TREASURY_WALLET === 'PASTE_TREASURY_WALLET_HERE') {
@@ -1113,7 +1192,7 @@ function AppInner() {
     const tapVal  = TAP_VALUES[upgrades.signalPower];
     const isCrit  = Math.random() < CRIT_CHANCES[upgrades.critChance];
     const mul     = boostActive ? 3 : 1;
-    const founderMul = isFounder ? FOUNDER_ORB_MULTIPLIER : 1;
+    const founderMul = getFounderMultiplier(founderTier, isFounder);
     const base    = isCrit ? tapVal * 3 : tapVal;
     const earned  = Math.round(base * mul * founderMul * COMBO_MULTIPLIERS[Math.min(comboLevel, COMBO_MULTIPLIERS.length - 1)]);
 
@@ -1677,7 +1756,12 @@ function AppInner() {
                       </LinearGradient>
                       {isFounder && (
                         <View style={styles.heroFounderChip}>
-                          <Text style={styles.heroFounderTxt}>💎 FOUNDER</Text>
+                          <Text style={styles.heroFounderTxt}>
+                            {founderTier === 'diamond' ? '💎 DIAMOND'
+                             : founderTier === 'gold' ? '🥇 GOLD'
+                             : founderTier === 'silver' ? '🥈 SILVER'
+                             : '💎 FOUNDER'} · ×{getFounderMultiplier(founderTier, isFounder)}
+                          </Text>
                         </View>
                       )}
                     </View>
@@ -1869,6 +1953,64 @@ function AppInner() {
                 </TouchableOpacity>
 
               </View>
+
+              {/* ── FOUNDER PASS (TIERED — permanent ORB multiplier) ── */}
+              <Text style={styles.shopSectionTitle}>👑  FOUNDER PASS  ·  PERMANENT ×{getFounderMultiplier(founderTier, isFounder)} ORB</Text>
+              {founderTier === 'diamond' ? (
+                <View style={styles.founderMaxedCard}>
+                  <Text style={styles.founderMaxedIcon}>💎</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.founderMaxedTitle}>DIAMOND FOUNDER ✓</Text>
+                    <Text style={styles.founderMaxedSub}>×5 ORB · 10 free spins/day · 1% prize pool · max tier reached</Text>
+                  </View>
+                </View>
+              ) : (
+                <>
+                  <View style={styles.founderGrid}>
+                    {([
+                      { id: 'silver',  icon: '🥈', name: 'SILVER',  mul: 3, spins: 3,  price: FOUNDER_SILVER_SOL,  color: '#94A3B8', bg1: '#1E293B', bg2: '#0F172A' },
+                      { id: 'gold',    icon: '🥇', name: 'GOLD',    mul: 4, spins: 5,  price: FOUNDER_GOLD_SOL,    color: '#FACC15', bg1: '#78350F', bg2: '#1F0E03' },
+                      { id: 'diamond', icon: '💎', name: 'DIAMOND', mul: 5, spins: 10, price: FOUNDER_DIAMOND_SOL, color: '#22D3EE', bg1: '#164E63', bg2: '#0B1A1F' },
+                    ] as { id: FounderPassTier; icon: string; name: string; mul: number; spins: number; price: number; color: string; bg1: string; bg2: string }[]).map(p => {
+                      const order: FounderTier[] = ['free','silver','gold','diamond'];
+                      const owned = order.indexOf(founderTier) >= order.indexOf(p.id);
+                      return (
+                        <TouchableOpacity
+                          key={p.id}
+                          onPress={() => paySolForFounderPass(p.id)}
+                          disabled={solShopPending || owned}
+                          activeOpacity={owned ? 1 : 0.82}
+                          style={styles.founderCard}
+                        >
+                          <LinearGradient
+                            colors={[p.bg1, p.bg2]}
+                            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                            style={[styles.founderCardGrad, { borderColor: p.color + '99' }, owned && { opacity: 0.55 }]}
+                          >
+                            <View style={[styles.founderIconWrap, { backgroundColor: p.color + '22', borderColor: p.color + 'AA' }]}>
+                              <Text style={styles.founderIcon}>{p.icon}</Text>
+                            </View>
+                            <Text style={[styles.founderName, { color: p.color }]}>{p.name}</Text>
+                            <Text style={styles.founderMul}>×{p.mul} ORB</Text>
+                            <Text style={styles.founderPerk}>{p.spins} free spins/day</Text>
+                            {p.id === 'diamond' && (
+                              <Text style={styles.founderPerk}>+1% prize pool · custom color</Text>
+                            )}
+                            <View style={[styles.founderPriceTag, { borderColor: p.color + '99', backgroundColor: p.color + '15' }]}>
+                              <Text style={[styles.founderPriceTxt, { color: p.color }]}>
+                                {owned ? '✓ OWNED' : `${p.price} SOL`}
+                              </Text>
+                            </View>
+                          </LinearGradient>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                  <Text style={styles.shopSectionHint}>
+                    ✦ Бонус действует НАВСЕГДА · применяется ко всем ORB-наградам
+                  </Text>
+                </>
+              )}
 
               {/* ── PREMIUM ITEMS (rare, SOL-priced, tiered) ── */}
               <Text style={styles.shopSectionTitle}>💎  PREMIUM ITEMS  ·  SOL ONLY</Text>
@@ -3215,6 +3357,28 @@ const styles = StyleSheet.create({
   premiumTierBadge: { position: 'absolute', top: 6, right: 6, paddingHorizontal: 6, paddingVertical: 2,
                       borderRadius: 5, borderWidth: 1, zIndex: 5 },
   premiumTierTxt:   { fontSize: 8, fontWeight: '900', letterSpacing: 1 },
+
+  // ── Founder Pass cards ────────────────────────────────────────────────────
+  founderGrid:      { flexDirection: 'row', gap: 8, marginTop: 6 },
+  founderCard:      { flex: 1 },
+  founderCardGrad:  { padding: 12, borderRadius: 16, borderWidth: 1.5, alignItems: 'center', gap: 4, minHeight: 200 },
+  founderIconWrap:  { width: 46, height: 46, borderRadius: 23, borderWidth: 1.5,
+                      alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  founderIcon:      { fontSize: 24 },
+  founderName:      { fontSize: 12, fontWeight: '900', letterSpacing: 2 },
+  founderMul:       { color: '#FACC15', fontSize: 18, fontWeight: '900', marginTop: 2 },
+  founderPerk:      { color: '#94A3B8', fontSize: 9, textAlign: 'center', lineHeight: 12 },
+  founderPriceTag:  { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1,
+                      marginTop: 'auto' },
+  founderPriceTxt:  { fontSize: 11, fontWeight: '900', letterSpacing: 1 },
+
+  founderMaxedCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14,
+                      borderRadius: 16, marginTop: 6,
+                      backgroundColor: 'rgba(34,211,238,0.10)',
+                      borderWidth: 1.5, borderColor: '#22D3EE' },
+  founderMaxedIcon: { fontSize: 32 },
+  founderMaxedTitle:{ color: '#22D3EE', fontSize: 14, fontWeight: '900', letterSpacing: 2 },
+  founderMaxedSub:  { color: '#67E8F9', fontSize: 10, marginTop: 3, fontWeight: '600' },
   content:  { flex: 1, paddingHorizontal: 20 },
 
   // streak banner (home screen)
