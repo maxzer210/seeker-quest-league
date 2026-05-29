@@ -1,9 +1,16 @@
 # Seeker Quest League — Tokenomics
 
-*Working economic model · Version 0.1*
+*Working economic model · Version 0.2*
 *Last updated: May 2026*
 
 > ⚠️ **This is a working draft.** Numbers will be revised based on Pre-Season real data before mainnet launch. Treat as economic design, not a promise.
+
+## v0.2 CHANGES (May 2026)
+
+- ✅ **P2P ORB trade enabled** — 5% fee (3% burn + 2% treasury)
+- ✅ **Triple burn mechanism** — monthly buyback + ORB transfer burn + premium SOL burn
+- ✅ **Founder Pass tiers** — Free / Silver / Gold / Diamond (paid upgrades)
+- ✅ **Static spin pricing** — fixed at 0.01 SOL (no dynamic adjustments)
 
 ---
 
@@ -292,29 +299,145 @@ Player has 10,000+ ORB → opens SKORA Wallet
 
 ---
 
-## 9. Open Design Questions
+## 9. Design Decisions (FINAL — v0.2)
 
-These need answers before mainnet:
+### 9.1 ✅ P2P ORB Trading — ENABLED
 
-1. **Should ORB be tradeable peer-to-peer?**
-   Pro: liquidity, fun. Con: makes inflation harder to control.
-   *Current stance:* No. Keep ORB strictly off-chain personal.
+Players can transfer ORB to each other off-chain via Supabase.
 
-2. **Should SKORA be staked back into the game for boosts?**
-   Pro: sink mechanism. Con: complexity.
-   *Current stance:* Yes, in Phase 4. Stake 1,000 SKORA → +20% ORB rewards.
+**Constraints:**
+- Minimum transfer: 1,000 ORB
+- Maximum daily volume per player: 50,000 ORB (anti-money-laundering)
+- Cooldown: 1 transfer per minute
+- **Fee: 5% total** (3% burned + 2% to treasury)
 
-3. **Should we burn tokens at any point?**
-   Pro: deflationary pressure. Con: optics, perceived value.
-   *Current stance:* No. Use sinks instead.
+**Why it works:** creates economic activity, adds ORB sink, supports gifting between friends without flooding the SKORA conversion pipe.
 
-4. **Dynamic spin pricing?**
-   Pro: adapts to SOL volatility. Con: complexity, predictability matters.
-   *Current stance:* No. Lock at 0.01 SOL. Revisit if SOL moves 5× in either direction.
+**Implementation:** atomic Supabase RPC `transfer_orb(sender, recipient, amount)` with row-level locks.
 
-5. **Should Founders get SOL royalty forever?**
-   Pro: ultimate retention. Con: dilutes prize pool.
-   *Current stance:* No. Founders get ORB multiplier + early SKORA, not perpetual SOL.
+### 9.2 ✅ Triple Burn Mechanism — DEPLOYED
+
+Three independent burn vectors create constant deflationary pressure on SKORA supply.
+
+#### A) Monthly Buyback & Burn (main lever)
+- **1st of every month**, automated script:
+- 10% of treasury SOL → market buy SKORA on DEX
+- Bought SKORA → permanently burned (sent to `1nc1nerator11111111111111111111111111111111`)
+- All transactions publicly verifiable on Solana Explorer
+
+**Effect estimate:** at 50 SOL/day inflow → 1,500 SOL/month → 150 SOL → SKORA buy/burn → **~5M SKORA burned/month** at $0.005
+
+#### B) ORB Transfer Burn (continuous pressure)
+- 3% of every P2P ORB transfer disappears
+- At 1M ORB transfers/day → 30K ORB/day burned
+- **Year 1 estimate:** ~10M ORB burned (~1,000 SKORA equivalent)
+
+#### C) Premium SOL Auto-Burn (small but compounding)
+- 5% of every premium SOL purchase (0.01–0.05 SOL items)
+- Accumulated weekly → SKORA buy → burn
+- **Effect:** at 30 SOL/week premium purchases → ~1.5 SOL → SKORA buy/burn
+
+**Total Year 1 burn projection:** ~50M SKORA (5% of total supply) — strong deflationary play.
+
+### 9.3 ❌ Dynamic Spin Pricing — REJECTED
+
+Stays at fixed **0.01 SOL** regardless of SOL/USD volatility.
+Predictability and simplicity beat micro-optimization.
+
+### 9.4 ✅ Founder Pass Tier System — DEPLOYED
+
+Replaces the single ×2 Founder bonus with a **4-tier paid upgrade system**.
+
+| Tier | Cost | Bonuses |
+|------|-----:|---------|
+| 🟢 **Free Founder** | 1 paid spin (0.01 SOL) | ×2 ORB forever + base Founder NFT |
+| 🥈 **Silver Pass** | **0.5 SOL** | ×3 ORB + Silver skin + 3 free spins/day |
+| 🥇 **Gold Pass** | **1.0 SOL** | ×4 ORB + Gold skin + 5 free spins/day + NFT mint priority |
+| 💎 **Diamond Pass** | **2.0 SOL** | ×5 ORB + Diamond skin + 10 free spins/day + 1% of daily prize pool + custom username color |
+
+#### Revenue split per Pass purchase
+
+| Bucket | % | Use |
+|--------|---|-----|
+| **Project treasury** | 80% | Owner revenue (development, marketing, profit) |
+| **Community prize pool** | 15% | Boosts top-100 daily prizes |
+| **SKORA burn pool** | 5% | Deflationary pressure |
+
+#### Year 1 conservative projection (Founder Pass revenue)
+
+Assumption: 1,000 daily active players
+- 20% buy Silver → 200 × 0.5 SOL = **100 SOL**
+- 5% buy Gold → 50 × 1.0 SOL = **50 SOL**
+- 1% buy Diamond → 10 × 2.0 SOL = **20 SOL**
+- **Total: ~170 SOL** (one-time payments)
+- **Project share (80%):** 136 SOL → at $175/SOL = **~$24K direct profit**
+
+This revenue is **separate from spin/refill revenue** and **does not dilute the prize pool**.
+
+### 9.5 ❌ Eternal SOL Royalty for Founders — REJECTED
+
+Decision: no perpetual SOL stream from prize pool to Founders.
+Replaced by **Diamond tier 1% prize pool boost** which is fundable from Pass revenue, not from main game spin revenue.
+
+### 9.6 ✅ SKORA Staking — PLANNED (Phase 4)
+
+Future feature: stake 1,000 SKORA → +20% ORB rewards.
+Adds long-term holding incentive.
+
+---
+
+## 10. P2P ORB Trading — Detailed Spec
+
+### 10.1 User flow
+1. Player A opens Profile → "Send ORB"
+2. Enters recipient username or device_id
+3. Enters amount (≥ 1,000 ORB, ≤ 50,000 ORB/day cap)
+4. Confirms — sees fee preview: "You send 10,000 ORB · Recipient gets 9,500 ORB · 300 ORB burned · 200 ORB fee"
+5. Tap → instant transfer (Supabase atomic op)
+
+### 10.2 Backend (Supabase RPC)
+```sql
+CREATE FUNCTION transfer_orb(
+  sender_id text, recipient_id text, amount int
+) RETURNS jsonb AS $$
+DECLARE
+  fee int := amount * 5 / 100;
+  burn int := amount * 3 / 100;
+  treasury int := amount * 2 / 100;
+  net int := amount - fee;
+BEGIN
+  -- Lock sender row
+  UPDATE players SET orb = orb - amount WHERE device_id = sender_id AND orb >= amount;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Insufficient ORB'; END IF;
+
+  -- Daily cap check
+  IF (SELECT coalesce(sum(amount), 0) FROM orb_transfers
+      WHERE sender_id = sender_id AND created_at > now() - interval '24 hours') + amount > 50000
+  THEN RAISE EXCEPTION 'Daily transfer cap exceeded'; END IF;
+
+  -- Credit recipient (net)
+  UPDATE players SET orb = orb + net WHERE device_id = recipient_id;
+
+  -- Burn record
+  INSERT INTO orb_burned (amount, source) VALUES (burn, 'p2p_transfer');
+
+  -- Treasury credit
+  UPDATE treasury SET balance = balance + treasury;
+
+  -- History
+  INSERT INTO orb_transfers (sender_id, recipient_id, amount, fee, burned, created_at)
+  VALUES (sender_id, recipient_id, amount, fee, burn, now());
+
+  RETURN jsonb_build_object('ok', true, 'sent', amount, 'received', net, 'burned', burn);
+END $$ LANGUAGE plpgsql;
+```
+
+### 10.3 Anti-abuse
+- 1 minute cooldown between transfers
+- 50K ORB/day cap per sender
+- Cannot transfer to yourself
+- Minimum 1,000 ORB per transfer
+- All transfers logged immutably for audit
 
 ---
 

@@ -15,8 +15,23 @@ export const GENESIS_PHASE   = true;
 export const SEASON_1_START  = new Date('2026-06-22T00:00:00Z').getTime();
 
 // ── Founder benefits (forever) ───────────────────────────────────────────────
-export const FOUNDER_ORB_MULTIPLIER = 2;     // x2 ORB rewards for life
+export const FOUNDER_ORB_MULTIPLIER = 2;     // x2 ORB rewards for life (Free tier)
 export const FOUNDER_MIN_ACTIONS    = 1;     // played at least 1 paid spin during pre-season
+
+// Founder tiers (paid upgrades) — see lib/solanaMobile.ts for prices
+export type FounderTier = 'free' | 'silver' | 'gold' | 'diamond';
+
+/** Compute final ORB multiplier based on the player's Founder tier. */
+export function getFounderMultiplier(tier: FounderTier, isFounder: boolean): number {
+  if (!isFounder) return 1;
+  switch (tier) {
+    case 'silver':  return 3;
+    case 'gold':    return 4;
+    case 'diamond': return 5;
+    case 'free':
+    default:        return FOUNDER_ORB_MULTIPLIER; // 2
+  }
+}
 
 // ── Prize distribution at Season 1 launch ────────────────────────────────────
 // Pool is split as: 60% top-100 prizes, 20% SKORA airdrop pool, 20% project treasury
