@@ -60,3 +60,6 @@ seeker-release.keystore
 # Build / dev logs
 *.log
 expo-start.*
+
+# Git backup snapshots (created by filter-branch operations)
+.git.backup-*

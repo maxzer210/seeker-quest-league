@@ -101,7 +101,7 @@ Be among the first 100 Founders. Get a permanent 2Г— ORB multiplier and an ex
 
 Built by Seekers, for Seekers.
 
-рџЊђ https://seekerquest.league
+рџЊђ https://seekerquest-league.com
 рџ“§ adsskora@gmail.com
 ```
 
@@ -165,7 +165,7 @@ Built for Solana Mobile Seeker. Exclusive perks for SGT holders: 2Г— ORB rewa
 >
 > Genesis Pre-Season is open. Be in the launch top-100.
 >
-> https://seekerquest.league
+> https://seekerquest-league.com
 
 **Pitch (60 sec read):**
 > Every Seeker owner needs daily on-chain activity. Most tap-to-earn apps fail because they're boring grinds with no real payout. Seeker Quest League solves both: 5 minutes of fun a day, real SOL prizes paid every 24 hours on-chain, exclusive perks that only Seeker SGT holders can unlock. Built transparently, player-funded, no VC, no TGE promises. Genesis Pre-Season starts now.
@@ -175,9 +175,9 @@ Built for Solana Mobile Seeker. Exclusive perks for SGT holders: 2Г— ORB rewa
 ## 8. Contact / Support
 
 **Email:** adsskora@gmail.com
-**Website:** https://seekerquest.league
-**Privacy Policy:** https://seekerquest.league/privacy
-**Terms / License:** https://seekerquest.league/license
+**Website:** https://seekerquest-league.com
+**Privacy Policy:** https://seekerquest-league.com/privacy
+**Terms / License:** https://seekerquest-league.com/license
 **X (Twitter):** TODO вЂ” register @seekerquest
 **Telegram:** TODO вЂ” create t.me/seekerquest
 

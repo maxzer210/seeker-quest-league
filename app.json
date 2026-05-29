@@ -22,7 +22,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.seekerquest.league",
+      "package": "com.seekerquest-league.com",
       "permissions": ["android.permission.INTERNET"]
     },
     "web": {

@@ -1943,7 +1943,7 @@ function AppInner() {
 
               <Text style={styles.privacyH2}>9. CONTACT</Text>
               <Text style={styles.privacyPara}>Questions about this policy: adsskora@gmail.com</Text>
-              <Text style={styles.privacyPara}>Project website: seekerquest.league</Text>
+              <Text style={styles.privacyPara}>Project website: seekerquest-league.com</Text>
               <Text style={styles.privacyNote}>This Privacy Policy is published publicly to satisfy Solana Mobile dApp Store requirements. It is the authoritative description of our data practices.</Text>
 
               <View style={{ height: 32 }} />

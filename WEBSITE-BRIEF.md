@@ -14,7 +14,7 @@ Web3 tap-to-earn игры на Solana Mobile Seeker. Сайт нужен для:
 3. Информация о Genesis Pre-Season и призовом фонде
 4. Социальные ссылки
 
-**Домен (зарезервирован):** `seekerquest.league`
+**Домен (зарезервирован):** `seekerquest-league.com`
 
 **Тех. стек:** Pure HTML/CSS/JS (один файл `index.html` + минимум зависимостей).
 Никаких React/Next.js — сайт должен деплоиться на GitHub Pages / Cloudflare Pages

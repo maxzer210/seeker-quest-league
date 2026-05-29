@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "seeker-quest",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "-p", "3000", "C:\\sk\\website"],
+      "port": 3000
+    }
+  ]
+}

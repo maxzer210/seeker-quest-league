@@ -10,7 +10,7 @@
 publisher:
   name: "Cryptonoframe"
   address: "REPLACE_WITH_PUBLISHER_NFT_ADDRESS_AFTER_CREATE"
-  website: "https://seekerquest.league"
+  website: "https://seekerquest-league.com"
   email: "adsskora@gmail.com"
   media:
     - purpose: icon
@@ -19,12 +19,12 @@ publisher:
 app:
   name: "Seeker Quest League"
   address: "REPLACE_WITH_APP_NFT_ADDRESS_AFTER_CREATE"
-  android_package: "com.seekerquest.league"
+  android_package: "com.seekerquest-league.com"
   urls:
-    license_url: "https://seekerquest.league/license"
-    copyright_url: "https://seekerquest.league/copyright"
-    privacy_policy_url: "https://seekerquest.league/privacy"
-    website: "https://seekerquest.league"
+    license_url: "https://seekerquest-league.com/license"
+    copyright_url: "https://seekerquest-league.com/copyright"
+    privacy_policy_url: "https://seekerquest-league.com/privacy"
+    website: "https://seekerquest-league.com"
   media:
     - purpose: icon
       uri: ./media/app-icon.png

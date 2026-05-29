@@ -16,8 +16,8 @@ Step-by-step instructions to publish on the Solana Mobile dApp Store.
 - [ ] 8 screenshots captured (see `dapp-store/SCREENSHOTS-PLAN.md`)
 - [ ] Banner, feature graphic, icons prepared
 - [ ] Publisher Solana wallet has ≥ 0.1 SOL mainnet
-- [ ] Privacy Policy URL is **live** (e.g. `https://seekerquest.league/privacy`)
-- [ ] Website domain `seekerquest.league` registered
+- [ ] Privacy Policy URL is **live** (e.g. `https://seekerquest-league.com/privacy`)
+- [ ] Website domain `seekerquest-league.com` registered
 
 ---
 

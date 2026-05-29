@@ -90,7 +90,7 @@ export const TREASURY_WALLET: string = 'EekTZsoxzVEdze1HEAqLQbMnx8ScBheWBW3Dsp9Q
 
 const APP_IDENTITY = {
   name: 'Seeker Quest League',
-  uri: 'https://seekerquest.league',
+  uri: 'https://seekerquest-league.com',
 };
 
 export type SolanaWalletSession = {

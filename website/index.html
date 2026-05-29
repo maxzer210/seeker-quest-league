@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Seeker Quest League — Tap to Earn, Win SOL · $SKORA Token</title>
+  <meta name="description" content="The premier Solana tap-to-earn league. Earn ORB, convert to $SKORA token, win SOL prizes. Genesis Pre-Season live now."/>
+  <link rel="icon" href="images/cleaned-cleaned-Gemini_Generated_Image_7m8kwb7m8kwb7m8k.png" type="image/png"/>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="nav" id="nav">
+    <div class="nav__inner">
+      <a class="nav__logo" href="#">
+        <img src="images/cleaned-cleaned-Gemini_Generated_Image_7m8kwb7m8kwb7m8k.png" alt="Seeker Quest League" class="nav__logo-img" onerror="this.style.display='none'"/>
+        <span class="nav__logo-text">Seeker<strong>Quest</strong></span>
+      </a>
+      <ul class="nav__links">
+        <li><a href="#about">About</a></li>
+        <li><a href="#how">How to Play</a></li>
+        <li><a href="#tokenomics">Tokenomics</a></li>
+        <li><a href="#roadmap">Roadmap</a></li>
+        <li><a href="#join" class="btn btn--neon">Play Now</a></li>
+      </ul>
+      <button class="nav__burger" id="burger" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+    <ul class="nav__mobile" id="mobileMenu">
+      <li><a href="#about">About</a></li>
+      <li><a href="#how">How to Play</a></li>
+      <li><a href="#tokenomics">Tokenomics</a></li>
+      <li><a href="#roadmap">Roadmap</a></li>
+      <li><a href="#join">Play Now</a></li>
+    </ul>
+  </nav>
+
+  <!-- HERO -->
+  <header class="hero" id="home">
+    <div class="hero__bg">
+      <video class="hero__banner" autoplay muted loop playsinline poster="images/Gemini_Generated_Image_de8v75de8v75de8v.png">
+        <source src="images/second_cinematic_trailer_fo.mp4" type="video/mp4"/>
+        <img src="images/Gemini_Generated_Image_de8v75de8v75de8v.png" alt="Seeker Quest League"/>
+      </video>
+      <div class="hero__overlay"></div>
+      <div class="particles" id="particles"></div>
+    </div>
+    <div class="hero__content">
+      <div class="hero__badge">
+        <span class="badge-dot"></span>
+        Genesis Pre-Season · Live Now
+      </div>
+      <h1 class="hero__title">
+        <span class="hero__title-line1">SEEKER QUEST</span>
+        <span class="hero__title-line2">LEAGUE</span>
+      </h1>
+      <p class="hero__tagline">TAP TO EARN <em>ORB</em> &nbsp;·&nbsp; CONVERT TO <em>$SKORA</em> &nbsp;·&nbsp; WIN <em>SOL</em></p>
+      <p class="hero__sub">The premier Solana tap-to-earn league where every tap counts.<br/>Earn ORB in-game, convert to $SKORA token, and claim real SOL prizes.</p>
+      <div class="hero__actions">
+        <a href="#join" class="btn btn--primary btn--lg">Start Playing Free</a>
+        <a href="#tokenomics" class="btn btn--glass btn--lg">View Tokenomics</a>
+      </div>
+      <div class="hero__powered">
+        <span>Powered by</span>
+        <svg class="solana-logo" viewBox="0 0 397 312" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M64.6 237.9c2.4-2.4 5.7-3.8 9.2-3.8h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1l62.7-62.7zM64.6 3.8C67.1 1.4 70.4 0 73.8 0h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1L64.6 3.8zM333.1 120.1c-2.4-2.4-5.7-3.8-9.2-3.8H6.5c-5.8 0-8.7 7-4.6 11.1l62.7 62.7c2.4 2.4 5.7 3.8 9.2 3.8h317.4c5.8 0 8.7-7 4.6-11.1l-62.7-62.7z" fill="url(#solGrad)"/>
+          <defs>
+            <linearGradient id="solGrad" x1="0" y1="0" x2="397" y2="312" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#9945FF"/>
+              <stop offset="100%" stop-color="#14F195"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <span class="sol-text">Solana</span>
+      </div>
+    </div>
+    <div class="hero__scroll">
+      <div class="scroll-line"></div>
+    </div>
+  </header>
+
+  <!-- STATS BAR -->
+  <div class="statsbar">
+    <div class="statsbar__inner">
+      <div class="statitem">
+        <span class="statitem__val" data-target="48200">0</span>
+        <span class="statitem__lbl">Players</span>
+      </div>
+      <div class="statitem__sep"></div>
+      <div class="statitem">
+        <span class="statitem__val" data-prefix="$" data-target="1200000">0</span>
+        <span class="statitem__lbl">Prizes Distributed</span>
+      </div>
+      <div class="statitem__sep"></div>
+      <div class="statitem">
+        <span class="statitem__val" data-target="1000000000" data-suffix=" SKORA">0</span>
+        <span class="statitem__lbl">Total Supply</span>
+      </div>
+      <div class="statitem__sep"></div>
+      <div class="statitem">
+        <span class="statitem__val" data-target="12">0</span>
+        <span class="statitem__lbl">Seasons Planned</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ABOUT -->
+  <section class="section about" id="about">
+    <div class="container">
+      <div class="about__grid">
+        <div class="about__text">
+          <div class="section__tag">About the Project</div>
+          <h2 class="section__title">What is<br/><span class="gradient-text">Seeker Quest League?</span></h2>
+          <p>Seeker Quest League is a mobile-first tap-to-earn game built on the <strong>Solana blockchain</strong>. Players tap their way through quests, earn <strong>SKORA tokens</strong>, and compete in seasonal leagues for real <strong>SOL prizes</strong>.</p>
+          <p>With the Genesis Pre-Season now live, early players get exclusive SKORA allocations, NFT badges, and priority access to future seasons — the earlier you start, the more you earn.</p>
+          <div class="about__chips">
+            <span class="chip">⚡ Built on Solana</span>
+            <span class="chip">🎮 Mobile First</span>
+            <span class="chip">🏆 Competitive Seasons</span>
+            <span class="chip">💎 NFT Rewards</span>
+          </div>
+        </div>
+        <div class="about__visual">
+          <div class="orbit-card">
+            <img src="images/cleaned-cleaned-Gemini_Generated_Image_7m8kwb7m8kwb7m8k.png" alt="Logo" class="orbit-card__logo" onerror="this.replaceWith(document.createTextNode('⬡'))"/>
+            <div class="orbit-ring orbit-ring--1"></div>
+            <div class="orbit-ring orbit-ring--2"></div>
+            <div class="orbit-ring orbit-ring--3"></div>
+            <div class="orbit-dot dot--1">🏆</div>
+            <div class="orbit-dot dot--2">⚡</div>
+            <div class="orbit-dot dot--3">💎</div>
+            <div class="orbit-dot dot--4">🚀</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW TO PLAY -->
+  <section class="section how" id="how">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__tag">Mechanics</div>
+        <h2 class="section__title">How to Play &amp; Earn</h2>
+        <p class="section__desc">Three simple steps to start earning real crypto rewards</p>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="step__num">01</div>
+          <div class="step__icon">📱</div>
+          <h3>Download &amp; Register</h3>
+          <p>Get the Seeker Quest League app, create your account, and connect your Solana wallet.</p>
+        </div>
+        <div class="step__arrow">→</div>
+        <div class="step">
+          <div class="step__num">02</div>
+          <div class="step__icon">👆</div>
+          <h3>Tap to Earn ORB</h3>
+          <p>Complete daily quests, tap missions, and battle challenges to accumulate ORB — the in-game fuel currency.</p>
+        </div>
+        <div class="step__arrow">→</div>
+        <div class="step">
+          <div class="step__num">03</div>
+          <div class="step__icon">💰</div>
+          <h3>Win SOL Rewards</h3>
+          <p>Convert ORB → $SKORA token, climb the leaderboard, and claim your share of the SOL prize pool.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TOKENOMICS -->
+  <section class="section tokenomics" id="tokenomics">
+    <div class="tokenomics__bg">
+      <div class="tok-orb tok-orb--1"></div>
+      <div class="tok-orb tok-orb--2"></div>
+    </div>
+    <div class="container">
+      <div class="section__header">
+        <div class="section__tag">$SKORA Token</div>
+        <h2 class="section__title">Tokenomics</h2>
+        <p class="section__desc">Total Supply: <strong>1,000,000,000 SKORA</strong> · Fixed emission · No inflation · Solana</p>
+      </div>
+
+      <!-- 3-Token Economy -->
+      <div class="token-economy">
+        <div class="te-card te-card--sol">
+          <div class="te-card__header">
+            <span class="te-card__icon">💵</span>
+            <div>
+              <div class="te-card__name">SOL</div>
+              <div class="te-card__type">Native Solana · On-chain</div>
+            </div>
+          </div>
+          <p class="te-card__desc">Real money. Players pay entry fees and win SOL prizes directly to their wallet.</p>
+        </div>
+        <div class="te-card te-card--skora">
+          <div class="te-card__header">
+            <span class="te-card__icon">🏆</span>
+            <div>
+              <div class="te-card__name">$SKORA</div>
+              <div class="te-card__type">Token · On-chain (Solana)</div>
+            </div>
+          </div>
+          <p class="te-card__desc">Основной токен наград. Конвертируется из ORB (10 000 ORB = 1 SKORA).</p>
+          <div class="te-card__badges">
+            <span class="te-badge te-badge--hot">🔜 Листинг на биржах скоро</span>
+            <span class="te-badge te-badge--airdrop">🎁 Аирдроп активным игрокам</span>
+          </div>
+        </div>
+        <div class="te-card te-card--orb">
+          <div class="te-card__header">
+            <span class="te-card__icon">⚡</span>
+            <div>
+              <div class="te-card__name">ORB</div>
+              <div class="te-card__type">Off-chain · Supabase</div>
+            </div>
+          </div>
+          <p class="te-card__desc">Игровая валюта. Геймплей-фьюэл без комиссий газа. Min claim: 10 000 ORB. Max per tx: 10 000 000 ORB.</p>
+        </div>
+      </div>
+
+      <div class="tok__grid">
+        <!-- Pie Chart -->
+        <div class="tok__chart-wrap">
+          <div class="tok__chart">
+            <svg viewBox="0 0 220 220" class="pie-svg">
+              <!-- Community rewards 40% → 201.06 / 502.65 -->
+              <circle class="pie-seg" cx="110" cy="110" r="80"
+                stroke="#9945FF" stroke-width="44"
+                stroke-dasharray="201.06 502.65"
+                stroke-dashoffset="0"
+                transform="rotate(-90 110 110)"/>
+              <!-- Treasury 20% → 100.53 -->
+              <circle class="pie-seg" cx="110" cy="110" r="80"
+                stroke="#e040fb" stroke-width="44"
+                stroke-dasharray="100.53 502.65"
+                stroke-dashoffset="-201.06"
+                transform="rotate(-90 110 110)"/>
+              <!-- Founders pool 15% → 75.40 -->
+              <circle class="pie-seg" cx="110" cy="110" r="80"
+                stroke="#f59e0b" stroke-width="44"
+                stroke-dasharray="75.40 502.65"
+                stroke-dashoffset="-301.59"
+                transform="rotate(-90 110 110)"/>
+              <!-- Liquidity 15% → 75.40 -->
+              <circle class="pie-seg" cx="110" cy="110" r="80"
+                stroke="#14F195" stroke-width="44"
+                stroke-dasharray="75.40 502.65"
+                stroke-dashoffset="-376.99"
+                transform="rotate(-90 110 110)"/>
+              <!-- Team & ops 10% → 50.27 -->
+              <circle class="pie-seg" cx="110" cy="110" r="80"
+                stroke="#06b6d4" stroke-width="44"
+                stroke-dasharray="50.27 502.65"
+                stroke-dashoffset="-452.39"
+                transform="rotate(-90 110 110)"/>
+              <!-- Center -->
+              <circle cx="110" cy="110" r="58" fill="#08081a"/>
+              <text x="110" y="104" text-anchor="middle" class="pie-label-main">1B</text>
+              <text x="110" y="122" text-anchor="middle" class="pie-label-sub">SKORA</text>
+            </svg>
+          </div>
+          <div class="tok__legend">
+            <div class="legend-item"><span class="legend-dot" style="background:#9945FF"></span><span>🎮 Community rewards</span><strong>40%</strong></div>
+            <div class="legend-item"><span class="legend-dot" style="background:#e040fb"></span><span>🏛 Treasury</span><strong>20%</strong></div>
+            <div class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span><span>💎 Founders pool</span><strong>15%</strong></div>
+            <div class="legend-item"><span class="legend-dot" style="background:#14F195"></span><span>💧 Liquidity (DEX)</span><strong>15%</strong></div>
+            <div class="legend-item"><span class="legend-dot" style="background:#06b6d4"></span><span>👥 Team &amp; ops</span><strong>10%</strong></div>
+          </div>
+        </div>
+
+        <!-- Metrics Cards -->
+        <div class="tok__metrics">
+          <div class="tok-card tok-card--purple">
+            <div class="tok-card__icon">🪙</div>
+            <div class="tok-card__body">
+              <div class="tok-card__label">Token Name</div>
+              <div class="tok-card__val">$SKORA</div>
+            </div>
+          </div>
+          <div class="tok-card tok-card--green">
+            <div class="tok-card__icon">🔗</div>
+            <div class="tok-card__body">
+              <div class="tok-card__label">Blockchain</div>
+              <div class="tok-card__val">Solana</div>
+            </div>
+          </div>
+          <div class="tok-card tok-card--cyan">
+            <div class="tok-card__icon">📦</div>
+            <div class="tok-card__body">
+              <div class="tok-card__label">Total Supply</div>
+              <div class="tok-card__val">1,000,000,000</div>
+            </div>
+          </div>
+          <div class="tok-card tok-card--gold">
+            <div class="tok-card__icon">⚡</div>
+            <div class="tok-card__body">
+              <div class="tok-card__label">Conversion</div>
+              <div class="tok-card__val">10K ORB = 1 SKORA</div>
+            </div>
+          </div>
+          <div class="tok-card tok-card--pink">
+            <div class="tok-card__icon">🚫</div>
+            <div class="tok-card__body">
+              <div class="tok-card__label">Emission</div>
+              <div class="tok-card__val">Fixed · No Inflation</div>
+            </div>
+          </div>
+          <div class="tok-card tok-card--red">
+            <div class="tok-card__icon">🔢</div>
+            <div class="tok-card__body">
+              <div class="tok-card__label">Decimals</div>
+              <div class="tok-card__val">6</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vesting Timeline -->
+      <div class="vesting">
+        <h3 class="vesting__title">Vesting Schedule</h3>
+        <div class="vesting__bars">
+          <div class="vbar">
+            <div class="vbar__label"><span>🎮 Community Rewards</span><span style="color:#9945FF">400M SKORA</span></div>
+            <div class="vbar__track"><div class="vbar__fill" style="width:0%;background:#9945FF" data-width="100"></div></div>
+            <div class="vbar__note">48 months linear · distributed via in-game rewards</div>
+          </div>
+          <div class="vbar">
+            <div class="vbar__label"><span>🏛 Treasury</span><span style="color:#e040fb">200M SKORA</span></div>
+            <div class="vbar__track"><div class="vbar__fill" style="width:0%;background:#e040fb" data-width="75"></div></div>
+            <div class="vbar__note">12-month cliff · then 5% per quarter</div>
+          </div>
+          <div class="vbar">
+            <div class="vbar__label"><span>💎 Founders Pool</span><span style="color:#f59e0b">150M SKORA</span></div>
+            <div class="vbar__track"><div class="vbar__fill" style="width:0%;background:#f59e0b" data-width="60"></div></div>
+            <div class="vbar__note">6-month vesting from Season 1 launch</div>
+          </div>
+          <div class="vbar">
+            <div class="vbar__label"><span>💧 Liquidity (DEX)</span><span style="color:#14F195">150M SKORA</span></div>
+            <div class="vbar__track"><div class="vbar__fill" style="width:0%;background:#14F195" data-width="100"></div></div>
+            <div class="vbar__note">LP locked 24 months on DEX</div>
+          </div>
+          <div class="vbar">
+            <div class="vbar__label"><span>👥 Team &amp; Ops</span><span style="color:#06b6d4">100M SKORA</span></div>
+            <div class="vbar__track"><div class="vbar__fill" style="width:0%;background:#06b6d4" data-width="70"></div></div>
+            <div class="vbar__note">6-month cliff · 24-month linear vesting</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ROADMAP -->
+  <section class="section roadmap" id="roadmap">
+    <div class="container">
+      <div class="section__header">
+        <div class="section__tag">Development</div>
+        <h2 class="section__title">Roadmap</h2>
+      </div>
+      <div class="timeline">
+        <div class="tl-item tl-item--done">
+          <div class="tl-dot"></div>
+          <div class="tl-content">
+            <div class="tl-phase">Q1 2026</div>
+            <h4>Genesis Pre-Season</h4>
+            <ul>
+              <li>App launch on iOS &amp; Android</li>
+              <li>Tap-to-Earn core mechanics live</li>
+              <li>SKORA token deployment on Solana</li>
+              <li>First 50K players onboarded</li>
+            </ul>
+          </div>
+        </div>
+        <div class="tl-item tl-item--active">
+          <div class="tl-dot"></div>
+          <div class="tl-content">
+            <div class="tl-phase">Q2 2026</div>
+            <h4>Season 1 · League Wars</h4>
+            <ul>
+              <li>Competitive league system</li>
+              <li>SOL prize pool ($100K)</li>
+              <li>NFT reward badges</li>
+              <li>Guild &amp; team features</li>
+            </ul>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot"></div>
+          <div class="tl-content">
+            <div class="tl-phase">Q3 2026</div>
+            <h4>DEX Listing &amp; IDO</h4>
+            <ul>
+              <li>SKORA public sale / IDO</li>
+              <li>Raydium &amp; Jupiter listing</li>
+              <li>Staking &amp; governance</li>
+              <li>Cross-chain bridge</li>
+            </ul>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot"></div>
+          <div class="tl-content">
+            <div class="tl-phase">Q4 2026</div>
+            <h4>Ecosystem Expansion</h4>
+            <ul>
+              <li>Marketplace for NFTs</li>
+              <li>Partner integrations</li>
+              <li>DAO governance launch</li>
+              <li>Season 2 &amp; beyond</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- JOIN CTA -->
+  <section class="section cta" id="join">
+    <div class="cta__bg">
+      <div class="cta-orb cta-orb--1"></div>
+      <div class="cta-orb cta-orb--2"></div>
+    </div>
+    <div class="container">
+      <div class="cta__inner">
+        <div class="section__tag">Ready to Earn?</div>
+        <h2 class="section__title">Join the Genesis Pre-Season</h2>
+        <p>Be among the first players to earn SKORA and compete for real SOL prizes. Genesis players get exclusive early-bird rewards and bonus allocations.</p>
+        <form class="cta__form" id="joinForm">
+          <input type="email" placeholder="Enter your email address" class="input" required />
+          <button type="submit" class="btn btn--primary btn--lg">Claim Early Access</button>
+        </form>
+        <p class="cta__note">Free to play · No credit card · Solana wallet required to claim rewards</p>
+        <div class="cta__success" id="formSuccess">
+          🎉 You're in! Check your inbox for your Genesis Seeker invite.
+        </div>
+        <div class="cta__socials">
+          <a href="https://x.com/SeekerQuestLeag" target="_blank" rel="noopener" class="social-btn">𝕏 Twitter</a>
+          <a href="https://t.me/seekerleague" target="_blank" rel="noopener" class="social-btn">✈ Telegram</a>
+          <a href="#" class="social-btn">💬 Discord</a>
+          <a href="mailto:ads@seekerquest-league.com" class="social-btn">📧 Partnerships</a>
+          <a href="mailto:sales@seekerquest-league.com" class="social-btn">💼 Sales</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__top">
+        <a class="nav__logo" href="#">
+          <img src="images/cleaned-cleaned-Gemini_Generated_Image_7m8kwb7m8kwb7m8k.png" alt="Logo" class="nav__logo-img" onerror="this.style.display='none'"/>
+          <span class="nav__logo-text">Seeker<strong>Quest</strong></span>
+        </a>
+        <p class="footer__desc">The premier Solana tap-to-earn league.<br/>Earn SKORA · Win SOL · Rise to Legend.</p>
+        <div class="footer__emails">
+          <a href="mailto:hello@seekerquest-league.com">hello@seekerquest-league.com</a>
+          <a href="mailto:support@seekerquest-league.com">support@seekerquest-league.com</a>
+          <a href="mailto:ads@seekerquest-league.com">ads@seekerquest-league.com</a>
+        </div>
+      </div>
+      <div class="footer__bottom">
+        <div class="footer__socials">
+          <a href="https://x.com/SeekerQuestLeag" target="_blank" rel="noopener" class="footer__social">𝕏</a>
+          <a href="https://t.me/seekerleague" target="_blank" rel="noopener" class="footer__social">✈</a>
+        </div>
+        <p class="footer__copy">© 2026 SeekerQuest League. All rights reserved.</p>
+        <ul class="footer__links">
+          <li><a href="privacy.html">Privacy Policy</a></li>
+          <li><a href="#">Terms of Service</a></li>
+          <li><a href="mailto:hello@seekerquest-league.com">Contact</a></li>
+        </ul>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

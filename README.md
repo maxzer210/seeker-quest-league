@@ -330,7 +330,7 @@ For partnership inquiries (advertising, integrations, investments), contact **ad
 | Channel | Where |
 |---------|-------|
 | 📧 Email | [adsskora@gmail.com](mailto:adsskora@gmail.com) |
-| 🌐 Website | [seekerquest.league](https://seekerquest.league) *(soon)* |
+| 🌐 Website | [seekerquest-league.com](https://seekerquest-league.com) *(soon)* |
 | 🐦 X / Twitter | *(soon)* |
 | 💬 Telegram | *(soon)* |
 

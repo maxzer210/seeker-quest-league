@@ -127,7 +127,7 @@ Questions about this policy:
 **adsskora@gmail.com**
 
 Project website:
-**https://seekerquest.league**
+**https://seekerquest-league.com**
 
 ---
 
