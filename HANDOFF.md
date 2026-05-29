@@ -30,7 +30,7 @@
    - Premium SOL auto-burn (5% weekly)
 
 ### Фаза C — Security & GitHub
-1. ✅ **Email rename** → `adsskora@gmail.com` (13 occurrences, 8 файлов)
+1. ✅ **Email rename** → `hello@seekerquest-league.com` (13 occurrences, 8 файлов)
 2. ✅ **Secrets untracked** — credentials, keystore, logs removed from git
 3. ✅ **Git history cleaned** — filter-branch removed secrets from ALL commits
 4. ✅ **Private GitHub repo** — `github.com/maxzer210/seeker-quest-league`
@@ -83,7 +83,7 @@ SKORA mint:            3HTkC3v9CYTxGYQSegsidgzfxEQJvAotYZVozmaFc2av
 SKORA Treasury ATA:    skbhes18WDERZ9MgSrhHtKwUyEyxGhzYwyMdRkt69sZ
 Supabase URL:          qxejdpvjggqjqoydujjd.supabase.co
 GitHub repo:           github.com/maxzer210/seeker-quest-league (private)
-Email:                 adsskora@gmail.com
+Email:                 hello@seekerquest-league.com
 ```
 
 ## 💰 SOL Pricing (FINAL v0.2)

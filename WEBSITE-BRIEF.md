@@ -171,7 +171,7 @@ Hover: подсветка цветной рамки.
   - **Project**: About / Roadmap / Tokenomics / Litepaper
   - **Community**: Twitter / Telegram / Discord / GitHub
   - **Legal**: Privacy Policy / Terms / Contact
-- Внизу: `© 2026 Seeker Quest League · adsskora@gmail.com`
+- Внизу: `© 2026 Seeker Quest League · hello@seekerquest-league.com`
 - Маленький Solana logo
 
 ---
@@ -180,7 +180,7 @@ Hover: подсветка цветной рамки.
 
 Уже есть готовый HTML — `dapp-store/privacy.html`.
 Скопируй его как `privacy.html` и подгони стиль под сайт.
-Контактный email: **adsskora@gmail.com**
+Контактный email: **hello@seekerquest-league.com**
 
 ---
 
@@ -230,7 +230,7 @@ Hover: подсветка цветной рамки.
 - Telegram: `https://t.me/seekerquest` (заглушка)
 - GitHub: `https://github.com/seekerquest` (заглушка)
 - Litepaper: `/litepaper.pdf` (потом сгенерим из MD)
-- Email: `mailto:adsskora@gmail.com`
+- Email: `mailto:hello@seekerquest-league.com`
 
 ---
 
@@ -259,5 +259,5 @@ Hover: подсветка цветной рамки.
 
 ---
 
-**Контакт для деталей:** `adsskora@gmail.com`
+**Контакт для деталей:** `hello@seekerquest-league.com`
 **Проект готов на ~85%, осталось только это и иконки.**

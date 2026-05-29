@@ -10,7 +10,7 @@ import {
 } from '../lib/ads';
 import { t, useLang } from '../lib/i18n';
 
-const ADVERTISER_EMAIL = 'adsskora@gmail.com';
+const ADVERTISER_EMAIL = 'ads@seekerquest-league.com';
 const ADVERTISER_TELEGRAM = 'https://t.me/seekerquest_ads';
 
 type Props = {

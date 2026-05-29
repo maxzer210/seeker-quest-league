@@ -110,7 +110,7 @@ npx dapp-store publish submit dapp-store/config.yaml -k dapp-store/publisher.jso
 - ✅ P2P ORB Send modal с preview
 - ✅ Supabase miграция P2P (transfer_orb RPC + tables)
 - ✅ Triple burn mechanism (констант)
-- ✅ Email rename → adsskora@gmail.com
+- ✅ Email rename → hello@seekerquest-league.com
 - ✅ Git history cleaned from secrets
 - ✅ Private GitHub repo
 - ✅ README.md, HANDOFF.md, WEBSITE-BRIEF.md, TOKENOMICS.md v0.2

@@ -102,7 +102,7 @@ Be among the first 100 Founders. Get a permanent 2Г— ORB multiplier and an ex
 Built by Seekers, for Seekers.
 
 рџЊђ https://seekerquest-league.com
-рџ“§ adsskora@gmail.com
+рџ“§ hello@seekerquest-league.com
 ```
 
 ---
@@ -174,7 +174,7 @@ Built for Solana Mobile Seeker. Exclusive perks for SGT holders: 2Г— ORB rewa
 
 ## 8. Contact / Support
 
-**Email:** adsskora@gmail.com
+**Email:** hello@seekerquest-league.com
 **Website:** https://seekerquest-league.com
 **Privacy Policy:** https://seekerquest-league.com/privacy
 **Terms / License:** https://seekerquest-league.com/license

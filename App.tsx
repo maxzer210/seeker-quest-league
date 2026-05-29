@@ -1936,13 +1936,13 @@ function AppInner() {
               <Text style={styles.privacyPara}>You may:</Text>
               <Text style={styles.privacyBullet}>• <Text style={{ fontWeight: '600' }}>Stop playing at any time</Text> — uninstall the App to remove local data</Text>
               <Text style={styles.privacyBullet}>• <Text style={{ fontWeight: '600' }}>Disconnect your wallet</Text> — go to Profile → Wallet → Disconnect</Text>
-              <Text style={styles.privacyBullet}>• <Text style={{ fontWeight: '600' }}>Request data deletion</Text> — email us at adsskora@gmail.com with your device ID. We will delete your records within 30 days. Note: on-chain transactions cannot be deleted.</Text>
+              <Text style={styles.privacyBullet}>• <Text style={{ fontWeight: '600' }}>Request data deletion</Text> — email us at support@seekerquest-league.com with your device ID. We will delete your records within 30 days. Note: on-chain transactions cannot be deleted.</Text>
 
               <Text style={styles.privacyH2}>8. CHANGES TO THIS POLICY</Text>
               <Text style={styles.privacyPara}>We may update this policy. Material changes will be announced in the App and on our website. Continued use after changes means acceptance.</Text>
 
               <Text style={styles.privacyH2}>9. CONTACT</Text>
-              <Text style={styles.privacyPara}>Questions about this policy: adsskora@gmail.com</Text>
+              <Text style={styles.privacyPara}>Questions about this policy: support@seekerquest-league.com</Text>
               <Text style={styles.privacyPara}>Project website: seekerquest-league.com</Text>
               <Text style={styles.privacyNote}>This Privacy Policy is published publicly to satisfy Solana Mobile dApp Store requirements. It is the authoritative description of our data practices.</Text>
 

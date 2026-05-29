@@ -281,7 +281,7 @@ This repository follows strict secret-hygiene rules:
 - ✅ **HTTPS-only** Supabase and Solana RPC
 - ✅ **Anti-sybil** via Seeker Genesis Token (SGT) verification
 
-For responsible disclosure of security vulnerabilities, email **adsskora@gmail.com** with the subject `[SECURITY]`.
+For responsible disclosure of security vulnerabilities, email **support@seekerquest-league.com** with the subject `[SECURITY]`.
 
 ---
 
@@ -321,7 +321,7 @@ For responsible disclosure of security vulnerabilities, email **adsskora@gmail.c
 This is currently a **closed-source** proprietary project.
 Public contributions will open after Season 1 mainnet launch.
 
-For partnership inquiries (advertising, integrations, investments), contact **adsskora@gmail.com**.
+For partnership inquiries (advertising, integrations, investments), contact **hello@seekerquest-league.com**.
 
 ---
 
@@ -329,7 +329,7 @@ For partnership inquiries (advertising, integrations, investments), contact **ad
 
 | Channel | Where |
 |---------|-------|
-| 📧 Email | [adsskora@gmail.com](mailto:adsskora@gmail.com) |
+| 📧 Email | [hello@seekerquest-league.com](mailto:hello@seekerquest-league.com) |
 | 🌐 Website | [seekerquest-league.com](https://seekerquest-league.com) *(soon)* |
 | 🐦 X / Twitter | *(soon)* |
 | 💬 Telegram | *(soon)* |
@@ -344,7 +344,7 @@ Copyright © 2026 Seeker Quest League.
 Code, assets, branding, and game mechanics are the exclusive property of the project owner.
 Unauthorized reproduction, modification, or distribution is prohibited.
 
-For licensing inquiries: **adsskora@gmail.com**
+For licensing inquiries: **hello@seekerquest-league.com**
 
 ---
 

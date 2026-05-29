@@ -229,7 +229,7 @@ C:\sk\
 ### рџџў Р”РµР№СЃС‚РІРёСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ (РЅРµ РєРѕРґ)
 - вЏё **РџСЂРёРјРµРЅРёС‚СЊ 5 SQL РјРёРіСЂР°С†РёР№** РІ Supabase (sgt-bonus, prize-distribution, skora-claims, ads, pvp)
 - вЏё Р—Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°С‚СЊ `seekerquest-league.com` + С…РѕСЃС‚ Privacy Policy
-- вЏё Email `adsskora@gmail.com` (Cloudflare Email Routing)
+- вЏё Email `hello@seekerquest-league.com` (Cloudflare Email Routing)
 - вЏё 8 СЃРєСЂРёРЅС€РѕС‚РѕРІ РґР»СЏ dApp Store
 - вЏё РўРµСЃС‚С‹ РїРѕСЃР»РµРґРЅРµРіРѕ APK РЅР° Seeker
 

@@ -102,7 +102,7 @@ refund if it violates community guidelines.
 
 ### Step 1 вЂ” Send a proposal
 
-Email **adsskora@gmail.com** with subject: `[CAMPAIGN] <your project name>`
+Email **ads@seekerquest-league.com** with subject: `[CAMPAIGN] <your project name>`
 
 Include in the body:
 1. Project name + 1-2 sentence pitch
@@ -161,7 +161,7 @@ We email you daily:
 
 ## рџ“ћ Contact
 
-**Primary:**     adsskora@gmail.com
+**Primary:**     ads@seekerquest-league.com
 **Telegram:**    https://t.me/seekerquest_ads
 **Response:**    < 24 hours
 **Language:**    English, Russian

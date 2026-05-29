@@ -108,7 +108,7 @@ App unsuitable for minors in most jurisdictions.
 You may:
 - **Stop playing at any time** вЂ” uninstall the App to remove local data
 - **Disconnect your wallet** вЂ” go to Profile в†’ Wallet в†’ Disconnect
-- **Request data deletion** вЂ” email us at adsskora@gmail.com with your
+- **Request data deletion** вЂ” email us at support@seekerquest-league.com with your
   device ID. We will delete your records within 30 days. Note: on-chain
   transactions cannot be deleted.
 
@@ -124,7 +124,7 @@ and on our website. Continued use after changes means acceptance.
 ## 9. Contact
 
 Questions about this policy:
-**adsskora@gmail.com**
+**support@seekerquest-league.com**
 
 Project website:
 **https://seekerquest-league.com**

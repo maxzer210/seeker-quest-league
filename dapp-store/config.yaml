@@ -11,7 +11,7 @@ publisher:
   name: "Cryptonoframe"
   address: "REPLACE_WITH_PUBLISHER_NFT_ADDRESS_AFTER_CREATE"
   website: "https://seekerquest-league.com"
-  email: "adsskora@gmail.com"
+  email: "hello@seekerquest-league.com"
   media:
     - purpose: icon
       uri: ./media/publisher-icon.png
