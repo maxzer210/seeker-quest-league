@@ -46,6 +46,11 @@ import {
   FOUNDER_GOLD_LAMPORTS,
   FOUNDER_DIAMOND_SOL,
   FOUNDER_DIAMOND_LAMPORTS,
+  ORB_TRADE_FEE_PCT,
+  ORB_TRADE_BURN_PCT,
+  ORB_TRADE_TREASURY_PCT,
+  ORB_TRADE_MIN,
+  ORB_TRADE_MAX_PER_DAY,
   connectSolanaWallet,
   payForWheelSpin,
   paySolToTreasury,
@@ -367,6 +372,11 @@ function AppInner() {
   const [editingUsername, setEditingUsername] = useState(false);
   const [pendingUsername, setPendingUsername]  = useState('');
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  // P2P ORB Send modal
+  const [showSendOrbModal, setShowSendOrbModal] = useState(false);
+  const [sendRecipient,    setSendRecipient]    = useState('');
+  const [sendAmount,       setSendAmount]       = useState('');
+  const [sendPending,      setSendPending]      = useState(false);
 
   // Daily streak
   const [streakCount, setStreakCount]   = useState(0);
@@ -943,6 +953,84 @@ function AppInner() {
       setSolShopPending(false);
       setTimeout(() => setSolShopStatus(''), 8000);
     }
+  }
+
+  // ── P2P ORB TRANSFER ────────────────────────────────────────────────────
+  async function executeSendOrb() {
+    const recipient = sendRecipient.trim();
+    const amount    = parseInt(sendAmount, 10);
+
+    if (!recipient) {
+      Alert.alert('Recipient required', 'Enter username or device ID');
+      return;
+    }
+    if (recipient === deviceIdRef.current) {
+      Alert.alert('Cannot send to yourself');
+      return;
+    }
+    if (!Number.isFinite(amount) || amount < ORB_TRADE_MIN) {
+      Alert.alert('Minimum transfer', `Send at least ${ORB_TRADE_MIN.toLocaleString()} ORB`);
+      return;
+    }
+    if (amount > orb) {
+      Alert.alert('Insufficient balance', `You have ${orb.toLocaleString()} ORB`);
+      return;
+    }
+
+    const fee      = Math.floor(amount * ORB_TRADE_FEE_PCT);
+    const net      = amount - fee;
+    const burned   = Math.floor(amount * ORB_TRADE_BURN_PCT);
+    const treasury = fee - burned;
+
+    Alert.alert(
+      'Confirm transfer',
+      `Send ${amount.toLocaleString()} ORB → ${recipient}\n\n` +
+      `Recipient receives: ${net.toLocaleString()} ORB\n` +
+      `🔥 Burned: ${burned.toLocaleString()} ORB\n` +
+      `🏛 Treasury fee: ${treasury.toLocaleString()} ORB`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'SEND', onPress: async () => {
+          setSendPending(true);
+          try {
+            // Try lookup by username if not a device_id format
+            let recipientId = recipient;
+            if (recipient.length < 30) {
+              const { data: rec } = await supabase
+                .from('players')
+                .select('device_id')
+                .eq('username', recipient)
+                .maybeSingle();
+              if (rec?.device_id) recipientId = rec.device_id;
+            }
+
+            const { data, error } = await supabase.rpc('transfer_orb', {
+              p_sender:    deviceIdRef.current,
+              p_recipient: recipientId,
+              p_amount:    amount,
+            });
+            if (error) throw error;
+
+            // Update local balance
+            const nextOrb = orb - amount;
+            setOrb(nextOrb);
+            syncScore(nextOrb, level, streakCount);
+
+            setShowSendOrbModal(false);
+            setSendRecipient('');
+            setSendAmount('');
+            Alert.alert('✓ Transfer complete',
+              `Sent ${amount.toLocaleString()} ORB\n` +
+              `Recipient received: ${data?.received?.toLocaleString() ?? net.toLocaleString()} ORB`,
+            );
+          } catch (e: any) {
+            Alert.alert('Transfer failed', e?.message ?? 'Could not send ORB. Try again.');
+          } finally {
+            setSendPending(false);
+          }
+        }},
+      ],
+    );
   }
 
   // ── FOUNDER PASS HANDLER ────────────────────────────────────────────────
@@ -1526,6 +1614,117 @@ function AppInner() {
             </TouchableOpacity>
 
           </Animated.View>
+        </View>
+      </Modal>
+
+      {/* ═══════════ SEND ORB MODAL ═══════════ */}
+      <Modal visible={showSendOrbModal} transparent animationType="fade" statusBarTranslucent
+        onRequestClose={() => setShowSendOrbModal(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.sendOrbModal}>
+            <View style={styles.sendOrbHeader}>
+              <Text style={styles.sendOrbTitle}>📤  SEND ORB</Text>
+              <TouchableOpacity onPress={() => setShowSendOrbModal(false)} style={styles.sendOrbClose}>
+                <Text style={{ color: '#94A3B8', fontSize: 22, fontWeight: '700' }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.sendOrbBalance}>Available: <Text style={{ color: '#FACC15', fontWeight: '900' }}>{orb.toLocaleString()} ORB</Text></Text>
+
+            {/* Recipient input */}
+            <Text style={styles.sendOrbLabel}>RECIPIENT</Text>
+            <TextInput
+              style={styles.sendOrbInput}
+              value={sendRecipient}
+              onChangeText={setSendRecipient}
+              placeholder="Username or device ID"
+              placeholderTextColor="#475569"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+
+            {/* Amount input */}
+            <Text style={styles.sendOrbLabel}>AMOUNT (ORB)</Text>
+            <TextInput
+              style={styles.sendOrbInput}
+              value={sendAmount}
+              onChangeText={(t) => setSendAmount(t.replace(/[^0-9]/g, ''))}
+              placeholder={`Min ${ORB_TRADE_MIN.toLocaleString()}`}
+              placeholderTextColor="#475569"
+              keyboardType="number-pad"
+            />
+
+            {/* Quick amount chips */}
+            <View style={styles.sendOrbChips}>
+              {[1_000, 5_000, 10_000, 50_000].map(amt => (
+                <TouchableOpacity
+                  key={amt}
+                  style={[styles.sendOrbChip, orb < amt && styles.sendOrbChipDisabled]}
+                  onPress={() => orb >= amt && setSendAmount(String(amt))}
+                  disabled={orb < amt}
+                >
+                  <Text style={[styles.sendOrbChipTxt, orb < amt && { color: '#334155' }]}>
+                    {amt >= 1000 ? `${amt / 1000}K` : amt}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Preview */}
+            {sendAmount && parseInt(sendAmount, 10) >= ORB_TRADE_MIN && (
+              <View style={styles.sendOrbPreview}>
+                <View style={styles.sendOrbPreviewRow}>
+                  <Text style={styles.sendOrbPreviewKey}>You send</Text>
+                  <Text style={styles.sendOrbPreviewVal}>{parseInt(sendAmount, 10).toLocaleString()} ORB</Text>
+                </View>
+                <View style={styles.sendOrbPreviewRow}>
+                  <Text style={styles.sendOrbPreviewKey}>Recipient gets</Text>
+                  <Text style={[styles.sendOrbPreviewVal, { color: '#22C55E' }]}>
+                    {Math.floor(parseInt(sendAmount, 10) * (1 - ORB_TRADE_FEE_PCT)).toLocaleString()} ORB
+                  </Text>
+                </View>
+                <View style={styles.sendOrbPreviewRow}>
+                  <Text style={styles.sendOrbPreviewKey}>🔥 Burned ({Math.round(ORB_TRADE_BURN_PCT * 100)}%)</Text>
+                  <Text style={[styles.sendOrbPreviewVal, { color: '#EF4444' }]}>
+                    {Math.floor(parseInt(sendAmount, 10) * ORB_TRADE_BURN_PCT).toLocaleString()} ORB
+                  </Text>
+                </View>
+                <View style={styles.sendOrbPreviewRow}>
+                  <Text style={styles.sendOrbPreviewKey}>🏛 Treasury ({Math.round(ORB_TRADE_TREASURY_PCT * 100)}%)</Text>
+                  <Text style={[styles.sendOrbPreviewVal, { color: '#A78BFA' }]}>
+                    {Math.floor(parseInt(sendAmount, 10) * ORB_TRADE_TREASURY_PCT).toLocaleString()} ORB
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {/* Submit */}
+            <TouchableOpacity
+              onPress={executeSendOrb}
+              disabled={sendPending || !sendAmount || parseInt(sendAmount, 10) < ORB_TRADE_MIN || parseInt(sendAmount, 10) > orb}
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={
+                  sendPending || !sendAmount || parseInt(sendAmount || '0', 10) < ORB_TRADE_MIN || parseInt(sendAmount || '0', 10) > orb
+                    ? ['#1E293B', '#0F172A']
+                    : ['#22C55E', '#10B981']
+                }
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={styles.sendOrbBtn}
+              >
+                <Text style={[styles.sendOrbBtnText,
+                  (sendPending || !sendAmount || parseInt(sendAmount || '0', 10) < ORB_TRADE_MIN || parseInt(sendAmount || '0', 10) > orb)
+                    && { color: '#475569' }]}>
+                  {sendPending ? '⏳  SENDING...' : '📤  SEND ORB'}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <Text style={styles.sendOrbHint}>
+              ✦ Max {ORB_TRADE_MAX_PER_DAY.toLocaleString()} ORB / 24h · 1 transfer per minute
+            </Text>
+          </View>
         </View>
       </Modal>
 
@@ -2883,6 +3082,24 @@ function AppInner() {
                 </TouchableOpacity>
               </View>
 
+              {/* ── Send ORB to other players ── */}
+              <View style={styles.profileSection}>
+                <TouchableOpacity
+                  style={styles.settingRow}
+                  onPress={() => setShowSendOrbModal(true)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.settingLeft}>
+                    <Text style={styles.settingIcon}>📤</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.settingLabel}>Send ORB</Text>
+                      <Text style={styles.settingSub}>Transfer to another player · 5% fee</Text>
+                    </View>
+                  </View>
+                  <Text style={{ fontSize: 16, color: '#22C55E' }}>›</Text>
+                </TouchableOpacity>
+              </View>
+
               {/* ── Privacy Policy ── */}
               <View style={styles.profileSection}>
                 <TouchableOpacity
@@ -3379,6 +3596,32 @@ const styles = StyleSheet.create({
   founderMaxedIcon: { fontSize: 32 },
   founderMaxedTitle:{ color: '#22D3EE', fontSize: 14, fontWeight: '900', letterSpacing: 2 },
   founderMaxedSub:  { color: '#67E8F9', fontSize: 10, marginTop: 3, fontWeight: '600' },
+
+  // ── Send ORB Modal ────────────────────────────────────────────────────────
+  sendOrbModal:        { backgroundColor: '#0A0A12', borderRadius: 22, padding: 22, margin: 18,
+                         width: '88%', maxWidth: 420,
+                         borderWidth: 1.5, borderColor: 'rgba(34,197,94,0.4)' },
+  sendOrbHeader:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  sendOrbTitle:        { color: '#22C55E', fontSize: 18, fontWeight: '900', letterSpacing: 3 },
+  sendOrbClose:        { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+  sendOrbBalance:      { color: '#94A3B8', fontSize: 12, fontWeight: '700', marginBottom: 16 },
+  sendOrbLabel:        { color: '#475569', fontSize: 10, letterSpacing: 2, fontWeight: '900',
+                         marginTop: 10, marginBottom: 6 },
+  sendOrbInput:        { backgroundColor: '#060F1E', borderRadius: 12, borderWidth: 1, borderColor: '#1E293B',
+                         color: '#E2E8F0', fontSize: 14, paddingHorizontal: 14, paddingVertical: 12 },
+  sendOrbChips:        { flexDirection: 'row', gap: 6, marginTop: 8, marginBottom: 6 },
+  sendOrbChip:         { flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: 'center',
+                         backgroundColor: '#0F172A', borderWidth: 1, borderColor: '#1E293B' },
+  sendOrbChipDisabled: { opacity: 0.35 },
+  sendOrbChipTxt:      { color: '#94A3B8', fontSize: 12, fontWeight: '800' },
+  sendOrbPreview:      { marginTop: 14, padding: 12, backgroundColor: 'rgba(0,0,0,0.35)', borderRadius: 12,
+                         borderWidth: 1, borderColor: 'rgba(34,197,94,0.25)', gap: 7 },
+  sendOrbPreviewRow:   { flexDirection: 'row', justifyContent: 'space-between' },
+  sendOrbPreviewKey:   { color: '#94A3B8', fontSize: 11 },
+  sendOrbPreviewVal:   { color: '#E2E8F0', fontSize: 12, fontWeight: '800' },
+  sendOrbBtn:          { paddingVertical: 14, alignItems: 'center', borderRadius: 14, marginTop: 16 },
+  sendOrbBtnText:      { color: '#FFF', fontSize: 14, fontWeight: '900', letterSpacing: 2 },
+  sendOrbHint:         { color: '#475569', fontSize: 10, textAlign: 'center', marginTop: 12, fontWeight: '600' },
   content:  { flex: 1, paddingHorizontal: 20 },
 
   // streak banner (home screen)
