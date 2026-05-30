@@ -90,6 +90,7 @@ import CosmeticNftTeaser from './components/CosmeticNftTeaser';
 import { loadSavedTheme, setActiveTheme, NFT_THEMES, THEME_ORDER, useTheme } from './lib/theme';
 import { VERSION_LABEL, VERSION_FULL, APP_VERSION, BUILD_CODE } from './lib/version';
 import LottieView from 'lottie-react-native';
+import { Video, ResizeMode } from 'expo-av';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
@@ -219,15 +220,19 @@ export default function App() {
     <SafeAreaProvider>
       {showSplash ? (
         <View style={splashStyles.root}>
-          <LottieView
-            source={require('./assets/splash-orb.json')}
-            autoPlay
-            loop={false}
-            style={splashStyles.lottie}
-            onAnimationFinish={() => setShowSplash(false)}
+          <Video
+            source={require('./assets/splash-video.mp4')}
+            shouldPlay
+            isLooping={false}
+            resizeMode={ResizeMode.COVER}
+            style={StyleSheet.absoluteFillObject}
+            onPlaybackStatusUpdate={(status) => {
+              if ('didJustFinish' in status && status.didJustFinish) {
+                setShowSplash(false);
+              }
+            }}
+            onError={() => setShowSplash(false)}
           />
-          <Text style={splashStyles.title}>SEEKER QUEST LEAGUE</Text>
-          <Text style={splashStyles.sub}>GENESIS PRE-SEASON</Text>
         </View>
       ) : (
         <AppInner />
@@ -237,10 +242,7 @@ export default function App() {
 }
 
 const splashStyles = StyleSheet.create({
-  root:   { flex: 1, backgroundColor: '#0A0A12', alignItems: 'center', justifyContent: 'center' },
-  lottie: { width: 280, height: 280 },
-  title:  { color: '#FACC15', fontSize: 18, fontWeight: '900', letterSpacing: 4, marginTop: 12 },
-  sub:    { color: '#7C3AED', fontSize: 10, letterSpacing: 3, marginTop: 6 },
+  root: { flex: 1, backgroundColor: '#0A0A12' },
 });
 
 function SeasonCountdown() {
