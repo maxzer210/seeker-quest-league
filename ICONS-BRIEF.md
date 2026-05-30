@@ -39,31 +39,39 @@
 > **Самый важный ассет!** Эту иконку увидят миллионы Seeker owners.
 > Должна работать на размерах от 48×48 (notification) до 512×512 (store).
 
-### Промт A — Glowing Orb (РЕКОМЕНДУЮ)
+### Промт A — Flat Vector Glowing Orb (✅ FINAL — выбран владельцем)
 
 ```
-Square app icon 512x512 for a Web3 mobile game called Seeker Quest League.
+Flat-vector style square app icon 512x512, highly readable at small sizes.
 
-CENTER: A perfectly round glowing golden orb with bright inner core 
-radiating golden #FACC15 light. The orb appears 3D with depth, like a 
-plasma sphere or a captured star.
+CENTER: An extremely bright, super-luminous golden orb. Minimalist design 
+with an intense, dazzling golden #FACC15 inner core that radiates a very 
+powerful, wide neon outer glow. The orb is the dominant light source.
 
-AROUND: Two thin orbital rings rotating at different angles around the orb:
-- First ring: bright purple #A855F7 with electric sparks
-- Second ring: hot pink #EC4899 with subtle motion blur
+AROUND: Two very thick, bold geometric orbital rings wrapping closely 
+around the bright orb:
+- One thick, solid bright purple #A855F7 ring.
+- One thick, solid vibrant hot pink #EC4899 ring.
+The rings are drawn with substantial thickness (heavy line weight) for 
+maximum graphic impact at micro-sizes. No complex textures, no gradient 
+blends, no micro-particles.
 
-BACKGROUND: Deep space gradient from #020510 (top) to #1a0040 (bottom).
-Subtle distant stars as tiny white dots. No text. No borders.
+BACKGROUND: Solid dark background #020510 with zero details, maximizing 
+the contrast of the extremely bright neon elements.
 
-LIGHTING: Strong central glow from the orb illuminates the rings.
-Soft purple-pink lens flare emanating from the orb center.
+STYLE: Modern graphic design, minimalist vector icon, high-contrast 
+cyberpunk neon aesthetic, ultra-high readability. Clean, thick edges, 
+no noise.
 
-STYLE: Premium AAA mobile game icon. Bold and instantly recognizable 
-at small sizes. Modern, futuristic, cyberpunk gaming aesthetic.
-NO photorealism, NO clutter. Clean iconic design.
-
-Format: PNG, 512x512, full bleed (no padding).
+Format: PNG, 512x512.
 ```
+
+**Почему этот промт лучше:**
+- ✅ `flat-vector` → читается на 48×48 (notification)
+- ✅ `extremely bright` → видно на любых обоях
+- ✅ `solid dark background` → max contrast = max recognition
+- ✅ `no textures, no gradients` → чёткие edges при компрессии
+- ✅ `heavy line weight` → ring не пропадает в маленьком размере
 
 ### Промт B — Stylized "S" Letter (альтернатива)
 
@@ -114,38 +122,40 @@ Format: PNG, 512x512.
 
 > Большой баннер сверху страницы листинга в dApp Store.
 > Должен передавать "что это за игра" с первого взгляда.
+> **СОВПАДАЕТ ПО СТИЛЮ с App Icon Промт A (flat-vector neon).**
 
 ### Промт
 
 ```
-Horizontal feature banner 1024x500 for Web3 mobile game "Seeker Quest League".
+Flat-vector style horizontal feature banner 1024x500 for Web3 mobile game 
+"Seeker Quest League". High-contrast minimalist cyberpunk neon aesthetic.
 
-LEFT SIDE (40%): Bold neon text composition:
-- Top: small badge "GENESIS PRE-SEASON • LIVE" in purple #C084FC
-- Main headline: "EARN ORB" in massive bold golden #FACC15 letters
+LEFT SIDE (40%): Bold flat-vector text composition on solid #020510 background:
+- Top: small pill badge "GENESIS PRE-SEASON · LIVE" in solid purple #C084FC
+- Main headline: "EARN ORB" in massive bold golden #FACC15 letters with 
+  strong outer neon glow
 - Subheadline: "WIN SOL" in bright pink #EC4899
-- Bottom tagline: "Tap to earn on Solana Seeker"
+- Bottom: small tagline "Tap to earn on Solana Seeker" in muted white
 
-RIGHT SIDE (60%): Large glowing golden orb (the main game element)
-with vivid purple #A855F7 and pink #EC4899 orbital rings.
-6-8 smaller "planet icons" floating around the orb in a constellation:
-- A spinning wheel (purple)
-- A rocket ship (cyan)  
-- A trophy (gold)
-- A swords crossed (red)
-- A gem (pink)
-- A horse silhouette (orange)
-Each planet has its own subtle glow.
+RIGHT SIDE (60%): Same orb design as the app icon — extremely bright 
+luminous golden orb #FACC15 with two thick solid orbital rings (purple 
+#A855F7 and hot pink #EC4899). Larger than icon version. Around the orb, 
+6 small flat-vector planet icons in constellation arrangement, each in a 
+solid bright color:
+- Spinning slot wheel (purple #A855F7)
+- Rocket ship (cyan #06B6D4)
+- Trophy (gold #FACC15)
+- Crossed swords (red #EF4444)
+- Diamond gem (pink #EC4899)
+- Horse silhouette (orange #FB923C)
+Each planet has bold neon glow but stays flat-vector — no 3D, no textures.
 
-BACKGROUND: Dramatic cosmic scene — purple and pink nebula clouds,
-distant galaxy spiral arms, scattered bright stars.
-Subtle Solana brand gradient (cyan to purple) tinting the right edge.
+BACKGROUND: Solid dark #020510. NO nebula clouds, NO stars, NO complex 
+backgrounds. Just dark canvas + flat-vector elements with strong neon glow.
 
-LIGHTING: Dramatic, cinematic, with lens flares from the central orb.
-The light from the orb illuminates the text composition.
-
-STYLE: AAA mobile game store banner. Cyberpunk × space opera aesthetic.
-Clean, modern, premium feel. Like a movie poster for a sci-fi game.
+STYLE: Modern minimalist vector graphic design. Like Solana brand visuals 
+or Phantom wallet aesthetic. High-contrast neon, clean thick edges, 
+maximum readability.
 
 Format: PNG, 1024x500 horizontal.
 ```
@@ -155,33 +165,42 @@ Format: PNG, 1024x500 horizontal.
 ## 3️⃣ BANNER — 1200×600 (marketing, соцсети)
 
 > Универсальный баннер для X, Telegram, веб-сайта hero section.
+> **СОВПАДАЕТ ПО СТИЛЮ с App Icon — flat-vector minimalist.**
 
 ### Промт
 
 ```
-Wide marketing banner 1200x600 for Seeker Quest League Web3 game.
+Flat-vector style wide marketing banner 1200x600 for Seeker Quest League 
+Web3 game. Minimalist high-contrast cyberpunk neon aesthetic.
 
-COMPOSITION: Centered hero composition with the main golden orb 
-shifted slightly left of center. Around the orb, in floating arrangement,
-8 small game elements (treasure chest, sword, rocket, dice, slot machine,
-gem, trophy, horse). Each glows in its respective color.
+LEFT-CENTER: Same orb design as the app icon — extremely bright luminous 
+golden orb #FACC15 with two thick solid orbital rings in purple #A855F7 
+and hot pink #EC4899. The orb is the central visual anchor.
 
-RIGHT SIDE: Bold modern text in 3 lines:
-Line 1: "SEEKER QUEST LEAGUE" — bold, golden #FACC15, large
-Line 2: "tap. earn. win SOL." — lowercase, white, smaller
-Line 3: "GENESIS PRE-SEASON" — small badge, purple #C084FC
+AROUND the orb (constellation arrangement, 8 small flat-vector icons):
+- Slot wheel (purple #A855F7)
+- Rocket ship (cyan #06B6D4)
+- Treasure chest (gold #FACC15)
+- Crossed swords (red #EF4444)
+- Diamond gem (pink #EC4899)
+- Horse silhouette (orange #FB923C)
+- Lightning bolt (yellow #FACC15)
+- Trophy cup (gold #FACC15)
+Each icon is flat-vector with bold neon glow. No 3D. No textures.
 
-BOTTOM-RIGHT CORNER: Small "Built for Solana Mobile" badge.
+RIGHT SIDE: Bold flat-vector text in 3 lines:
+- Line 1: "SEEKER QUEST LEAGUE" — bold golden #FACC15, large, neon glow
+- Line 2: "tap. earn. win SOL." — lowercase white
+- Line 3: Pill badge "GENESIS PRE-SEASON" in solid purple #7C3AED
 
-BACKGROUND: Massive cosmic vista — purple-pink nebula, distant stars,
-subtle hexagonal grid pattern (the "matrix" feel), gradient from
-#020510 to #1a0040 to #3B0764.
+BOTTOM-RIGHT: Small flat-vector "Built for Solana Mobile" badge in cyan.
 
-EFFECTS: Heavy cinematic lighting, lens flares, soft particle effects 
-floating across the canvas, depth of field.
+BACKGROUND: Solid dark #020510. Optional very subtle hexagonal grid 
+pattern at 5% opacity. NO nebula clouds, NO realistic stars, NO lens 
+flares, NO depth of field. Keep it FLAT and minimalist.
 
-STYLE: Premium AAA crypto gaming. Like Magic Eden meets Star Atlas.
-Maximalist but not cluttered. Modern Web3 aesthetic.
+STYLE: Modern flat-vector design like Solana / Phantom / Magic Eden 
+official banners. High readability, brand-focused, premium feel.
 
 Format: PNG, 1200x600 horizontal.
 ```
@@ -256,28 +275,29 @@ Format: PNG with alpha channel, 512x512.
 ## 6️⃣ OG-IMAGE — 1200×630 (для сайта)
 
 > Open Graph preview когда ссылку на seekerquest-league.com шарят в соцсетях.
+> **Flat-vector style для consistency с App Icon.**
 
 ### Промт
 
 ```
-Open Graph preview image 1200x630 for seekerquest-league.com website.
+Flat-vector style Open Graph preview 1200x630 for seekerquest-league.com.
+Minimalist cyberpunk neon aesthetic, high contrast.
 
-LEFT THIRD: Phone mockup floating at slight 3D angle. The phone screen
-shows the game's home screen with the golden orb, "TAP TO EARN" text 
-visible. Phone has subtle particle effects emanating from it.
+CENTER-LEFT: Same orb design as the app icon — bright luminous golden 
+orb #FACC15 with two thick orbital rings (purple #A855F7 and pink #EC4899).
 
-CENTER & RIGHT (2/3): Strong text composition:
-- Top line: "SEEKER QUEST LEAGUE" — bold golden #FACC15
-- Middle line: "Web3 Tap-to-Earn on Solana Mobile" — white smaller
-- Bottom: small badge "GENESIS PRE-SEASON LIVE" in purple
+CENTER-RIGHT: Bold flat-vector text composition:
+- Top: "SEEKER QUEST LEAGUE" — golden #FACC15, bold, large
+- Middle: "Web3 Tap-to-Earn on Solana Mobile" — white, medium
+- Bottom: Pill badge "GENESIS PRE-SEASON · LIVE" in purple #7C3AED
 
-BOTTOM-RIGHT: Solana logo + "Built for Seeker" text.
+BOTTOM-RIGHT corner: Small flat-vector "Built for Seeker" text in cyan.
 
-BACKGROUND: Premium dark cosmic scene with purple-pink nebula gradient.
-Subtle hexagonal pattern.
+BACKGROUND: Solid dark #020510. NO nebula, NO complex patterns.
+Maybe one or two very subtle stars as small white dots.
 
-STYLE: Like AAA game press kit screenshot. Clean professional layout
-for social media preview cards.
+STYLE: Modern flat-vector graphic design. Like Solana brand visual or 
+Phantom wallet share cards. Premium, brand-focused, instantly readable.
 
 Format: PNG, 1200x630.
 ```
@@ -287,33 +307,39 @@ Format: PNG, 1200x630.
 ## 7️⃣ TWITTER/X BANNER — 1500×500
 
 > Header для X-аккаунта проекта.
+> **Flat-vector style для consistency с App Icon.**
 
 ### Промт
 
 ```
-Twitter X header 1500x500 for Web3 game Seeker Quest League.
+Flat-vector style Twitter X header 1500x500 for Seeker Quest League.
+Minimalist cyberpunk neon aesthetic, high contrast.
 
-CENTER-LEFT: Large bold text "EARN ORB. WIN SOL." in 3 colors per word:
+CENTER-LEFT (in the safe 1200px center area):
+Large bold flat-vector text "EARN ORB. WIN SOL." with each word in its 
+own bold neon color:
 - "EARN" in cyan #06B6D4
 - "ORB." in golden #FACC15
 - "WIN" in white
 - "SOL." in purple #A855F7
-Letters have strong neon glow effect.
+All letters with strong outer neon glow on solid #020510 background.
 
-CENTER-RIGHT: Floating golden orb with orbital rings, smaller version
-of the app icon. Surrounded by 6 small game element icons in constellation.
+CENTER-RIGHT (in the safe area):
+Same orb design as the app icon — flat-vector luminous golden orb with 
+two thick orbital rings (purple #A855F7 and pink #EC4899). Around it, 
+4-5 small flat-vector planet icons (wheel, rocket, trophy, gem, swords).
 
-BOTTOM CENTER: Small hashtags "#SolanaMobile #PlayToEarn #SeekerQuest"
-in muted gray #475569.
+BOTTOM CENTER: Small flat-vector hashtags 
+"#SolanaMobile #PlayToEarn #SeekerQuest" in muted gray #475569.
 
-BACKGROUND: Wide cosmic landscape — nebula clouds, distant galaxies,
-subtle stars. Gradient from deep purple left to deep blue right.
+BACKGROUND: Solid dark #020510. NO nebula, NO complex gradients, NO 
+realistic stars. Keep it FLAT.
 
 NOTE: Twitter crops sides on mobile. Keep all important content in 
 the center 1200px area.
 
-STYLE: Modern Web3 project header. Eye-catching but professional.
-Like Solana or Phantom official headers.
+STYLE: Modern flat-vector design. Brand-focused. Like Solana or Phantom 
+official X headers.
 
 Format: PNG, 1500x500 horizontal.
 ```
