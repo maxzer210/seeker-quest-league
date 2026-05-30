@@ -27,7 +27,7 @@ app:
     website: "https://seekerquest-league.com"
   media:
     - purpose: icon
-      uri: ./media/app-icon.png
+      uri: ./media/icon.png
 
 release:
   address: "REPLACE_WITH_RELEASE_NFT_ADDRESS_AFTER_CREATE"
@@ -35,27 +35,21 @@ release:
     - purpose: banner
       uri: ./media/banner-1200x600.png
     - purpose: featureGraphic
-      uri: ./media/feature-graphic-1024x500.png
+      uri: ./media/feature-graphic.png
     - purpose: icon
-      uri: ./media/app-icon-512.png
-    - purpose: tile
-      uri: ./media/tile-512x512.png
+      uri: ./media/icon.png
     - purpose: screenshot
-      uri: ./media/screenshots/01-home-genesis-pre-season.png
+      uri: ./media/screenshot-1.png
     - purpose: screenshot
-      uri: ./media/screenshots/02-fortune-wheel.png
+      uri: ./media/screenshot-2.png
     - purpose: screenshot
-      uri: ./media/screenshots/03-horse-race.png
+      uri: ./media/screenshot-3.png
     - purpose: screenshot
-      uri: ./media/screenshots/04-space-runner.png
+      uri: ./media/screenshot-4.png
     - purpose: screenshot
-      uri: ./media/screenshots/05-arena.png
+      uri: ./media/screenshot-5.png
     - purpose: screenshot
-      uri: ./media/screenshots/06-genesis-news-pool.png
-    - purpose: screenshot
-      uri: ./media/screenshots/07-profile-seeker-verified.png
-    - purpose: screenshot
-      uri: ./media/screenshots/08-tournament-podium.png
+      uri: ./media/screenshot-6.png
   files:
     - purpose: install
       uri: ./media/app-release.apk
