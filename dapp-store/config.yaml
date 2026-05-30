@@ -23,7 +23,7 @@ app:
   urls:
     license_url: "https://seekerquest-league.com/license"
     copyright_url: "https://seekerquest-league.com/copyright"
-    privacy_policy_url: "https://seekerquest-league.com/privacy"
+    privacy_policy_url: "https://seekerquest-league.com/privacy.html"
     website: "https://seekerquest-league.com"
   media:
     - purpose: icon

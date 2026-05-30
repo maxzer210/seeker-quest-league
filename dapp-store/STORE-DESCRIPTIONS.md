@@ -176,7 +176,7 @@ Built for Solana Mobile Seeker. Exclusive perks for SGT holders: 2Г— ORB rewa
 
 **Email:** hello@seekerquest-league.com
 **Website:** https://seekerquest-league.com
-**Privacy Policy:** https://seekerquest-league.com/privacy
+**Privacy Policy:** https://seekerquest-league.com/privacy.html
 **Terms / License:** https://seekerquest-league.com/license
 **X (Twitter):** TODO вЂ” register @seekerquest
 **Telegram:** TODO вЂ” create t.me/seekerquest
