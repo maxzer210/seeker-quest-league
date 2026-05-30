@@ -622,18 +622,20 @@ function AppInner() {
   }
 
   async function addTournamentScore(points: number) {
-    const next = tournamentScore + points;
+    // Clamp client-side to match server-side validation (1-500)
+    const safePts = Math.max(1, Math.min(500, Math.floor(points)));
+    const next = tournamentScore + safePts;
     setTournamentScore(next);
     if (!deviceIdRef.current) return;
-    const uname = 'Seeker#' + deviceIdRef.current.slice(-4).toUpperCase();
+    const uname = username || ('Seeker#' + deviceIdRef.current.slice(-4).toUpperCase());
     try {
-      await supabase.from('tournament_scores').upsert({
-        tournament_id: 'season-zero',
-        device_id: deviceIdRef.current,
-        username: uname,
-        score: next,
-        updated_at: Date.now(),
-      }, { onConflict: 'tournament_id,device_id' });
+      // Server-side anti-cheat RPC (validates increment + rate limit)
+      await supabase.rpc('add_tournament_score', {
+        p_device_id:     deviceIdRef.current,
+        p_username:      uname,
+        p_points:        safePts,
+        p_tournament_id: 'season-zero',
+      });
     } catch (_) {}
   }
 
@@ -796,6 +798,19 @@ function AppInner() {
     if (TREASURY_WALLET === 'PASTE_TREASURY_WALLET_HERE') {
       Alert.alert('Treasury wallet required', 'Set TREASURY_WALLET in lib/solanaMobile.ts before enabling SOL spins.');
       return false;
+    }
+
+    // Server-side rate limit check (max 10 paid spins / minute / device)
+    try {
+      const { data: allowed } = await supabase.rpc('check_spin_rate_limit', {
+        p_device_id: deviceIdRef.current,
+      });
+      if (allowed === false) {
+        Alert.alert('Slow down', 'Maximum 10 paid spins per minute. Wait a bit and try again.');
+        return false;
+      }
+    } catch (_) {
+      // If RPC fails — allow optimistically (don't block the user from old backend versions)
     }
 
     setSolSpinPending(true);
@@ -1100,20 +1115,21 @@ function AppInner() {
             setWalletAddr(r.address);
             setWalletAuthToken(r.authToken);
 
-            // Upgrade Founder status + tier
+            // Verify on backend via RPC (validates tx_signature exists in wheel_sol_payments)
+            const { error: rpcErr } = await supabase.rpc('upgrade_founder_tier', {
+              p_device_id:    deviceIdRef.current!,
+              p_new_tier:     tier,
+              p_tx_signature: r.signature,
+            });
+            if (rpcErr) {
+              throw new Error(rpcErr.message ?? 'Backend rejected Founder upgrade');
+            }
+
+            // Apply locally only after server confirms
             setIsFounder(true);
             await AsyncStorage.setItem('@founder', '1');
             setFounderTier(tier);
             await AsyncStorage.setItem('@founder_tier', tier);
-
-            // Best-effort sync to backend
-            try {
-              await supabase.from('founder_passes').upsert({
-                device_id: deviceIdRef.current!,
-                tier,
-                tx_signature: null, // tx sig comes from wheel_sol_payments by ref
-              });
-            } catch (_) {}
 
             particleRef.current?.emit(SCREEN_W / 2, SCREEN_H * 0.4, 'crit');
             playSound(sndLevelUp.current);
