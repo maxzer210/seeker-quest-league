@@ -215,6 +215,20 @@ function GradBtn({
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
+  const [showSkip, setShowSkip]     = useState(false);
+  const skipFade                    = useRef(new Animated.Value(0)).current;
+
+  // Show Skip button after 3 seconds, with fade-in animation
+  useEffect(() => {
+    if (!showSplash) return;
+    const t = setTimeout(() => {
+      setShowSkip(true);
+      Animated.timing(skipFade, {
+        toValue: 1, duration: 400, useNativeDriver: true,
+      }).start();
+    }, 3000);
+    return () => clearTimeout(t);
+  }, [showSplash, skipFade]);
 
   return (
     <SafeAreaProvider>
@@ -233,6 +247,17 @@ export default function App() {
             }}
             onError={() => setShowSplash(false)}
           />
+          {showSkip && (
+            <Animated.View style={[splashStyles.skipWrap, { opacity: skipFade }]}>
+              <TouchableOpacity
+                onPress={() => setShowSplash(false)}
+                activeOpacity={0.7}
+                style={splashStyles.skipBtn}
+              >
+                <Text style={splashStyles.skipText}>SKIP  ›</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          )}
         </View>
       ) : (
         <AppInner />
@@ -243,6 +268,12 @@ export default function App() {
 
 const splashStyles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#0A0A12' },
+  skipWrap: { position: 'absolute', top: 48, right: 16, zIndex: 100 },
+  skipBtn:  { paddingHorizontal: 14, paddingVertical: 8,
+              backgroundColor: 'rgba(15,23,42,0.7)',
+              borderRadius: 18,
+              borderWidth: 1, borderColor: 'rgba(168,85,247,0.5)' },
+  skipText: { color: '#E2E8F0', fontSize: 12, fontWeight: '900', letterSpacing: 2 },
 });
 
 function SeasonCountdown() {
