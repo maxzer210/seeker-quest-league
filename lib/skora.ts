@@ -6,9 +6,10 @@
  */
 
 // ── Replace with your actual mint address after running the script ──────────
-export const SKORA_MINT    = '3HTkC3v9CYTxGYQSegsidgzfxEQJvAotYZVozmaFc2av';
-export const SKORA_NETWORK = 'devnet';
-export const SKORA_RPC     = 'https://api.devnet.solana.com';
+// MAINNET LAUNCH (2026-05-30)
+export const SKORA_MINT    = '3Q6PN3Rf1xrrHKwkPQDnBi7aBBXHYdToG2NKwBQkGwyQ';
+export const SKORA_NETWORK = 'mainnet-beta';
+export const SKORA_RPC     = 'https://api.mainnet-beta.solana.com';
 
 // ── Conversion rate ──────────────────────────────────────────────────────────
 export const ORB_PER_SKORA   = 10_000;   // 10,000 ORB = 1 SKORA
