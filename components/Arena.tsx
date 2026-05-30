@@ -587,14 +587,14 @@ export default function Arena({ orb, onOrbChange, deviceId, username, onRaidWin 
                 { transform: [{ scale: resultAnim }] },
               ]}>
                 <Text style={s.raidResultEmoji}>{raidWon ? '⚔️' : '💀'}</Text>
-                <Text style={s.raidResultTitle}>{raidWon ? 'ПОБЕДА!' : 'ПОРАЖЕНИЕ'}</Text>
+                <Text style={s.raidResultTitle}>{raidWon ? t('arena.raidWin') : t('arena.raidLose')}</Text>
                 <Text style={s.raidResultOpp}>vs {raidOpp}</Text>
                 <Text style={s.raidResultMsg}>{raidMsg}</Text>
                 {raidWon && raidStolen > 0 && (
                   <Text style={s.raidResultStolen}>{t('arena.orbAdded', { n: raidStolen.toLocaleString() })}</Text>
                 )}
                 <TouchableOpacity style={s.raidResultClose} onPress={() => setRaidPhase('idle')}>
-                  <Text style={s.raidResultCloseTxt}>ПРОДОЛЖИТЬ</Text>
+                  <Text style={s.raidResultCloseTxt}>{t('arena.raidContinue')}</Text>
                 </TouchableOpacity>
               </Animated.View>
 
