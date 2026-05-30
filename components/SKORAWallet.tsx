@@ -257,11 +257,10 @@ export default function SKORAWallet({ orb, onSpendOrb, deviceId }: Props) {
             )}
 
             <TouchableOpacity
-              style={[s.claimBtn, (loading || orb < claimAmount || walletInput.length < 32) && s.claimBtnDisabled]}
-              onPress={submitClaim}
-              disabled={loading || orb < claimAmount || walletInput.length < 32}
+              style={[s.claimBtn, s.claimBtnDisabled]}
+              disabled={true}
             >
-              <Text style={s.claimBtnTxt}>{loading ? t('skora.submitting') : t('skora.claimBtn')}</Text>
+              <Text style={s.claimBtnTxt}>{t('skora.comingSoon')}</Text>
             </TouchableOpacity>
 
             <Text style={s.claimNote}>{t('skora.claimNote')}</Text>
