@@ -9,9 +9,11 @@ import {
 import { transact } from '@solana-mobile/mobile-wallet-adapter-protocol-web3js';
 import { supabase } from './supabase';
 
-export const SOLANA_NETWORK = 'devnet';
-export const SOLANA_CHAIN = 'solana:devnet';
-export const SOLANA_RPC = 'https://api.devnet.solana.com';
+// ── MAINNET LAUNCH (2026-05-30) ───────────────────────────────────────────
+export const SOLANA_NETWORK = 'mainnet-beta';
+export const SOLANA_CHAIN = 'solana:mainnet';
+export const SOLANA_RPC = 'https://api.mainnet-beta.solana.com';
+// Note: public RPC is rate-limited. Upgrade to Helius/QuickNode when DAU grows.
 export const WHEEL_SPIN_SOL = 0.01;
 export const WHEEL_SPIN_LAMPORTS = Math.round(WHEEL_SPIN_SOL * LAMPORTS_PER_SOL);
 
@@ -82,11 +84,10 @@ export const MONTHLY_BUYBACK_BURN_PCT  = 0.10;
 // 5% of every premium SOL purchase goes to SKORA burn pool (weekly burn)
 export const PREMIUM_SOL_BURN_PCT      = 0.05;
 
-// Treasury receives 0.01 SOL per Wheel paid spin.
-// Must be DIFFERENT from the user's wallet, otherwise it's a self-transfer (only fee deducted).
-// On devnet we use the SKORA mint authority address — we already hold its keypair in skora-config.json.
-// On mainnet — create a dedicated treasury wallet and rotate this constant.
-export const TREASURY_WALLET: string = 'EekTZsoxzVEdze1HEAqLQbMnx8ScBheWBW3Dsp9QBZDT';
+// Treasury receives 0.01 SOL per Wheel paid spin + premium SOL purchases.
+// MAINNET treasury wallet — owned by project owner via Phantom.
+// Created: 2026-05-30 for Season 1 launch.
+export const TREASURY_WALLET: string = 'CxYfXXLGEm1FXcL7cVzTHe1kG3gpo5ecsKgVjXRhLGSp';
 
 const APP_IDENTITY = {
   name: 'Seeker Quest League',

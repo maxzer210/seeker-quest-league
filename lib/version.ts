@@ -3,9 +3,9 @@
 // Видимая в Home + Settings.
 // ─────────────────────────────────────────────────────────────────────────
 
-export const APP_VERSION = '0.6.0';
-export const BUILD_TIME  = '2026-05-26 21:30';
-export const BUILD_CODE  = 'compact-home-clean';
+export const APP_VERSION = '1.0.0';
+export const BUILD_TIME  = '2026-05-30 17:30';
+export const BUILD_CODE  = 'mainnet-launch';
 
 /** Compact label for UI: "v0.6.0 · 21:30" */
 export const VERSION_LABEL = `v${APP_VERSION} · ${BUILD_TIME.split(' ')[1] ?? ''}`;
