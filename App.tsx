@@ -237,6 +237,7 @@ export default function App() {
           <Video
             source={require('./assets/splash-video.mp4')}
             shouldPlay
+            isMuted={true}
             isLooping={false}
             resizeMode={ResizeMode.COVER}
             style={StyleSheet.absoluteFillObject}
@@ -584,7 +585,10 @@ function AppInner() {
   async function loadSounds() {
     try { await Audio.setAudioModeAsync({ playsInSilentModeIOS: true }); } catch (_) {}
     const load = async (src: Parameters<typeof Audio.Sound.createAsync>[0]) => {
-      try { return (await Audio.Sound.createAsync(src)).sound; } catch (_) { return null; }
+      try {
+        // Explicit shouldPlay:false to prevent any auto-play on load
+        return (await Audio.Sound.createAsync(src, { shouldPlay: false, isLooping: false })).sound;
+      } catch (_) { return null; }
     };
     sndTap.current     = await load(require('./assets/sounds/tap.wav'));
     sndCrit.current    = await load(require('./assets/sounds/crit.wav'));
