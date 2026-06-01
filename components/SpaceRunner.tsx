@@ -12,7 +12,9 @@ const { width, height } = Dimensions.get('window');
 const HIGH_SCORE_KEY  = 'sk_runner_best';
 
 const SHIP_SIZE       = 54;
-const SHIP_Y          = height - 160;                 // абсолютная Y корабля
+// Корабль на 70% высоты экрана — выше пальца, но и не в середине
+// (раньше был height - 160 — на маленьких экранах попадал под navbar)
+const SHIP_Y          = Math.round(height * 0.70);
 const SHIP_HITBOX_W   = 38;
 const SHIP_HITBOX_H   = 38;
 
