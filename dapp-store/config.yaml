@@ -22,7 +22,7 @@ app:
   android_package: "com.seekerquest-league.com"
   urls:
     license_url: "https://seekerquest-league.com/license"
-    copyright_url: "https://seekerquest-league.com/copyright"
+    copyright_url: "https://seekerquest-league.com/terms.html"
     privacy_policy_url: "https://seekerquest-league.com/privacy.html"
     website: "https://seekerquest-league.com"
   media:
