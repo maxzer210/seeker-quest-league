@@ -237,7 +237,6 @@ export default function App() {
           <Video
             source={require('./assets/splash-video.mp4')}
             shouldPlay
-            isMuted={true}
             isLooping={false}
             resizeMode={ResizeMode.COVER}
             style={StyleSheet.absoluteFillObject}
@@ -586,8 +585,11 @@ function AppInner() {
     try { await Audio.setAudioModeAsync({ playsInSilentModeIOS: true }); } catch (_) {}
     const load = async (src: Parameters<typeof Audio.Sound.createAsync>[0]) => {
       try {
-        // Explicit shouldPlay:false to prevent any auto-play on load
-        return (await Audio.Sound.createAsync(src, { shouldPlay: false, isLooping: false })).sound;
+        // Triple safety: shouldPlay:false at create + stopAsync + setStatusAsync
+        const { sound } = await Audio.Sound.createAsync(src, { shouldPlay: false, isLooping: false, volume: 1.0 });
+        try { await sound.stopAsync(); } catch (_) {}
+        try { await sound.setStatusAsync({ shouldPlay: false, positionMillis: 0 }); } catch (_) {}
+        return sound;
       } catch (_) { return null; }
     };
     sndTap.current     = await load(require('./assets/sounds/tap.wav'));
