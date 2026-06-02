@@ -266,6 +266,7 @@ ul { list-style: none; }
 .footer__socials { display: flex; gap: .75rem; margin-bottom: .75rem; }
 .footer__social { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,.06); border: 1px solid var(--border); font-size: 1rem; transition: var(--tr); }
 .footer__social:hover { background: rgba(153,69,255,.2); border-color: var(--purple); transform: translateY(-2px); }
+.footer__disclaimer { font-size: .72rem; color: rgba(139,138,184,.5); line-height: 1.6; padding: 1rem; border-radius: 8px; background: rgba(255,255,255,.02); border: 1px solid rgba(255,255,255,.04); margin-bottom: 1rem; max-width: 100%; }
 .footer__copy { font-size: .8rem; color: var(--muted); }
 .footer__links { display: flex; gap: 1.5rem; }
 .footer__links a { font-size: .8rem; color: var(--muted); transition: color var(--tr); }

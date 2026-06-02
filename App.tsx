@@ -8,6 +8,7 @@ import {
   Linking,
   Modal,
   Platform,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -238,7 +239,7 @@ export default function App() {
             source={require('./assets/splash-video.mp4')}
             shouldPlay
             isLooping={false}
-            resizeMode={ResizeMode.COVER}
+            resizeMode={ResizeMode.CONTAIN}
             style={StyleSheet.absoluteFillObject}
             onPlaybackStatusUpdate={(status) => {
               if ('didJustFinish' in status && status.didJustFinish) {
@@ -408,6 +409,7 @@ function AppInner() {
   const [editingUsername, setEditingUsername] = useState(false);
   const [pendingUsername, setPendingUsername]  = useState('');
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [showDonateModal,  setShowDonateModal]  = useState(false);
   // P2P ORB Send modal
   const [showSendOrbModal, setShowSendOrbModal] = useState(false);
   const [sendRecipient,    setSendRecipient]    = useState('');
@@ -1915,6 +1917,48 @@ function AppInner() {
         </View>
       </Modal>
 
+      {/* ═══════════ DONATE MODAL ═══════════ */}
+      <Modal visible={showDonateModal} transparent animationType="slide" statusBarTranslucent
+        onRequestClose={() => setShowDonateModal(false)}>
+        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowDonateModal(false)}>
+          <TouchableOpacity activeOpacity={1} style={{ width: '100%', paddingHorizontal: 20, paddingBottom: 40 }}>
+            <LinearGradient colors={['#0F172A', '#1E293B']} style={{ borderRadius: 24, padding: 24, borderWidth: 1, borderColor: 'rgba(124,58,237,0.4)' }}>
+              <Text style={{ color: '#FFF', fontSize: 18, fontWeight: '900', textAlign: 'center', marginBottom: 6 }}>{t('donate.title')}</Text>
+              <Text style={{ color: '#94A3B8', fontSize: 12, textAlign: 'center', marginBottom: 20 }}>
+                {t('donate.sub')}
+              </Text>
+
+              {/* Адрес */}
+              <View style={{ backgroundColor: 'rgba(124,58,237,0.12)', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: 'rgba(124,58,237,0.3)', marginBottom: 16 }}>
+                <Text style={{ color: '#C084FC', fontSize: 10, fontWeight: '900', letterSpacing: 1, marginBottom: 6 }}>{t('donate.label')}</Text>
+                <Text selectable style={{ color: '#E2E8F0', fontSize: 11, fontFamily: 'monospace', lineHeight: 18 }}>
+                  CxYfXXLGEm1FXcL7cVzTHe1kG3gpo5ecsKgVjXRhLGSp
+                </Text>
+              </View>
+
+              {/* Кнопка копировать */}
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => {
+                  Share.share({ message: 'CxYfXXLGEm1FXcL7cVzTHe1kG3gpo5ecsKgVjXRhLGSp' });
+                }}
+                style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 12 }}
+              >
+                <LinearGradient colors={['#7C3AED', '#EC4899']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                  style={{ paddingVertical: 13, alignItems: 'center' }}>
+                  <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '900', letterSpacing: 1 }}>{t('donate.copy')}</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => setShowDonateModal(false)} activeOpacity={0.7}
+                style={{ paddingVertical: 10, alignItems: 'center' }}>
+                <Text style={{ color: '#475569', fontSize: 13 }}>{t('donate.close')}</Text>
+              </TouchableOpacity>
+            </LinearGradient>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
       {/* ═══════════ PRIVACY POLICY MODAL ═══════════ */}
       <Modal visible={showPrivacyModal} transparent animationType="fade" statusBarTranslucent
         onRequestClose={() => setShowPrivacyModal(false)}>
@@ -2168,6 +2212,22 @@ function AppInner() {
                 </View>
               </LinearGradient>
 
+              {/* ── Founder Pass reminder (only for free tier) ── */}
+              {founderTier === 'free' && (
+                <TouchableOpacity activeOpacity={0.85} onPress={() => setScreen('shop')}
+                  style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 2 }}>
+                  <LinearGradient colors={['#1a0040','#3B0764']} start={{x:0,y:0}} end={{x:1,y:0}}
+                    style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 14, gap: 10 }}>
+                    <Text style={{ fontSize: 20 }}>👑</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: '#C084FC', fontSize: 11, fontWeight: '900', letterSpacing: 1 }}>FOUNDER PASS — from 0.5 SOL</Text>
+                      <Text style={{ color: '#7C3AED', fontSize: 10, marginTop: 1 }}>×3–×5 ORB forever · free spins daily</Text>
+                    </View>
+                    <Text style={{ color: '#C084FC', fontSize: 16 }}>›</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
+
               {/* ── TAP TO EARN — Core Mechanic ── */}
               <View style={styles.tapHeroWrap}>
                 <Text style={styles.tapHeroTitle}>{t('home.tapTitle')}</Text>
@@ -2339,6 +2399,19 @@ function AppInner() {
                 </TouchableOpacity>
 
               </View>
+
+              {/* ── Space Runner promo ── */}
+              <TouchableOpacity activeOpacity={0.85} onPress={() => setScreen('runner')}
+                style={{ borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(0,194,255,0.3)' }}>
+                <LinearGradient colors={['#020D1F','#041830']} style={{ flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 }}>
+                  <Text style={{ fontSize: 32 }}>🚀</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: '#00C2FF', fontSize: 12, fontWeight: '900', letterSpacing: 1 }}>SPACE RUNNER</Text>
+                    <Text style={{ color: '#94A3B8', fontSize: 11, marginTop: 2 }}>Die? Continue for ORB or SOL and keep your score!</Text>
+                  </View>
+                  <Text style={{ color: '#00C2FF', fontSize: 18 }}>›</Text>
+                </LinearGradient>
+              </TouchableOpacity>
 
               {/* ── FOUNDER PASS (TIERED — permanent ORB multiplier) ── */}
               <Text style={styles.shopSectionTitle}>👑  {t('founder.title')}  ·  {t('founder.permanent', { mul: getFounderMultiplier(founderTier, isFounder) })}</Text>
@@ -3471,6 +3544,25 @@ function AppInner() {
                   </TouchableOpacity>
                 )}
 
+                {/* Divider */}
+                <View style={{ height: 1, backgroundColor: 'rgba(124,58,237,0.2)', marginVertical: 8 }} />
+
+                {/* Поддержать проект */}
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => setShowDonateModal(true)}
+                  style={{ marginTop: 20, borderRadius: 16, overflow: 'hidden' }}
+                >
+                  <LinearGradient
+                    colors={['#7C3AED', '#EC4899']}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                    style={{ paddingVertical: 14, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}
+                  >
+                    <Text style={{ fontSize: 20 }}>💜</Text>
+                    <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '900', letterSpacing: 1 }}>{t('donate.btn')}</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+
                 {/* Версия */}
                 <View style={{ marginTop: 16, alignItems: 'center' }}>
                   <Text style={{ color: '#14F195', fontSize: 11, fontWeight: '900', letterSpacing: 1 }}>
@@ -3550,6 +3642,19 @@ function AppInner() {
                 syncScore(next, level, streakCount);
               }}
               onAddScore={addTournamentScore}
+              onPaySol={async (lamports, sol) => {
+                if (!deviceIdRef.current) throw new Error('No device ID');
+                await paySolToTreasury(
+                  deviceIdRef.current, lamports, sol, 'runner_continue',
+                  solStatusLabel(`${sol} SOL`),
+                );
+              }}
+              onPlaySound={(snd) => {
+                if (snd === 'tap')     playSound(sndTap.current);
+                else if (snd === 'crit')    playSound(sndCrit.current);
+                else if (snd === 'jackpot') playSound(sndJackpot.current);
+                else if (snd === 'levelup') playSound(sndLevelUp.current);
+              }}
             />
           </View>
         )}
@@ -3732,7 +3837,7 @@ function PrizeTier({ rank, reward, color }: { rank: string; reward: string; colo
 const styles = StyleSheet.create({
   container:    { flex: 1, backgroundColor: '#020510', paddingTop: 32 },
   appShake:      { flex: 1 },
-  fullscreenGame:    { position: 'absolute', top: -32, left: 0, right: 0, bottom: 0, zIndex: 200 },
+  fullscreenGame:    { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 200 },
   fullscreenBackBtn: { position: 'absolute', left: 12, zIndex: 250,
                        width: 44, height: 44, borderRadius: 22,
                        backgroundColor: 'rgba(15,23,42,0.88)',

@@ -335,6 +335,29 @@ export const T: Translations = {
     'runner.tip3': '💎  Catch gems · +{n} ORB',
     'runner.tip4': '🔥  3 near-misses = ×2 multiplier',
     'runner.tip5': '⚡  Difficulty ramps every minute',
+    'runner.tip6': '🛡  Catch power-ups: shield, magnet & slow-time',
+    'runner.powerupShield': '🛡 SHIELD ACTIVE!',
+    'runner.powerupMagnet': '🧲 MAGNET ON!',
+    'runner.powerupSlow':   '⏳ SLOW TIME!',
+    'runner.wave':          '⚡ INCOMING WAVE!',
+    'runner.continue':      'CONTINUE · {orb} ORB',
+    'runner.doubleRun':     '×2 ORB RUN · {orb} ORB',
+    'runner.dailyProgress': 'DAILY: {n}/5 💎',
+    'runner.dailyDone':     '✅ DAILY DONE!',
+    'runner.shipLv':        'SHIP LV.{n}',
+    'runner.notEnoughOrb':  'Not enough ORB',
+    'runner.newBest':       '🏆 NEW BEST!',
+    // CosmeticNFT
+    'cosmetic.title': 'ORB CUSTOMIZATION',
+    'cosmetic.desc': 'Unique core skins, exclusive explosion animations and status auras for limited NFT Genesis holders.',
+    'cosmetic.loading': 'LOADING ASSETS... 88%',
+    // Donate
+    'donate.btn': 'Support the project',
+    'donate.title': '💜 Support the project',
+    'donate.sub': 'Send any crypto to our Solana address (SOL, USDC, SPL tokens)',
+    'donate.label': 'SOLANA ADDRESS',
+    'donate.copy': '📋  Copy address',
+    'donate.close': 'Close',
   },
 
   ru: {
@@ -617,6 +640,17 @@ export const T: Translations = {
     'runner.tip3': '💎  Собирай кристаллы · +{n} ORB',
     'runner.tip4': '🔥  3 уклонения = множитель ×2',
     'runner.tip5': '⚡  Сложность растёт каждую минуту',
+    // CosmeticNFT
+    'cosmetic.title': 'КАСТОМИЗАЦИЯ ОРБА',
+    'cosmetic.desc': 'Уникальные скины ядра, эксклюзивные анимации взрывов и статус-ауры для холдеров лимитированных NFT Genesis.',
+    'cosmetic.loading': 'ЗАГРУЗКА АССЕТОВ... 88%',
+    // Donate
+    'donate.btn': 'Поддержать развитие проекта',
+    'donate.title': '💜 Поддержать проект',
+    'donate.sub': 'Отправьте любую криптовалюту на адрес Solana (SOL, USDC, SPL-токены)',
+    'donate.label': 'SOLANA АДРЕС',
+    'donate.copy': '📋  Скопировать адрес',
+    'donate.close': 'Закрыть',
   },
 
   zh: {
@@ -899,6 +933,17 @@ export const T: Translations = {
     'runner.tip3': '💎  收集宝石 · +{n} ORB',
     'runner.tip4': '🔥  3次险过 = ×2倍数',
     'runner.tip5': '⚡  每分钟难度提升',
+    // CosmeticNFT
+    'cosmetic.title': 'ORB 定制化',
+    'cosmetic.desc': '独特的核心皮肤、专属爆炸动画和限量版 NFT Genesis 持有者专属光环。',
+    'cosmetic.loading': '资源加载中... 88%',
+    // Donate
+    'donate.btn': '支持项目发展',
+    'donate.title': '💜 支持项目',
+    'donate.sub': '向我们的 Solana 地址发送任意加密货币（SOL、USDC、SPL 代币）',
+    'donate.label': 'SOLANA 地址',
+    'donate.copy': '📋  复制地址',
+    'donate.close': '关闭',
   },
 
   ja: {
@@ -1181,6 +1226,17 @@ export const T: Translations = {
     'runner.tip3': '💎  宝石を取る · +{n} ORB',
     'runner.tip4': '🔥  3ニアミス = ×2倍率',
     'runner.tip5': '⚡  毎分難易度アップ',
+    // CosmeticNFT
+    'cosmetic.title': 'ORBカスタマイズ',
+    'cosmetic.desc': 'ユニークなコアスキン、限定NFT Genesis保有者向けの専用爆発アニメーションとステータスオーラ。',
+    'cosmetic.loading': 'アセット読み込み中... 88%',
+    // Donate
+    'donate.btn': 'プロジェクトを支援する',
+    'donate.title': '💜 プロジェクトを支援',
+    'donate.sub': 'Solanaアドレスに任意の暗号通貨を送信（SOL、USDC、SPLトークン）',
+    'donate.label': 'SOLANAアドレス',
+    'donate.copy': '📋  アドレスをコピー',
+    'donate.close': '閉じる',
   },
 
   fr: {
@@ -1463,6 +1519,17 @@ export const T: Translations = {
     'runner.tip3': '💎  Collectez les gemmes · +{n} ORB',
     'runner.tip4': '🔥  3 frôlements = ×2 multiplicateur',
     'runner.tip5': '⚡  Difficulté augmente chaque minute',
+    // CosmeticNFT
+    'cosmetic.title': 'PERSONNALISATION ORB',
+    'cosmetic.desc': 'Skins de noyau uniques, animations d\'explosion exclusives et auras de statut pour les détenteurs de NFT Genesis limités.',
+    'cosmetic.loading': 'CHARGEMENT DES ASSETS... 88%',
+    // Donate
+    'donate.btn': 'Soutenir le projet',
+    'donate.title': '💜 Soutenir le projet',
+    'donate.sub': 'Envoyez n\'importe quelle crypto à notre adresse Solana (SOL, USDC, tokens SPL)',
+    'donate.label': 'ADRESSE SOLANA',
+    'donate.copy': '📋  Copier l\'adresse',
+    'donate.close': 'Fermer',
   },
 };
 

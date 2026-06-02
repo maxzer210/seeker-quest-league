@@ -1,8 +1,10 @@
 import React, { useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { t, useLang } from '../lib/i18n';
 
 export default function CosmeticNftTeaser() {
+  useLang(); // re-render on language change
   const shimmerValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -51,10 +53,8 @@ export default function CosmeticNftTeaser() {
 
           <Text style={s.emojiIcon}>🎭✨</Text>
 
-          <Text style={s.title}>КАСТОМИЗАЦИЯ ОРБА</Text>
-          <Text style={s.description}>
-            Уникальные скины ядра, эксклюзивные анимации взрывов и статус-ауры для холдеров лимитированных NFT Genesis.
-          </Text>
+          <Text style={s.title}>{t('cosmetic.title')}</Text>
+          <Text style={s.description}>{t('cosmetic.desc')}</Text>
 
           {/* Прогресс-бар заглушка */}
           <View style={s.progressContainer}>
@@ -66,7 +66,7 @@ export default function CosmeticNftTeaser() {
                 style={s.progressBarFill}
               />
             </View>
-            <Text style={s.progressText}>ЗАГРУЗКА АССЕТОВ... 88%</Text>
+            <Text style={s.progressText}>{t('cosmetic.loading')}</Text>
           </View>
         </View>
       </LinearGradient>

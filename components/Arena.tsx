@@ -759,8 +759,8 @@ const s = StyleSheet.create({
   sectionLabel:   { color: '#475569', fontSize: 10, fontWeight: '700', letterSpacing: 2, marginBottom: -4 },
 
   // Buildings grid
-  bGrid:          { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  bCard:          { width: (W - 38) / 2, borderRadius: 16, overflow: 'hidden', borderWidth: 1.5, borderColor: '#1E293B' },
+  bGrid:          { flexDirection: 'column', gap: 10 },
+  bCard:          { width: '100%', borderRadius: 16, overflow: 'hidden', borderWidth: 1.5, borderColor: '#1E293B' },
   bCardGrad:      { padding: 14, alignItems: 'flex-start', gap: 4 },
   bIcon:          { fontSize: 28, marginBottom: 2 },
   bName:          { fontSize: 11, fontWeight: '900', letterSpacing: 2 },

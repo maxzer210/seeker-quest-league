@@ -32,6 +32,7 @@
     "seeker-sdk": "^0.2.1"
   },
   "devDependencies": {
+    "@solana-mobile/dapp-store-cli": "^1.0.0",
     "@solana/spl-token": "^0.4.14",
     "@types/react": "~19.1.0",
     "patch-package": "^8.0.1",

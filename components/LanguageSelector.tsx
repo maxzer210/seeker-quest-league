@@ -15,9 +15,6 @@ export default function LanguageSelector({ onDone }: Props) {
       <View style={s.content}>
         {/* Logo */}
         <View style={s.logoWrap}>
-          <LinearGradient colors={['#7C3AED', '#EC4899']} style={s.logoCircle}>
-            <Text style={s.logoLetter}>S</Text>
-          </LinearGradient>
           <Text style={s.brand}>SEEKER QUEST LEAGUE</Text>
           <Text style={s.tagline}>SEASON ZERO  ·  GENESIS LEAGUE</Text>
         </View>

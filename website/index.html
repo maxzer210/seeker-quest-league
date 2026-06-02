@@ -359,7 +359,7 @@
             <h4>Season 1 · League Wars</h4>
             <ul>
               <li>Competitive league system</li>
-              <li>SOL prize pool ($100K)</li>
+              <li>SOL prize pool for top players</li>
               <li>NFT reward badges</li>
               <li>Guild &amp; team features</li>
             </ul>
@@ -406,8 +406,12 @@
         <div class="section__tag">Ready to Earn?</div>
         <h2 class="section__title">Join the Genesis Pre-Season</h2>
         <p>Be among the first players to earn SKORA and compete for real SOL prizes. Genesis players get exclusive early-bird rewards and bonus allocations.</p>
-        <form class="cta__form" id="joinForm">
-          <input type="email" placeholder="Enter your email address" class="input" required />
+        <form class="cta__form" id="joinForm"
+              action="https://formspree.io/f/REPLACE_WITH_YOUR_ID"
+              method="POST">
+          <input type="email" name="email" placeholder="Enter your email address" class="input" required />
+          <input type="hidden" name="_subject" value="New Genesis Seeker signup — SeekerQuest League"/>
+          <input type="hidden" name="_next" value="https://seekerquest-league.com/#join"/>
           <button type="submit" class="btn btn--primary btn--lg">Claim Early Access</button>
         </form>
         <p class="cta__note">Free to play · No credit card · Solana wallet required to claim rewards</p>
@@ -445,10 +449,11 @@
           <a href="https://x.com/SeekerQuestLeag" target="_blank" rel="noopener" class="footer__social">𝕏</a>
           <a href="https://t.me/seekerleague" target="_blank" rel="noopener" class="footer__social">✈</a>
         </div>
+        <p class="footer__disclaimer">⚠ Cryptocurrency and token rewards are not guaranteed. $SKORA and ORB are in-game assets and do not constitute financial instruments or investment products. Participation does not guarantee profit. Crypto assets are volatile and may lose value. This is not financial advice. Users are responsible for complying with the laws of their jurisdiction.</p>
         <p class="footer__copy">© 2026 SeekerQuest League. All rights reserved.</p>
         <ul class="footer__links">
           <li><a href="privacy.html">Privacy Policy</a></li>
-          <li><a href="#">Terms of Service</a></li>
+          <li><a href="terms.html">Terms of Service</a></li>
           <li><a href="mailto:hello@seekerquest-league.com">Contact</a></li>
         </ul>
       </div>
