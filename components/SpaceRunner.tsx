@@ -293,8 +293,8 @@ export default function SpaceRunner({ onExit, orb, onEarnOrb, onSpendOrb, onAddS
   // ── Touch control ──
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder:  () => true,
+      onStartShouldSetPanResponder: () => isPlayingRef.current,
+      onMoveShouldSetPanResponder:  () => isPlayingRef.current,
       onPanResponderGrant: (evt) => {
         if (!isPlayingRef.current) return;
         moveShipTo(evt.nativeEvent.pageX);
