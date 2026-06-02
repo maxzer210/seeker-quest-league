@@ -94,7 +94,7 @@ type Props = {
   onSpendOrb:  (n: number) => void;
   onAddScore:  (n: number) => void;
   onPaySol:    (lamports: number, sol: number) => Promise<void>;
-  onPlaySound: (sound: 'tap' | 'crit' | 'jackpot' | 'levelup') => void;
+  onPlaySound: (sound: 'tap' | 'crit' | 'jackpot' | 'levelup' | 'dead') => void;
 };
 
 let nextAsteroidId = 1;
@@ -569,7 +569,7 @@ export default function SpaceRunner({ onExit, orb, onEarnOrb, onSpendOrb, onAddS
 
     if (crashed) {
       triggerShake(14);
-      onPlaySound('jackpot');
+      onPlaySound('dead');
       endGame();
       return;
     }

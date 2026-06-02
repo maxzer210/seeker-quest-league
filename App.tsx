@@ -365,6 +365,7 @@ function AppInner() {
   const sndCrit    = useRef<Audio.Sound | null>(null);
   const sndJackpot = useRef<Audio.Sound | null>(null);
   const sndLevelUp = useRef<Audio.Sound | null>(null);
+  const sndDead    = useRef<Audio.Sound | null>(null);
 
   // Onboarding + language
   const [onboarded, setOnboarded] = useState(true); // starts true, set false after load check
@@ -598,6 +599,7 @@ function AppInner() {
     sndCrit.current    = await load(require('./assets/sounds/crit.wav'));
     sndJackpot.current = await load(require('./assets/sounds/jackpot.wav'));
     sndLevelUp.current = await load(require('./assets/sounds/levelup.wav'));
+    sndDead.current    = await load(require('./assets/sounds/dead.wav'));
   }
 
   function playSound(snd: Audio.Sound | null) {
@@ -3650,10 +3652,11 @@ function AppInner() {
                 );
               }}
               onPlaySound={(snd) => {
-                if (snd === 'tap')     playSound(sndTap.current);
+                if      (snd === 'tap')     playSound(sndTap.current);
                 else if (snd === 'crit')    playSound(sndCrit.current);
                 else if (snd === 'jackpot') playSound(sndJackpot.current);
                 else if (snd === 'levelup') playSound(sndLevelUp.current);
+                else if (snd === 'dead')    playSound(sndDead.current);
               }}
             />
           </View>
