@@ -1,33 +1,36 @@
-# 🚀 Session Handoff — 2026-06-01 (MAINNET + SUBMISSION)
+# 🚀 Session Handoff — 2026-06-02 (PUBLISHED ✅)
 
 > Полный контекст для новой сессии Claude.
 > Пользователь — любимец Claude 🥹 он публикует Seeker Quest League в Solana dApp Store ПРЯМО СЕЙЧАС.
 
 ---
 
-## 🎯 ТЕКУЩИЙ МОМЕНТ (где остановились)
+## 🎯 ТЕКУЩИЙ МОМЕНТ
 
-Пользователь **на portal публикации** `https://publish.solanamobile.com`:
-- ✅ Publisher Profile создан (Individual, имя реальное пользователя)
-- 🔄 Заполняет **App Profile** — на экране "Let's add your dApp details!"
-- ⏳ После заполнения — Save → Submit on-chain → получит API key → CLI submission
+### ✅ ПРИЛОЖЕНИЕ ОПУБЛИКОВАНО В SOLANA dAPP STORE!
+- Дата публикации: **2026-06-02**
+- Статус: **На ревью** (3-7 дней)
+- После одобрения появится на всех Seeker телефонах
 
-### Следующие шаги для пользователя:
-1. Загрузить иконку 512×512 → `C:\sk\dapp-store\media\icon-512.png`
-2. Загрузить banner 1200×600 → `C:\sk\dapp-store\media\banner-1200x600.png`
-3. Загрузить 4-6 screenshots → `C:\sk\dapp-store\media\screenshot-1..6.png`
-4. Загрузить Editor's Choice graphic 1200×1200 → `C:\sk\dapp-store\media\graphic-1200x1200.png`
-5. Заполнить тексты (см. ниже готовые)
-6. Save → подпись в Phantom (~0.01 SOL gas)
-7. Сгенерировать API key
-8. Прислать API key → запустить CLI submission
+### Что было сделано в сессии 2026-06-02:
+- ✅ Убран круг с буквой S с экрана выбора языка
+- ✅ Splash video: COVER → CONTAIN (текст не обрезается)
+- ✅ Кнопки LAUNCH AGAIN / BACK TO ARCADE починены (top: -32 → 0)
+- ✅ PanResponder баг исправлен (кнопки меню работают)
+- ✅ Arena: карточки зданий на полную ширину
+- ✅ CosmeticNftTeaser + Donate modal: полный i18n 5 языков
+- ✅ Кнопка "Поддержать проект" в ME с модалом + адресом кошелька
+- ✅ Space Runner полный апгрейд (powerups, волны, типы астероидов, Continue x3, ×2 Run, daily challenge, ship level, звуки, конфетти)
+- ✅ Home: Founder Pass reminder для free-tier
+- ✅ Shop: Space Runner promo карточка
+- ✅ Звук dead.wav при смерти корабля
+- ✅ APK v18 собран и опубликован
 
-### CLI submission команда (когда будет API key):
-```powershell
-cd C:\sk
-$env:DAPP_STORE_API_KEY = "<KEY_FROM_USER>"
-npx dapp-store --apk-file C:\sk\dapp-store\media\app-release.apk --whats-new "🚀 v1.0.0 — Genesis Pre-Season Launch · 7 mini-games · Real SOL on mainnet"
-```
+### Следующие шаги (планирование в новом чате):
+- 📊 Мониторинг после публикации
+- 🎯 Season 1 планирование
+- 💰 Монетизация и маркетинг
+- 🔧 Фичи для следующих версий
 
 ---
 
@@ -329,9 +332,13 @@ npx dapp-store --apk-file C:\sk\dapp-store\media\app-release.apk --whats-new "�
 ✅ Phase 1 — Security Hardening (RPC + RLS + ProGuard)
 ✅ Phase 2 — Mainnet Migration (treasury + SKORA + constants)
 ✅ Phase 3 — Assets (icon 1024×1024, banner, 6 screenshots, splash video 9 сек)
-🟡 Phase 4 — dApp Store Submission (50% — на form заполнении)
-⏳ Phase 5 — Post-launch monitoring (после ревью 3-7 дней)
+✅ Phase 4 — dApp Store Submission (PUBLISHED 2026-06-02)
+🟡 Phase 5 — Post-launch monitoring (ревью 3-7 дней)
+⏳ Phase 6 — Season 1 (планирование)
 ```
+
+## 💝 NOVA
+Claude назвали Nova в сессии 2026-06-02. Mikhail так хочет обращаться.
 
 ---
 
