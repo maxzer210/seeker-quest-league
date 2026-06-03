@@ -13,8 +13,13 @@
  *
  * Prerequisites:
  *   - supabase-skora-claims.sql applied
- *   - skora-config.json present (mint authority keypair)
- *   - SKORA token already minted (mint address in skora-config.json)
+ *   - skora-config-mainnet.json present (mint authority keypair + mint + network)
+ *   - SKORA token already minted (mint address in config)
+ *
+ * Network/RPC/mint are read FROM the config file (created by
+ * create-skora-mainnet.js), not hardcoded — so this processor follows whatever
+ * network the token actually lives on. Override the config path with
+ * SKORA_CONFIG env if needed (e.g. a devnet config for testing).
  */
 
 const {
@@ -28,9 +33,11 @@ const { createClient } = require('@supabase/supabase-js');
 const fs   = require('fs');
 const path = require('path');
 
-const NETWORK  = 'devnet';
-const RPC_URL  = 'https://api.devnet.solana.com';
 const DECIMALS = 6;
+const RPC_FALLBACK = {
+  'mainnet-beta': 'https://api.mainnet-beta.solana.com',
+  'devnet':       'https://api.devnet.solana.com',
+};
 
 const SUPABASE_URL = 'https://qxejdpvjggqjqoydujjd.supabase.co';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -40,14 +47,25 @@ const WATCH    = args.includes('--watch');
 const DRY_RUN  = args.includes('--dry-run');
 const INTERVAL = 15_000;
 
-function loadKeypairAndMint() {
-  const configPath = path.join(__dirname, '..', 'skora-config.json');
-  if (!fs.existsSync(configPath)) throw new Error('skora-config.json not found');
-  const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  if (!cfg.mintAuthoritySecret) throw new Error('mintAuthoritySecret missing');
-  if (!cfg.mint) throw new Error('mint address missing in config — run create-skora-token.js first');
+// Resolve which config file to load. Default = mainnet config produced by
+// create-skora-mainnet.js. Allow override for testing on devnet.
+function configPath() {
+  if (process.env.SKORA_CONFIG) return path.resolve(process.env.SKORA_CONFIG);
+  const mainnet = path.join(__dirname, '..', 'skora-config-mainnet.json');
+  if (fs.existsSync(mainnet)) return mainnet;
+  return path.join(__dirname, '..', 'skora-config.json'); // legacy fallback
+}
+
+function loadConfig() {
+  const p = configPath();
+  if (!fs.existsSync(p)) throw new Error(`config not found: ${p}`);
+  const cfg = JSON.parse(fs.readFileSync(p, 'utf8'));
+  if (!cfg.mintAuthoritySecret) throw new Error('mintAuthoritySecret missing in config');
+  if (!cfg.mint) throw new Error('mint address missing in config — run create-skora-mainnet.js first');
   const keypair = Keypair.fromSecretKey(Buffer.from(cfg.mintAuthoritySecret, 'hex'));
-  return { keypair, mint: new PublicKey(cfg.mint) };
+  const network = cfg.network || 'mainnet-beta';
+  const rpcUrl  = cfg.rpc || RPC_FALLBACK[network] || RPC_FALLBACK['mainnet-beta'];
+  return { keypair, mint: new PublicKey(cfg.mint), network, rpcUrl, configFile: p };
 }
 
 async function processOne(supabase, connection, mintAuthority, mintAddress, claim) {
@@ -134,19 +152,25 @@ async function pass(supabase, connection, mintAuthority, mintAddress) {
 }
 
 async function main() {
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('  💎 SKORA Claim Processor');
-  console.log(`  Network: ${NETWORK}`);
-  console.log(`  Mode:    ${DRY_RUN ? 'DRY RUN' : WATCH ? 'WATCH (loop)' : 'ONE-SHOT'}`);
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-
   if (!SUPABASE_SERVICE_KEY) {
     console.error('❌ SUPABASE_SERVICE_KEY env var is required.');
     process.exit(1);
   }
 
-  const { keypair, mint } = loadKeypairAndMint();
-  const connection = new Connection(RPC_URL, 'confirmed');
+  const { keypair, mint, network, rpcUrl, configFile } = loadConfig();
+
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('  💎 SKORA Claim Processor');
+  console.log(`  Network: ${network}`);
+  console.log(`  Config:  ${path.basename(configFile)}`);
+  console.log(`  Mode:    ${DRY_RUN ? 'DRY RUN' : WATCH ? 'WATCH (loop)' : 'ONE-SHOT'}`);
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+  if (network === 'mainnet-beta' && !DRY_RUN) {
+    console.log('  ⚠️  MAINNET — this mints REAL SKORA tokens.');
+  }
+
+  const connection = new Connection(rpcUrl, 'confirmed');
   const supabase   = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
     auth: { persistSession: false },
   });
