@@ -106,7 +106,8 @@ const TAP_VALUES   = [10, 15, 20, 30, 50, 75];
 const CRIT_CHANCES = [0.08, 0.12, 0.16, 0.22, 0.30, 0.40];
 const HORSE_POWERS = [4, 5, 6, 8, 10, 14];
 const MAX_LEVEL         = 5;
-const MAX_ENERGY        = 100;
+const MAX_ENERGY        = 500;
+const ENERGY_REGEN_SEC  = 20;  // seconds per +1 energy (3/min) — kept in sync online & offline
 const COMBO_MULTIPLIERS = [1, 2, 3, 5];
 const COMBO_TAPS        = 5;   // taps per level
 const COMBO_RESET_MS    = 1500;
@@ -351,7 +352,7 @@ function AppInner() {
 
   // Energy
   const [energy, setEnergy]         = useState(MAX_ENERGY);
-  const [energyTick, setEnergyTick] = useState(60);
+  const [energyTick, setEnergyTick] = useState(ENERGY_REGEN_SEC);
 
   // Combo
   const [comboLevel, setComboLevel] = useState(0);
@@ -565,7 +566,7 @@ function AppInner() {
     };
   }, []);
 
-  // Energy refill: +1 per minute, persisted via AsyncStorage
+  // Energy refill: +1 every ENERGY_REGEN_SEC seconds, persisted via AsyncStorage
   useEffect(() => {
     const id = setInterval(() => {
       setEnergyTick(t => {
@@ -576,7 +577,7 @@ function AppInner() {
             AsyncStorage.setItem('sk_energy_ts', Date.now().toString()).catch(() => {});
             return next;
           });
-          return 60;
+          return ENERGY_REGEN_SEC;
         }
         return t - 1;
       });
@@ -1219,8 +1220,8 @@ function AppInner() {
       const saved = await AsyncStorage.getItem('sk_energy');
       const ts    = await AsyncStorage.getItem('sk_energy_ts');
       if (saved !== null && ts !== null) {
-        const minutesPassed = Math.floor((Date.now() - parseInt(ts, 10)) / 60000);
-        setEnergy(Math.min(parseInt(saved, 10) + minutesPassed, MAX_ENERGY));
+        const regened = Math.floor((Date.now() - parseInt(ts, 10)) / 1000 / ENERGY_REGEN_SEC);
+        setEnergy(Math.min(parseInt(saved, 10) + regened, MAX_ENERGY));
       }
     } catch (_) {}
   }
