@@ -161,7 +161,7 @@ const ACHIEVEMENTS: readonly Achievement[] = [
 
 // ─── season config ────────────────────────────────────────────────────────────
 
-const SEASON_END = new Date('2026-06-01T00:00:00Z').getTime();
+const SEASON_END = new Date('2026-06-30T00:00:00Z').getTime();
 
 function getSeasonLeft() {
   const diff = Math.max(0, SEASON_END - Date.now());
