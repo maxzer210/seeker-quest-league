@@ -44,6 +44,9 @@ yarn-error.*
 skora-config.json
 skora-config-mainnet.json
 
+# Prize distribution wallet — holds real SOL, private key! NEVER commit
+distribution-wallet.json
+
 # Claude Code MCP config (contains Supabase PAT)
 .mcp.json
 
