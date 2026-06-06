@@ -170,6 +170,57 @@ function ensureTreasuryWallet() {
   return new PublicKey(TREASURY_WALLET);
 }
 
+/**
+ * Recovery for the MWA CancellationException money-loss bug.
+ *
+ * The wallet can broadcast the transfer on-chain (SOL leaves the wallet) yet
+ * the MWA session throws (e.g. CancellationException) before returning the
+ * signature — so the client thinks the payment failed and the user pays again.
+ *
+ * Before declaring failure we scan the payer's recent transactions for a
+ * transfer of exactly `lamports` into the treasury within `windowSec`. If we
+ * find one, the payment really happened — return its signature so the caller
+ * can treat it as success instead of charging the user twice.
+ */
+async function recoverRecentPayment(
+  connection: Connection,
+  fromAddress: string,
+  treasury: PublicKey,
+  lamports: number,
+  windowSec = 180,
+): Promise<string | null> {
+  const fromPk = new PublicKey(fromAddress);
+  const treasuryStr = treasury.toBase58();
+  // The cancellation can fire the instant the tx is broadcast — it may not be
+  // queryable yet. Poll a few times before giving up.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await new Promise(r => setTimeout(r, 2500));
+    try {
+      const sigs = await connection.getSignaturesForAddress(fromPk, { limit: 10 });
+      const nowSec = Date.now() / 1000;
+      for (const s of sigs) {
+        if (s.err) continue;
+        if (s.blockTime && nowSec - s.blockTime > windowSec) continue;
+        const tx = await connection.getTransaction(s.signature, {
+          maxSupportedTransactionVersion: 0,
+          commitment: 'confirmed',
+        });
+        if (!tx || tx.meta?.err) continue;
+        const msg: any = tx.transaction.message;
+        const keys: any[] = msg.staticAccountKeys ?? msg.accountKeys ?? [];
+        const idx = keys.findIndex((k: any) =>
+          (typeof k?.toBase58 === 'function' ? k.toBase58() : String(k)) === treasuryStr);
+        if (idx < 0) continue;
+        const pre  = tx.meta?.preBalances?.[idx];
+        const post = tx.meta?.postBalances?.[idx];
+        if (pre == null || post == null) continue;
+        if (post - pre === lamports) return s.signature;
+      }
+    } catch (_) {}
+  }
+  return null;
+}
+
 export async function connectSolanaWallet(): Promise<SolanaWalletSession> {
   assertAndroidMwa();
 
@@ -206,6 +257,11 @@ export async function paySolToTreasury(
   const treasury = ensureTreasuryWallet();
   const connection = new Connection(SOLANA_RPC, 'confirmed');
 
+  // Hoisted so we can recover if the MWA session cancels after broadcasting.
+  let fromAddress: string | null = null;
+  let authTokenOuter = '';
+  let walletUriOuter: string | undefined;
+
   try {
     onStatus?.('opening_wallet');
     const result = await transact(async wallet => {
@@ -219,6 +275,9 @@ export async function paySolToTreasury(
 
       onStatus?.('preparing_transaction');
       const fromPubkey = publicKeyFromMwaAddress(account.address);
+      fromAddress    = fromPubkey.toBase58();
+      authTokenOuter = authorization.auth_token;
+      walletUriOuter = authorization.wallet_uri_base;
       const latestBlockhash = await connection.getLatestBlockhash('confirmed');
       const transaction = new Transaction({
         ...latestBlockhash,
@@ -266,6 +325,34 @@ export async function paySolToTreasury(
     onStatus?.('confirmed');
     return result;
   } catch (e) {
+    // The session may have cancelled AFTER the tx was broadcast — verify on-chain
+    // before declaring failure, so we never charge the user twice.
+    if (fromAddress) {
+      const recovered = await recoverRecentPayment(connection, fromAddress, treasury, lamports);
+      if (recovered) {
+        onStatus?.('saving_payment');
+        try {
+          await supabase.from('wheel_sol_payments').insert({
+            device_id: deviceId,
+            wallet_address: fromAddress,
+            tx_signature: recovered,
+            lamports,
+            sol_amount: sol,
+            network: SOLANA_NETWORK,
+            status: `confirmed:${purpose}`,
+          });
+        } catch (_) {}
+        onStatus?.('confirmed');
+        return {
+          address: fromAddress,
+          authToken: authTokenOuter,
+          walletUriBase: walletUriOuter,
+          signature: recovered,
+          lamports,
+          sol,
+        };
+      }
+    }
     throw new SolanaPaymentError(e);
   }
 }
@@ -278,6 +365,11 @@ export async function payForWheelSpin(
 
   const treasury = ensureTreasuryWallet();
   const connection = new Connection(SOLANA_RPC, 'confirmed');
+
+  // Hoisted so we can recover if the MWA session cancels after broadcasting.
+  let fromAddress: string | null = null;
+  let authTokenOuter = '';
+  let walletUriOuter: string | undefined;
 
   try {
     onStatus?.('opening_wallet');
@@ -292,6 +384,9 @@ export async function payForWheelSpin(
 
     onStatus?.('preparing_transaction');
     const fromPubkey = publicKeyFromMwaAddress(account.address);
+    fromAddress    = fromPubkey.toBase58();
+    authTokenOuter = authorization.auth_token;
+    walletUriOuter = authorization.wallet_uri_base;
     const latestBlockhash = await connection.getLatestBlockhash('confirmed');
     const transaction = new Transaction({
       ...latestBlockhash,
@@ -342,6 +437,34 @@ export async function payForWheelSpin(
     onStatus?.('confirmed');
     return result;
   } catch (e) {
+    // The session may have cancelled AFTER the tx was broadcast — verify on-chain
+    // before declaring failure, so we never charge the user twice.
+    if (fromAddress) {
+      const recovered = await recoverRecentPayment(connection, fromAddress, treasury, WHEEL_SPIN_LAMPORTS);
+      if (recovered) {
+        onStatus?.('saving_payment');
+        try {
+          await supabase.from('wheel_sol_payments').insert({
+            device_id: deviceId,
+            wallet_address: fromAddress,
+            tx_signature: recovered,
+            lamports: WHEEL_SPIN_LAMPORTS,
+            sol_amount: WHEEL_SPIN_SOL,
+            network: SOLANA_NETWORK,
+            status: 'confirmed',
+          });
+        } catch (_) {}
+        onStatus?.('confirmed');
+        return {
+          address: fromAddress,
+          authToken: authTokenOuter,
+          walletUriBase: walletUriOuter,
+          signature: recovered,
+          lamports: WHEEL_SPIN_LAMPORTS,
+          sol: WHEEL_SPIN_SOL,
+        };
+      }
+    }
     throw new SolanaPaymentError(e);
   }
 }
