@@ -34,6 +34,43 @@ export type SeekerProfileSnapshot = {
   yieldEarned:   number;
 };
 
+/**
+ * Normalize a .skr domain coming from the SDK.
+ *
+ * The SDK can return the domain as a Uint8Array / number[] / Buffer-like (or a
+ * stringified byte array like "99,114,121,..."). Rendered directly in <Text>
+ * that shows up as raw comma-separated char codes. Decode to a real string.
+ */
+export function normalizeSkrDomain(raw: any): string | null {
+  if (raw == null) return null;
+
+  let bytes: number[] | null = null;
+  if (typeof raw === 'string') {
+    // Already a clean string? return as-is.
+    if (!/^\s*\d+(\s*,\s*\d+)+\s*$/.test(raw)) return raw.trim() || null;
+    // Stringified byte array "99,114,..."
+    bytes = raw.split(',').map(n => parseInt(n.trim(), 10));
+  } else if (Array.isArray(raw)) {
+    bytes = raw.map(Number);
+  } else if (raw instanceof Uint8Array) {
+    bytes = Array.from(raw);
+  } else if (raw?.type === 'Buffer' && Array.isArray(raw.data)) {
+    bytes = raw.data.map(Number);
+  } else {
+    return String(raw);
+  }
+
+  if (!bytes) return null;
+  const clean = bytes.filter(b => Number.isFinite(b) && b > 0 && b < 0x110000);
+  let s = '';
+  try { s = String.fromCharCode(...clean); } catch { return null; }
+  s = s.trim();
+  if (!s) return null;
+  // Ensure the .skr suffix (decoded value may or may not include it)
+  if (!s.toLowerCase().endsWith('.skr')) s = s + '.skr';
+  return s;
+}
+
 // ── Lazy SDK loader ──────────────────────────────────────────────────────────
 // We wrap the require() so that if seeker-sdk (or any of its native peer deps)
 // fails to load at runtime, the rest of the app continues to function.
@@ -76,7 +113,12 @@ export async function fetchSeekerProfile(
   try {
     const connection = getSeekerConnection();
     const profile = await sdk.getSeekerProfile(connection, walletAddress);
-    return profile as SeekerProfileSnapshot;
+    if (!profile) return null;
+    // Decode .skr domain — SDK may hand it back as raw bytes.
+    return {
+      ...(profile as SeekerProfileSnapshot),
+      skrDomain: normalizeSkrDomain((profile as any).skrDomain),
+    };
   } catch (e) {
     console.warn('[seeker] fetchSeekerProfile failed:', (e as Error).message);
     return null;
