@@ -81,6 +81,7 @@ import { detectInstallerSource, type InstallerInfo } from './lib/installerCheck'
 import {
   requestNotificationPermission, hasNotificationPermission,
   scheduleStreakReminder, scheduleLandsReady, scheduleTournamentEnding,
+  scheduleEnergyFull, cancelEnergyFull,
   cancelAllScheduled, sendTestNotification,
 } from './lib/notifications';
 import { loadSavedLang, t, useLang, LANGUAGES, setLang } from './lib/i18n';
@@ -618,21 +619,26 @@ function AppInner() {
     }
   }
 
+  // Request permission + schedule the engagement reminders. Shared by the
+  // Settings toggle and the post-onboarding prompt. Returns whether granted.
+  async function enableNotifications(): Promise<boolean> {
+    const granted = await requestNotificationPermission();
+    setNotificationsEnabled(granted);
+    if (granted) {
+      await scheduleStreakReminder(streakCount);
+      if (GENESIS_PHASE) await scheduleTournamentEnding();
+    }
+    return granted;
+  }
+
   async function toggleNotifications() {
     if (notificationsEnabled) {
       // Turn off — cancel all scheduled
       await cancelAllScheduled();
       setNotificationsEnabled(false);
     } else {
-      // Turn on — request permission, then re-schedule reminders
-      const granted = await requestNotificationPermission();
-      setNotificationsEnabled(granted);
-      if (granted) {
-        await scheduleStreakReminder(streakCount);
-        if (GENESIS_PHASE) {
-          await scheduleTournamentEnding();
-        }
-      } else {
+      const granted = await enableNotifications();
+      if (!granted) {
         Alert.alert(
           'Notification permission denied',
           'Enable notifications for Seeker Quest in your device settings to receive streak reminders.'
@@ -931,6 +937,7 @@ function AppInner() {
       setEnergy(MAX_ENERGY);
       AsyncStorage.setItem('sk_energy', MAX_ENERGY.toString()).catch(() => {});
       AsyncStorage.setItem('sk_energy_ts', Date.now().toString()).catch(() => {});
+      cancelEnergyFull().catch(() => {});   // already full — drop the pending nudge
       winRef.current?.show(MAX_ENERGY, '⚡ ENERGY REFILLED');
     } catch (e: any) {
       Alert.alert('SOL payment failed', e?.message ?? 'Could not refill energy.');
@@ -1307,6 +1314,7 @@ function AppInner() {
     // Morning Claim bonus: always refill energy on daily claim
     setEnergy(MAX_ENERGY);
     AsyncStorage.setItem('sk_energy', MAX_ENERGY.toString()).catch(() => {});
+    cancelEnergyFull().catch(() => {});   // already full — drop the pending nudge
 
     // Streak Shield: earn 1 shield every 7 days (caps at 3)
     let shieldEarned = false;
@@ -1371,6 +1379,11 @@ function AppInner() {
     setEnergy(prev => {
       const next = Math.max(0, prev - 1);
       scheduleEnergyWrite(next);
+      // Just drained the tank — schedule a "energy full" re-engagement nudge
+      // for when it fully regenerates (MAX_ENERGY × regen rate from empty).
+      if (next === 0 && prev > 0 && notificationsEnabled) {
+        scheduleEnergyFull(MAX_ENERGY * ENERGY_REGEN_SEC).catch(() => {});
+      }
       return next;
     });
   }
@@ -3725,6 +3738,15 @@ function AppInner() {
                 await supabase.from('players').update({ username: name })
                   .eq('device_id', deviceIdRef.current);
               } catch (_) {}
+            }
+            // Prompt for notifications right after onboarding — the moment the
+            // player is most engaged. Big retention lever for a tap game.
+            // (Only prompt if not already granted.)
+            const has = await hasNotificationPermission();
+            if (!has) {
+              setTimeout(() => { enableNotifications().catch(() => {}); }, 600);
+            } else {
+              setNotificationsEnabled(true);
             }
           }} />
         </View>

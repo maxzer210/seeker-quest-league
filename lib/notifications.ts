@@ -16,6 +16,7 @@ const CHANNEL_ID = 'seeker-quest';
 const ID_STREAK_REMINDER     = 'streak-reminder';
 const ID_LANDS_READY         = 'lands-ready';
 const ID_TOURNAMENT_ENDING   = 'tournament-ending';
+const ID_ENERGY_FULL         = 'energy-full';
 
 let configured = false;
 
@@ -168,6 +169,41 @@ export async function scheduleTournamentEnding(): Promise<void> {
       channelId: CHANNEL_ID,
     },
   });
+}
+
+/**
+ * Tells the player their Signal energy has refilled to max — a strong
+ * re-engagement hook for a tap game. Schedule when energy hits 0; the fire
+ * time is (full regen duration) from now.
+ *
+ * @param secondsFromNow seconds until energy is back to max
+ */
+export async function scheduleEnergyFull(secondsFromNow: number): Promise<void> {
+  await ensureConfigured();
+  try {
+    await Notifications.cancelScheduledNotificationAsync(ID_ENERGY_FULL);
+  } catch {}
+
+  await Notifications.scheduleNotificationAsync({
+    identifier: ID_ENERGY_FULL,
+    content: {
+      title: '⚡  Energy full — time to tap!',
+      body:  'Your Signal energy is back to max. Jump in and earn ORB.',
+      data:  { type: 'energy-full' },
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+      seconds: Math.max(60, secondsFromNow),
+      channelId: CHANNEL_ID,
+    },
+  });
+}
+
+/** Cancel a pending energy-full nudge (e.g. user refilled via SOL). */
+export async function cancelEnergyFull(): Promise<void> {
+  try {
+    await Notifications.cancelScheduledNotificationAsync(ID_ENERGY_FULL);
+  } catch {}
 }
 
 /** Cancel everything — use when user disables notifications in Settings. */
