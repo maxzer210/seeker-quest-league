@@ -1363,6 +1363,18 @@ function AppInner() {
     }, 2000);
   }
 
+  // Spend 1 energy — shared by home tap & the Signal mini-game.
+  // NOTE: we intentionally do NOT touch sk_energy_ts here. That key is the
+  // regen anchor, updated only by the regen interval — spending must not reset
+  // accumulated regen progress (previously tapSignal reset it on every tap).
+  function spendEnergy() {
+    setEnergy(prev => {
+      const next = Math.max(0, prev - 1);
+      scheduleEnergyWrite(next);
+      return next;
+    });
+  }
+
   function handleTap() {
     if (energy === 0) return;
     const tapVal  = TAP_VALUES[upgrades.signalPower];
@@ -1377,9 +1389,7 @@ function AppInner() {
     scheduleSyncScore(nextOrb, level, streakCount);
 
     // Energy
-    const nextE = Math.max(0, energy - 1);
-    setEnergy(nextE);
-    scheduleEnergyWrite(nextE);
+    spendEnergy();
 
     // Daily quest
     setDailyTapQuest(q => Math.min(q + 1, 100));
@@ -1452,12 +1462,7 @@ function AppInner() {
 
   function tapSignal() {
     if (!gameActive || energy <= 0) return;
-    setEnergy(prev => {
-      const next = prev - 1;
-      AsyncStorage.setItem('sk_energy',    next.toString()).catch(() => {});
-      AsyncStorage.setItem('sk_energy_ts', Date.now().toString()).catch(() => {});
-      return next;
-    });
+    spendEnergy();
     // Combo
     comboCountRef.current += 1;
     const newLevel = Math.min(3, Math.floor(comboCountRef.current / COMBO_TAPS));
@@ -1474,9 +1479,10 @@ function AppInner() {
       setComboLevel(0);
     }, COMBO_RESET_MS);
 
-    const base      = TAP_VALUES[upgrades.signalPower];
-    const comboMult = COMBO_MULTIPLIERS[comboLevelRef.current];
-    const reward    = base * comboMult * (boostActive ? 3 : 1);
+    const base       = TAP_VALUES[upgrades.signalPower];
+    const comboMult  = COMBO_MULTIPLIERS[comboLevelRef.current];
+    const founderMul = getFounderMultiplier(founderTier, isFounder);
+    const reward     = Math.round(base * comboMult * (boostActive ? 3 : 1) * founderMul);
 
     setScore(p => p + 1);
     setDailyTapQuest(p => Math.min(p + 1, 100));
