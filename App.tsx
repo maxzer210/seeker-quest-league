@@ -85,6 +85,10 @@ import {
   cancelAllScheduled, sendTestNotification,
 } from './lib/notifications';
 import { loadSavedLang, t, useLang, LANGUAGES, setLang } from './lib/i18n';
+import {
+  ensureReferralCode, claimReferral, collectReferrerRewards,
+  getReferralCount, hasClaimedReferral, REFERRER_REWARD, REFERRED_REWARD,
+} from './lib/referrals';
 import LanguageSelector from './components/LanguageSelector';
 import PremiumTapOrb from './components/PremiumTapOrb';
 import PremiumWallet from './components/PremiumWallet';
@@ -424,6 +428,14 @@ function AppInner() {
   };
   const [transferHistory, setTransferHistory] = useState<TransferRow[]>([]);
 
+  // Referrals
+  const [showReferralModal, setShowReferralModal] = useState(false);
+  const [myRefCode,    setMyRefCode]    = useState('');
+  const [refCount,     setRefCount]     = useState(0);
+  const [refCodeInput, setRefCodeInput] = useState('');
+  const [refPending,   setRefPending]   = useState(false);
+  const [refClaimed,   setRefClaimed]   = useState(false);
+
   // Daily streak
   const [streakCount, setStreakCount]   = useState(0);
   const [streakShields, setStreakShields] = useState(0);   // shields protect 1 missed day each
@@ -556,7 +568,7 @@ function AppInner() {
       const defaultName = 'Seeker#' + id.slice(-4).toUpperCase();
       setUsername(defaultName);
       setPendingUsername(defaultName);
-      initPlayer(id, orb, level);
+      initPlayer(id, orb, level).then(() => initReferrals(id));
     });
     loadWallet();
     return () => {
@@ -669,6 +681,54 @@ function AppInner() {
         season_orb: currentOrb,
       }, { onConflict: 'device_id', ignoreDuplicates: true });
     } catch (_) {}
+  }
+
+  // ── Referrals ───────────────────────────────────────────────────────────
+  async function initReferrals(id: string) {
+    try {
+      const code = await ensureReferralCode(id);
+      if (code) setMyRefCode(code);
+      setRefClaimed(await hasClaimedReferral());
+      setRefCount(await getReferralCount(id));
+      // Collect rewards from friends who joined while we were away
+      const collected = await collectReferrerRewards(id);
+      if (collected > 0) {
+        setOrb(prev => {
+          const next = prev + collected;
+          syncScore(next, level, streakCount);
+          return next;
+        });
+        setTimeout(() => winRef.current?.show(collected, t('ref.collected', { n: collected })), 1800);
+      }
+    } catch (_) {}
+  }
+
+  async function executeClaimReferral() {
+    if (!deviceIdRef.current || refPending) return;
+    const code = refCodeInput.trim();
+    if (!code) return;
+    setRefPending(true);
+    try {
+      const res = await claimReferral(deviceIdRef.current, code);
+      if (res.ok) {
+        setRefClaimed(true);
+        setRefCodeInput('');
+        setOrb(prev => {
+          const next = prev + res.reward;
+          syncScore(next, level, streakCount);
+          return next;
+        });
+        winRef.current?.show(res.reward, t('ref.successReferred', { n: res.reward }));
+      } else {
+        const msg = res.error === 'self'         ? t('ref.errSelf')
+                  : res.error === 'already_used' ? t('ref.errUsed')
+                  : res.error === 'not_found'    ? t('ref.errNotFound')
+                  : t('ref.errFailed');
+        Alert.alert(t('ref.title'), msg);
+      }
+    } finally {
+      setRefPending(false);
+    }
   }
 
   async function addTournamentScore(points: number) {
@@ -1935,6 +1995,75 @@ function AppInner() {
               </View>
             )}
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ═══════════ REFERRAL MODAL ═══════════ */}
+      <Modal visible={showReferralModal} transparent animationType="fade" statusBarTranslucent
+        onRequestClose={() => setShowReferralModal(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.refModal}>
+            <View style={styles.sendOrbHeader}>
+              <Text style={styles.sendOrbTitle}>🎁  {t('ref.title')}</Text>
+              <TouchableOpacity onPress={() => setShowReferralModal(false)} style={styles.sendOrbClose}>
+                <Text style={{ color: '#94A3B8', fontSize: 22, fontWeight: '700' }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.refModalSub}>{t('ref.subtitle', { n: REFERRED_REWARD.toLocaleString() })}</Text>
+
+            {/* My code */}
+            <Text style={styles.sendOrbLabel}>{t('ref.yourCode')}</Text>
+            <View style={styles.refCodeBox}>
+              <Text selectable style={styles.refCodeTxt}>{myRefCode || '—'}</Text>
+            </View>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              disabled={!myRefCode}
+              onPress={() => Share.share({
+                message: t('ref.shareMsg', { code: myRefCode, n: REFERRED_REWARD.toLocaleString() }),
+              })}
+            >
+              <LinearGradient colors={['#7C3AED','#4F46E5']} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.refShareBtn}>
+                <Text style={styles.refShareTxt}>{t('ref.share')}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <View style={styles.refStatRow}>
+              <Text style={styles.refStatTxt}>{t('ref.invited')}: <Text style={{ color: '#FACC15', fontWeight: '900' }}>{refCount}</Text></Text>
+            </View>
+
+            {/* Enter a friend's code */}
+            {refClaimed ? (
+              <Text style={styles.refClaimedNote}>✓ {t('ref.claimedNote')}</Text>
+            ) : (
+              <>
+                <Text style={styles.sendOrbLabel}>{t('ref.haveCode')}</Text>
+                <TextInput
+                  style={styles.sendOrbInput}
+                  value={refCodeInput}
+                  onChangeText={(txt) => setRefCodeInput(txt.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8))}
+                  placeholder={t('ref.enterHint')}
+                  placeholderTextColor="#475569"
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                />
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  disabled={refPending || refCodeInput.trim().length < 4}
+                  onPress={executeClaimReferral}
+                >
+                  <LinearGradient
+                    colors={refPending || refCodeInput.trim().length < 4 ? ['#1E293B','#0F172A'] : ['#22C55E','#10B981']}
+                    start={{x:0,y:0}} end={{x:1,y:0}} style={styles.refApplyBtn}>
+                    <Text style={[styles.refApplyTxt, (refPending || refCodeInput.trim().length < 4) && { color: '#475569' }]}>
+                      {refPending ? t('ref.applying') : t('ref.apply')}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </View>
       </Modal>
@@ -3259,6 +3388,21 @@ function AppInner() {
                 ))}
               </View>
 
+              {/* ── Invite friends card ── */}
+              <TouchableOpacity activeOpacity={0.85} onPress={() => setShowReferralModal(true)}>
+                <LinearGradient colors={['#0d0025','#3B0764','#1a0040']} start={{x:0,y:0}} end={{x:1,y:0}}
+                  style={styles.refCard}>
+                  <Text style={styles.refCardIcon}>🎁</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.refCardTitle}>{t('ref.cardTitle')}</Text>
+                    <Text style={styles.refCardSub}>{t('ref.subtitle', { n: REFERRED_REWARD.toLocaleString() })}</Text>
+                  </View>
+                  <View style={styles.refCardCta}>
+                    <Text style={styles.refCardCtaTxt}>{refCount > 0 ? `👥 ${refCount}` : t('ref.cardCta')}</Text>
+                  </View>
+                </LinearGradient>
+              </TouchableOpacity>
+
               {/* ── Seeker identity ── */}
               {/* Installer-based grant takes precedence (faster, more reliable) */}
               {installerSeekerGranted ? (
@@ -3964,6 +4108,32 @@ const styles = StyleSheet.create({
   sendOrbModal:        { backgroundColor: '#0A0A12', borderRadius: 22, padding: 22, margin: 18,
                          width: '88%', maxWidth: 420, maxHeight: '88%',
                          borderWidth: 1.5, borderColor: 'rgba(34,197,94,0.4)' },
+
+  // Referrals — profile card
+  refCard:             { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16,
+                         padding: 16, borderWidth: 1, borderColor: 'rgba(168,85,247,0.4)' },
+  refCardIcon:         { fontSize: 26 },
+  refCardTitle:        { color: '#F1F5F9', fontSize: 14, fontWeight: '900' },
+  refCardSub:          { color: '#A78BFA', fontSize: 11, fontWeight: '700', marginTop: 2 },
+  refCardCta:          { backgroundColor: 'rgba(168,85,247,0.2)', borderRadius: 12,
+                         paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: 'rgba(168,85,247,0.5)' },
+  refCardCtaTxt:       { color: '#E9D5FF', fontSize: 12, fontWeight: '900' },
+  // Referrals — modal
+  refModal:            { backgroundColor: '#0A0A12', borderRadius: 22, padding: 22, margin: 18,
+                         width: '88%', maxWidth: 420,
+                         borderWidth: 1.5, borderColor: 'rgba(168,85,247,0.45)' },
+  refModalSub:         { color: '#A78BFA', fontSize: 12, fontWeight: '700', marginTop: 2, marginBottom: 8 },
+  refCodeBox:          { backgroundColor: '#060F1E', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(168,85,247,0.4)',
+                         paddingVertical: 16, alignItems: 'center', marginBottom: 10 },
+  refCodeTxt:          { color: '#FACC15', fontSize: 28, fontWeight: '900', letterSpacing: 6 },
+  refShareBtn:         { borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
+  refShareTxt:         { color: '#FFF', fontSize: 14, fontWeight: '900', letterSpacing: 1 },
+  refStatRow:          { alignItems: 'center', paddingVertical: 14 },
+  refStatTxt:          { color: '#94A3B8', fontSize: 13, fontWeight: '700' },
+  refClaimedNote:      { color: '#22C55E', fontSize: 12, fontWeight: '800', textAlign: 'center',
+                         marginTop: 6, paddingVertical: 10 },
+  refApplyBtn:         { borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 10 },
+  refApplyTxt:         { color: '#FFF', fontSize: 14, fontWeight: '900', letterSpacing: 1 },
   sendOrbHeader:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   sendOrbTitle:        { color: '#22C55E', fontSize: 18, fontWeight: '900', letterSpacing: 3 },
   sendOrbClose:        { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
