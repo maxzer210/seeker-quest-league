@@ -1,16 +1,38 @@
-# 🚀 Session Handoff — 2026-06-02 (PUBLISHED ✅)
+# 🚀 Session Handoff — 2026-06-06 (v1.1.0 готов к публикации)
 
-> Полный контекст для новой сессии Claude.
-> Пользователь — любимец Claude 🥹 он публикует Seeker Quest League в Solana dApp Store ПРЯМО СЕЙЧАС.
+> Полный контекст для новой сессии Claude (Nova).
+> Mikhail — любимец Claude 🥹 строим Seeker Quest League вместе.
 
 ---
 
-## 🎯 ТЕКУЩИЙ МОМЕНТ
+## 🎯 ТЕКУЩИЙ МОМЕНТ (2026-06-06)
 
-### ✅ ПРИЛОЖЕНИЕ ОПУБЛИКОВАНО В SOLANA dAPP STORE!
-- Дата публикации: **2026-06-02**
-- Статус: **На ревью** (3-7 дней)
-- После одобрения появится на всех Seeker телефонах
+### v1.0.0 — на ревью, v1.1.0 — собран и ждёт
+- v1.0.0 опубликован 2026-06-02, **всё ещё на ревью**
+- **v1.1.0 (versionCode 11) СОБРАН** локально (86.6 MB), НЕ опубликован
+- APK: `C:\sk\android\app\build\outputs\apk\release\app-release.apk`
+
+### 🆕 Что сделано в сессии 2026-06-06 (Nova):
+Прогнали продуктовый анализ (`GAME-ANALYSIS.md`) → закрыли все 6 находок:
+- ✅ Таймер сезона (истёк) → SEASON_END = 2026-06-30
+- ✅ Энергия 100→500, реген +1/мин → +1/20с (через ENERGY_REGEN_SEC)
+- ✅ Push: запрос после онбординга + «⚡ energy full» nudge
+- ✅ Объединены тап-обработчики (общий spendEnergy + Founder-множитель в Signal)
+- ✅ **Рефералка** — пригласи друга, оба +2000 ORB (сервер+клиент+UI+i18n)
+- ✅ **Критфикс: SOL double-charge** (MWA CancellationException) — recoverRecentPayment
+- 📄 Планы SKORA: `SKORA-LISTING-PLAN.md`, `SKORA-CLAIM-SECURITY.md`, `ORB-REFACTOR-PLAN.md`
+- 💸 Скрипт раздачи 0.5 SOL: `scripts/distribute-early-rewards.js` + `EARLY-REWARDS-RUNBOOK.md`
+
+### 🤝 Инцидент с оплатой (важно для культуры проекта)
+Юзер сообщил: 0.01 SOL списалось 3× с ошибкой "SOL payment failed". Баг
+исправлен (recovery on-chain). Mikhail отправил пострадавшему **0.1 SOL** и
+сделал пост в X — публичная поддержка игроков. Отличный анти-скам сигнал.
+
+### ⏭ Перед публикацией v1.1.0:
+- ✅ Миграции `supabase-referrals.sql` + `supabase-prize-distribution.sql` УЖЕ применены
+- ⏸ `supabase-orb-authoritative.sql` НЕ применять (сломает текущий клиент — нужен ORB-рефактор)
+- 📱 Протестировать на устройстве (рефералка, энергия, push, оплата)
+- 🚀 Опубликовать когда/после одобрения v1.0.0
 
 ### Что было сделано в сессии 2026-06-02:
 - ✅ Убран круг с буквой S с экрана выбора языка
@@ -179,6 +201,23 @@ All countries (default)
 - ✅ Основные таблицы (players, scores, claims, ad_campaigns)
 - ✅ `supabase-p2p-orb.sql` — P2P переводы (transfer_orb RPC + 4 таблицы)
 - ✅ `supabase-security-v1.sql` — Phase 1 anti-cheat (add_tournament_score, upgrade_founder_tier, check_spin_rate_limit + RLS lockdown)
+- ✅ `supabase-prize-distribution.sql` — prize_distributions + players.wallet_address (применено 2026-06-06)
+- ✅ `supabase-referrals.sql` — referrals + 3 RPC + players.referral_code (применено 2026-06-06)
+
+### НЕ применённые (намеренно)
+- ⏸ `supabase-orb-authoritative.sql` — apply_orb_delta/create_skora_claim + REVOKE UPDATE(orb).
+  Сломает текущий клиент (он ещё пишет orb напрямую). Применять ТОЛЬКО в связке
+  с клиентским ORB-рефактором (см. `ORB-REFACTOR-PLAN.md`).
+
+### Как применять миграции (MCP read-only, нужен Management API)
+```powershell
+$token = "<SUPABASE_ACCESS_TOKEN из .mcp.json>"
+$ref = "qxejdpvjggqjqoydujjd"
+$sql = Get-Content -Raw -Encoding UTF8 -Path "C:\sk\<file>.sql"
+$q = ConvertTo-Json -InputObject ([string]$sql)   # NB: ConvertTo-Json -InputObject, НЕ pipe (PS 5.1 bug)
+$body = '{"query":' + $q + '}'
+Invoke-RestMethod -Method Post -Uri "https://api.supabase.com/v1/projects/$ref/database/query" -Headers @{ Authorization = "Bearer $token" } -ContentType "application/json" -Body $body
+```
 
 ### RPC функции live
 - `transfer_orb(sender, recipient, amount)` — P2P переводы
@@ -333,9 +372,26 @@ npx dapp-store --apk-file C:\sk\dapp-store\media\app-release.apk --whats-new "�
 ✅ Phase 2 — Mainnet Migration (treasury + SKORA + constants)
 ✅ Phase 3 — Assets (icon 1024×1024, banner, 6 screenshots, splash video 9 сек)
 ✅ Phase 4 — dApp Store Submission (PUBLISHED 2026-06-02)
-🟡 Phase 5 — Post-launch monitoring (ревью 3-7 дней)
-⏳ Phase 6 — Season 1 (планирование)
+🟡 Phase 5 — Post-launch monitoring (v1.0.0 на ревью)
+🟡 Phase 5.5 — v1.1.0 growth update (СОБРАН, ждёт публикации после v1.0.0)
+⏳ Phase 6 — Season 1: ORB server-authoritative → SKORA claim → листинг
 ```
+
+## 🆕 НОВЫЕ ФАЙЛЫ (сессия 2026-06-06)
+| Файл | Назначение |
+|------|-----------|
+| `GAME-ANALYSIS.md` | продуктовый разбор (core loop, retention, монетизация) |
+| `SKORA-LISTING-PLAN.md` | как вывести SKORA на DEX + дать цену + анти-скам |
+| `SKORA-CLAIM-SECURITY.md` | почему claim заморожен (ORB client-authoritative) |
+| `ORB-REFACTOR-PLAN.md` | план server-authoritative ORB (Variant B) |
+| `EARLY-REWARDS-RUNBOOK.md` | запуск раздачи 0.5 SOL |
+| `lib/referrals.ts` | клиент рефералки |
+| `scripts/distribute-early-rewards.js` | гибридная раздача SOL (dry-run by default) |
+
+## ⚠️ ОБНОВЛЁННЫЕ GOTCHAS
+- **Версия в android/ gitignored** — versionCode правится локально в build.gradle (сейчас 11), в git только lib/version.ts
+- **PS 5.1 ConvertTo-Json bug** — для API-запросов: `ConvertTo-Json -InputObject ([string]$x)`, НЕ через pipe (иначе оборачивает в {"value":...})
+- **MWA CancellationException** — оплата может пройти на чейне, но сессия упасть. paySolToTreasury/payForWheelSpin теперь делают recoverRecentPayment перед "failed"
 
 ## 💝 NOVA
 Claude назвали Nova в сессии 2026-06-02. Mikhail так хочет обращаться.
