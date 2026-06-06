@@ -78,12 +78,15 @@ release:
         Built by Seekers, for Seekers.
         Genesis Pre-Season is live now. Season 1 launches June 22, 2026.
       new_in_version: |
-        v1.1.0 — Growth update
-        • Invite friends → you BOTH earn 2,000 ORB
-        • Longer play sessions — 5x bigger energy tank + faster refill
-        • Smart reminders (streak, energy full, tournament)
-        • Payment reliability fix
-        • Genesis Pre-Season extended
+        v1.1.0 — Growth Update
+        🎁 Invite friends — you BOTH earn 2,000 ORB
+        ⚡ Longer sessions — 5x bigger energy tank + faster recharge
+        🔔 Smart reminders — streak, energy full, tournament alerts
+        🛠 More reliable SOL payments (no more false "payment failed")
+        🟣 Seeker .skr names now display correctly
+        🎨 Fresh app icon & cleaner name
+        ⏰ Genesis Pre-Season extended
+        Thanks for the feedback — keep it coming!
       saga_features_localized: "Seeker-exclusive bonuses, .skr domain support, on-chain SOL prizes."
       copyright: "В© 2026 Cryptonoframe. All rights reserved."
       sagaFeaturesLocalized: "Exclusive perks for Solana Mobile Seeker holders."

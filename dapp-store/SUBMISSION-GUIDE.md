@@ -16,12 +16,14 @@
 >
 > **What's new (EN):**
 > ```
-> v1.1.0 — Growth update
-> • Invite friends → you BOTH earn 2,000 ORB
-> • Longer play sessions — 5x bigger energy tank + faster refill
-> • Smart reminders (streak, energy full, tournament)
-> • Payment reliability fix
-> • Genesis Pre-Season extended
+> v1.1.0 — Growth Update
+> 🎁 Invite friends — you BOTH earn 2,000 ORB
+> ⚡ Longer sessions — 5x bigger energy tank + faster recharge
+> 🔔 Smart reminders — streak, energy full, tournament alerts
+> 🛠 More reliable SOL payments (no more false "payment failed")
+> 🟣 Seeker .skr names now display correctly
+> 🎨 Fresh app icon & cleaner name
+> ⏰ Genesis Pre-Season extended
 > ```
 >
 > ⚠️ Перед публикацией: применить миграции уже сделано (referrals + prize-distribution).
