@@ -19,7 +19,7 @@ publisher:
 app:
   name: "Seeker Quest League"
   address: "REPLACE_WITH_APP_NFT_ADDRESS_AFTER_CREATE"
-  android_package: "com.seekerquest-league.com"
+  android_package: "com.seekerquest.league"
   urls:
     license_url: "https://seekerquest-league.com/license"
     copyright_url: "https://seekerquest-league.com/terms.html"
@@ -61,8 +61,8 @@ release:
         Seeker Quest League is the first daily-routine arcade game built
         natively for the Solana Mobile Seeker phone.
 
-        рџЋ° Play 6 mini-games: Fortune Wheel, Horse Race, Space Runner,
-        Treasure Hunt, Arena, Seeker Lands.
+        рџЋ° Play 7 mini-games: Fortune Wheel, Horse Race, Space Runner,
+        Treasure Hunt, Arena, PvP, Seeker Lands.
 
         рџ’° Compete in daily SOL tournaments. The prize pool grows live
         on-chain with every paid spin. Top players take it home every 24 hours.
@@ -77,7 +77,13 @@ release:
 
         Built by Seekers, for Seekers.
         Genesis Pre-Season is live now. Season 1 launches June 22, 2026.
-      new_in_version: "Initial release. Genesis Pre-Season вЂ” be a Founder."
+      new_in_version: |
+        v1.1.0 — Growth update
+        • Invite friends → you BOTH earn 2,000 ORB
+        • Longer play sessions — 5x bigger energy tank + faster refill
+        • Smart reminders (streak, energy full, tournament)
+        • Payment reliability fix
+        • Genesis Pre-Season extended
       saga_features_localized: "Seeker-exclusive bonuses, .skr domain support, on-chain SOL prizes."
       copyright: "В© 2026 Cryptonoframe. All rights reserved."
       sagaFeaturesLocalized: "Exclusive perks for Solana Mobile Seeker holders."

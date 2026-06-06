@@ -1,5 +1,34 @@
 # dApp Store Submission Guide — Seeker Quest League
 
+> ## 🔼 ПУБЛИКАЦИЯ ОБНОВЛЕНИЯ v1.1.0 (через Publisher Portal)
+> v1.0.0 публиковался через веб-Portal (не CLI). Обновление — туда же.
+>
+> **Готово к сабмиту:**
+> - APK: `dapp-store/media/app-release.apk` (versionCode 11, v1.1.0, 86.6 MB)
+> - «What's new» — см. `config.yaml → new_in_version` (или ниже)
+>
+> **Шаги:**
+> 1. ⏳ Дождаться одобрения v1.0.0 (нельзя подать новую версию пока та на ревью)
+> 2. Зайти в Publisher Portal тем же аккаунтом/кошельком
+> 3. Открыть Seeker Quest League → создать новую версию (release)
+> 4. Загрузить `dapp-store/media/app-release.apk`
+> 5. Вставить «What's new» (текст ниже) → Submit
+>
+> **What's new (EN):**
+> ```
+> v1.1.0 — Growth update
+> • Invite friends → you BOTH earn 2,000 ORB
+> • Longer play sessions — 5x bigger energy tank + faster refill
+> • Smart reminders (streak, energy full, tournament)
+> • Payment reliability fix
+> • Genesis Pre-Season extended
+> ```
+>
+> ⚠️ Перед публикацией: применить миграции уже сделано (referrals + prize-distribution).
+> НЕ применять `supabase-orb-authoritative.sql` (сломает этот APK).
+>
+> ---
+
 Step-by-step instructions to publish on the Solana Mobile dApp Store.
 
 > ⏱ Total time first submission: ~1.5-2 hours
