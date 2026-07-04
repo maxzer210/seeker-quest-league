@@ -57,6 +57,7 @@ import {
   connectSolanaWallet,
   payForWheelSpin,
   paySolToTreasury,
+  type WheelPaymentStatus,
 } from './lib/solanaMobile';
 import TreasureHunt from './components/TreasureHunt';
 import Arena from './components/Arena';
@@ -69,7 +70,7 @@ import HorseRace from './components/HorseRace';
 import Onboarding from './components/Onboarding';
 import WinCelebration, { WinCelebrationHandle } from './components/WinCelebration';
 import {
-  fetchSeekerProfile, claimSgtBonus, displayWalletName,
+  fetchSeekerProfile, claimSgtBonus,
   SGT_BONUS_ORB, type SeekerProfileSnapshot,
 } from './lib/seeker';
 import GenesisNews from './components/GenesisNews';
@@ -97,6 +98,7 @@ import CosmeticNftTeaser from './components/CosmeticNftTeaser';
 import { loadSavedTheme, setActiveTheme, NFT_THEMES, THEME_ORDER, useTheme } from './lib/theme';
 import { VERSION_LABEL, VERSION_FULL, APP_VERSION, BUILD_CODE } from './lib/version';
 import LottieView from 'lottie-react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Video, ResizeMode } from 'expo-av';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
@@ -403,6 +405,11 @@ function AppInner() {
     upgrades: { signalPower: 0, critChance: 0, wheelLuck: 0, horsePower: 0 },
   });
 
+  // Payment status auto-clear timers — cancelled when a new payment starts so
+  // a stale timer can't wipe a live status label.
+  const shopStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const spinStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Win celebration
   const winRef = useRef<WinCelebrationHandle>(null);
 
@@ -607,6 +614,7 @@ function AppInner() {
       sndCrit.current?.unloadAsync();
       sndJackpot.current?.unloadAsync();
       sndLevelUp.current?.unloadAsync();
+      sndDead.current?.unloadAsync();
     };
   }, []);
 
@@ -1099,13 +1107,19 @@ function AppInner() {
       return false;
     } finally {
       setSolSpinPending(false);
-      setTimeout(() => setSolSpinStatus(''), 12000);
+      if (spinStatusTimerRef.current) clearTimeout(spinStatusTimerRef.current);
+      spinStatusTimerRef.current = setTimeout(() => setSolSpinStatus(''), 12000);
     }
   }
 
   function solStatusLabel(amountLabel: string) {
-    return (status: any) => {
-      const labels: Record<string, string> = {
+    return (status: WheelPaymentStatus) => {
+      // A payment is talking — cancel any pending status auto-clear.
+      if (shopStatusTimerRef.current) {
+        clearTimeout(shopStatusTimerRef.current);
+        shopStatusTimerRef.current = null;
+      }
+      const labels: Record<WheelPaymentStatus, string> = {
         opening_wallet: 'Opening wallet...',
         authorizing: 'Approve connection...',
         preparing_transaction: `Preparing ${amountLabel}...`,
@@ -1115,6 +1129,11 @@ function AppInner() {
       };
       setSolShopStatus(labels[status] || status);
     };
+  }
+
+  function scheduleShopStatusClear(ms = 8000) {
+    if (shopStatusTimerRef.current) clearTimeout(shopStatusTimerRef.current);
+    shopStatusTimerRef.current = setTimeout(() => setSolShopStatus(''), ms);
   }
 
   async function payForEnergyRefill() {
@@ -1142,7 +1161,7 @@ function AppInner() {
       Alert.alert('SOL payment failed', e?.message ?? 'Could not refill energy.');
     } finally {
       setSolShopPending(false);
-      setTimeout(() => setSolShopStatus(''), 8000);
+      scheduleShopStatusClear();
     }
   }
 
@@ -1170,7 +1189,7 @@ function AppInner() {
       Alert.alert('SOL payment failed', e?.message ?? 'Could not upgrade.');
     } finally {
       setSolShopPending(false);
-      setTimeout(() => setSolShopStatus(''), 8000);
+      scheduleShopStatusClear();
     }
   }
 
@@ -1220,14 +1239,14 @@ function AppInner() {
         setOrb(o => o + 10_000);
       }
 
-      Alert.alert('✓ Purchased', `${cfg.label} активирован!`);
+      Alert.alert(t('shop.purchasedTitle'), t('shop.purchasedMsg', { item: cfg.label }));
       particleRef.current?.emit(SCREEN_W / 2, SCREEN_H * 0.4, 'crit');
       playSound(sndLevelUp.current);
     } catch (e: any) {
       Alert.alert('SOL payment failed', e?.message ?? 'Could not purchase.');
     } finally {
       setSolShopPending(false);
-      setTimeout(() => setSolShopStatus(''), 8000);
+      scheduleShopStatusClear();
     }
   }
 
@@ -1388,7 +1407,7 @@ function AppInner() {
             Alert.alert('SOL payment failed', e?.message ?? 'Could not purchase Founder Pass.');
           } finally {
             setSolShopPending(false);
-            setTimeout(() => setSolShopStatus(''), 8000);
+            scheduleShopStatusClear();
           }
         }},
       ],
@@ -1417,7 +1436,7 @@ function AppInner() {
       return false;
     } finally {
       setSolShopPending(false);
-      setTimeout(() => setSolShopStatus(''), 8000);
+      scheduleShopStatusClear();
     }
   }
 
@@ -2222,15 +2241,17 @@ function AppInner() {
               <View style={{ backgroundColor: 'rgba(124,58,237,0.12)', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: 'rgba(124,58,237,0.3)', marginBottom: 16 }}>
                 <Text style={{ color: '#C084FC', fontSize: 10, fontWeight: '900', letterSpacing: 1, marginBottom: 6 }}>{t('donate.label')}</Text>
                 <Text selectable style={{ color: '#E2E8F0', fontSize: 11, fontFamily: 'monospace', lineHeight: 18 }}>
-                  CxYfXXLGEm1FXcL7cVzTHe1kG3gpo5ecsKgVjXRhLGSp
+                  {TREASURY_WALLET}
                 </Text>
               </View>
 
-              {/* Кнопка копировать */}
+              {/* Copy button — actually copies (used to open the Share sheet) */}
               <TouchableOpacity
                 activeOpacity={0.85}
                 onPress={() => {
-                  Share.share({ message: 'CxYfXXLGEm1FXcL7cVzTHe1kG3gpo5ecsKgVjXRhLGSp' });
+                  Clipboard.setStringAsync(TREASURY_WALLET)
+                    .then(() => Alert.alert('✓', t('donate.copied')))
+                    .catch(() => {});
                 }}
                 style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 12 }}
               >
@@ -2316,7 +2337,7 @@ function AppInner() {
               <Text style={styles.privacyBullet}>• We <Text style={{ fontWeight: '700' }}>never</Text> have access to your private keys, seed phrase, or wallet funds. All signing happens locally in your wallet app via Mobile Wallet Adapter.</Text>
               <Text style={styles.privacyBullet}>• All on-chain transactions are <Text style={{ fontWeight: '700' }}>public, immutable, and final</Text>. We cannot reverse them.</Text>
               <Text style={styles.privacyBullet}>• Cryptocurrency prizes (SOL, SKORA) have variable real-world value. We make no guarantees about future value.</Text>
-              <Text style={styles.privacyBullet}>• Genesis Pre-Season runs on Solana <Text style={{ fontWeight: '700' }}>devnet</Text>. Devnet SOL has no real-world value. Mainnet migration is planned for Season 1.</Text>
+              <Text style={styles.privacyBullet}>• The App operates on Solana <Text style={{ fontWeight: '700' }}>mainnet</Text>. All SOL payments are real transactions with real monetary value. Always review a transaction in your wallet before signing it.</Text>
 
               <Text style={styles.privacyH2}>6. CHILDREN'S PRIVACY</Text>
               <Text style={styles.privacyPara}>The App is not directed to children under 13. We do not knowingly collect information from anyone under 13. Cryptocurrency mechanics also make this App unsuitable for minors in most jurisdictions.</Text>
@@ -2569,7 +2590,7 @@ function AppInner() {
               {showBoost && (
                 <TouchableOpacity style={[styles.homeBoostBtn, { marginBottom: 14 }]} onPress={activateBoost} activeOpacity={0.85}>
                   <LinearGradient colors={['#C2410C','#9A3412']} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.homeBoostGrad}>
-                    <Text style={styles.homeBoostText}>🔥 BOOST ×3 — АКТИВИРОВАТЬ</Text>
+                    <Text style={styles.homeBoostText}>{t('home.activateBoost')}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               )}
@@ -2803,7 +2824,7 @@ function AppInner() {
               </View>
 
               <Text style={styles.shopSectionHint}>
-                ✦ Чем мощнее эффект, тем выше цена · мгновенная активация
+                {t('shop.premiumHint')}
               </Text>
 
               {/* Section divider */}
@@ -3028,7 +3049,7 @@ function AppInner() {
                 <Text style={styles.signalEnergyCount}>{energy}/{MAX_ENERGY}</Text>
               </View>
               {energy === 0 && (
-                <Text style={styles.energyEmptyText}>⏳ Recharging… +1 per minute ({energyTick}s)</Text>
+                <Text style={styles.energyEmptyText}>{t('home.tapEnergyEmpty', { n: energyTick })}</Text>
               )}
 
               {/* ── Combo badge ── */}
@@ -3098,7 +3119,7 @@ function AppInner() {
               {showBoost && (
                 <TouchableOpacity onPress={activateBoost} activeOpacity={0.82}>
                   <LinearGradient colors={['#C2410C','#9A3412']} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.fireBoost}>
-                    <Text style={styles.fireBoostText}>🔥 ACTIVATE BOOST</Text>
+                    <Text style={styles.fireBoostText}>{t('home.activateBoost')}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               )}
@@ -3736,7 +3757,7 @@ function AppInner() {
                 <StatRow icon="🎡" label={t('stats.wheelLuck')}    value={UPGRADE_DEFS.wheelLuck.valueLabels[upgrades.wheelLuck]}  color="#06B6D4" />
                 <StatRow icon="🐎" label={t('stats.horsePower')}   value={`+${HORSE_POWERS[upgrades.horsePower]}/tap`}             color="#FB923C" />
                 <StatRow icon="🎫" label={t('stats.tickets')}      value={tickets.toString()}                                      color="#22C55E" />
-                <StatRow icon="⚡" label={t('stats.energy')}       value={`${energy}/100`}                                         color="#EF4444" />
+                <StatRow icon="⚡" label={t('stats.energy')}       value={`${energy}/${MAX_ENERGY}`}                               color="#EF4444" />
               </View>
 
               {/* ── Settings ── */}
@@ -4061,52 +4082,6 @@ const hqs = StyleSheet.create({
   count: { fontSize: 11, fontWeight: '800', width: 38, textAlign: 'right' },
 });
 
-// ─── HowToPlay collapsible ────────────────────────────────────────────────────
-function HowToPlay({ steps }: { steps: { icon: string; text: string }[] }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <View style={htp.wrap}>
-      <TouchableOpacity style={htp.btn} onPress={() => setOpen(o => !o)} activeOpacity={0.8}>
-        <Text style={htp.btnText}>{open ? '▲' : '?'}  КАК ИГРАТЬ</Text>
-      </TouchableOpacity>
-      {open && (
-        <View style={htp.body}>
-          {steps.map((s, i) => (
-            <View key={i} style={htp.row}>
-              <Text style={htp.icon}>{s.icon}</Text>
-              <Text style={htp.text}>{s.text}</Text>
-            </View>
-          ))}
-        </View>
-      )}
-    </View>
-  );
-}
-const htp = StyleSheet.create({
-  wrap: { marginBottom: 12 },
-  btn:  { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start',
-          backgroundColor: 'rgba(99,60,200,0.18)', borderRadius: 20, paddingHorizontal: 14,
-          paddingVertical: 7, borderWidth: 1, borderColor: 'rgba(139,92,246,0.35)' },
-  btnText: { color: '#A855F7', fontSize: 11, fontWeight: '900', letterSpacing: 2 },
-  body: { marginTop: 8, backgroundColor: 'rgba(8,13,32,0.92)', borderRadius: 16,
-          padding: 14, borderWidth: 1, borderColor: 'rgba(99,60,200,0.25)', gap: 10 },
-  row:  { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  icon: { fontSize: 18, width: 26 },
-  text: { color: '#94A3B8', fontSize: 13, lineHeight: 19, flex: 1 },
-});
-
-function QuestRow({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
-  return (
-    <View style={styles.questProgressRow}>
-      <Text style={styles.questProgressLabel}>{label}</Text>
-      <View style={styles.questProgressTrack}>
-        <View style={[styles.questProgressFill, { width: `${(value / max) * 100}%` as any, backgroundColor: color }]} />
-      </View>
-      <Text style={[styles.questProgressCount, { color }]}>{value}/{max}</Text>
-    </View>
-  );
-}
-
 function LeaderRow({ rank, name, orb, gold, highlight }: {
   rank: number; name: string; orb: number; gold?: boolean; highlight?: boolean;
 }) {
@@ -4381,14 +4356,6 @@ const styles = StyleSheet.create({
   xpBar:       { width: '100%', height: 8, backgroundColor: 'rgba(30,16,64,0.9)', borderRadius: 999, overflow: 'hidden', marginTop: 16, borderWidth: 1, borderColor: 'rgba(99,60,200,0.3)' },
   xpFill:      { height: '100%', borderRadius: 999 },
   xpLabel:     { color: '#475569', fontSize: 11, marginTop: 6, letterSpacing: 1 },
-
-  questCard:         { backgroundColor: 'rgba(4,8,20,0.7)', borderRadius: 20, padding: 16, marginTop: 18, borderWidth: 1, borderColor: 'rgba(99,60,200,0.3)' },
-  questCardTitle:    { color: '#FACC15', fontSize: 13, fontWeight: '900', letterSpacing: 2, marginBottom: 14 },
-  questProgressRow:  { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  questProgressLabel:{ color: '#94A3B8', fontSize: 12, fontWeight: '600', width: 90 },
-  questProgressTrack:{ flex: 1, height: 6, backgroundColor: 'rgba(30,16,64,0.8)', borderRadius: 999, overflow: 'hidden', marginHorizontal: 10 },
-  questProgressFill: { height: '100%', borderRadius: 999 },
-  questProgressCount:{ fontSize: 11, fontWeight: '800', width: 36, textAlign: 'right' },
 
   card:     { backgroundColor: 'rgba(8,13,32,0.88)', borderRadius: 24, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(99,60,200,0.35)' },
   cardTitle:{ color: '#A855F7', fontSize: 17, fontWeight: '900', marginBottom: 12, letterSpacing: 2 },

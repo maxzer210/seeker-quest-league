@@ -180,10 +180,10 @@ export default function FortuneWheel({
       setFreeLeft(Math.max(0, freeSpinsPerDay - used));
 
       const jack = await AsyncStorage.getItem(KEY_JACK);
-      if (jack) setJackpot(parseInt(jack));
+      if (jack) setJackpot(parseInt(jack, 10));
 
       const multExp = await AsyncStorage.getItem(KEY_MULT);
-      if (multExp && parseInt(multExp) > Date.now()) setMultActive(true);
+      if (multExp && parseInt(multExp, 10) > Date.now()) setMultActive(true);
     })();
   }, [freeSpinsPerDay]);
 
