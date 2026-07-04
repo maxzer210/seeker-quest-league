@@ -1384,14 +1384,23 @@ function AppInner() {
             setWalletAddr(r.address);
             setWalletAuthToken(r.authToken);
 
-            // Verify on backend via RPC (validates tx_signature exists in wheel_sol_payments)
-            const { error: rpcErr } = await supabase.rpc('upgrade_founder_tier', {
-              p_device_id:    deviceIdRef.current!,
-              p_new_tier:     tier,
-              p_tx_signature: r.signature,
-            });
-            if (rpcErr) {
-              throw new Error(rpcErr.message ?? 'Backend rejected Founder upgrade');
+            // Verify the payment ON-CHAIN server-side (Edge Function) before
+            // granting. Unlike the old upgrade_founder_tier RPC, this does not
+            // trust the client-written payment row — a forged tx_signature is
+            // rejected because it isn't a real transfer to the treasury.
+            const { data: verify, error: fnErr } = await supabase.functions.invoke(
+              'verify-founder-payment',
+              {
+                body: {
+                  device_id:      deviceIdRef.current!,
+                  tier,
+                  tx_signature:   r.signature,
+                  wallet_address: r.address,
+                },
+              },
+            );
+            if (fnErr || !verify?.ok) {
+              throw new Error(verify?.error ?? fnErr?.message ?? 'Backend rejected Founder upgrade');
             }
 
             // Apply locally only after server confirms
