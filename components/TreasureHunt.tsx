@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, Animated, Easing,
+  View, Text, TouchableOpacity, StyleSheet, Animated, Easing, PanResponder,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { t, useLang } from '../lib/i18n';
@@ -129,7 +129,7 @@ function HowToPlayTreasure() {
   const steps = [
     { icon: '🗺️', text: 'Карта 24×24. Каждый день новая. 32 сундука и 26 ловушек' },
     { icon: '📦', text: 'Сундук → +50..300 ORB. Туман открывается на 2 клетки вокруг' },
-    { icon: '👣', text: '1 шаг = 1 ⚡. Энергия восстанавливается +1/мин' },
+    { icon: '👣', text: 'Свайп по карте или тап соседней клетки = 1 шаг (−1 ⚡). Энергия +1/мин' },
     { icon: '💣', text: 'Мина → −30..150 ORB. Скрыта в тумане. Будь внимателен!' },
     { icon: '🕷', text: 'Паук → −50..200 ORB и −7 ⚡. Самый опасный враг' },
     { icon: '🔥', text: 'Лава → −5 ⚡. Без потери ORB, но больно когда мало энергии' },
@@ -370,6 +370,24 @@ export default function TreasureHunt({ energy, onSpendEnergy, onEarnOrb, onSpend
     });
   }, [energy, revealed, opened, triggered, steps, onSpendEnergy, onEarnOrb, onSpendOrb, save, showReward, triggerChestOpen, showDanger]);
 
+  // Keep the latest move() for the gesture handler (avoids stale closure)
+  const moveRef = useRef(move);
+  useEffect(() => { moveRef.current = move; }, [move]);
+
+  // Swipe on the map → step one cell in the swipe direction
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 14 || Math.abs(g.dy) > 14,
+      onPanResponderRelease: (_, g) => {
+        const { dx, dy } = g;
+        if (Math.abs(dx) < 24 && Math.abs(dy) < 24) return; // too small = ignore
+        if (Math.abs(dx) > Math.abs(dy)) moveRef.current(dx > 0 ? 1 : -1, 0);
+        else                             moveRef.current(0, dy > 0 ? 1 : -1);
+      },
+    })
+  ).current;
+
   // ──────── Viewport: 7×7 клеток вокруг игрока ────────
   const half   = Math.floor(VIEWPORT / 2);
   const startX = pos[0] - half;
@@ -422,8 +440,8 @@ export default function TreasureHunt({ energy, onSpendEnergy, onEarnOrb, onSpend
         opacity: redFlashAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.5] }),
       }]} />
 
-      {/* Map viewport */}
-      <View style={s.mapWrapper}>
+      {/* Map viewport — swipe anywhere to move */}
+      <View style={s.mapWrapper} {...panResponder.panHandlers}>
         {Array.from({ length: VIEWPORT }, (_, vy) => {
           const worldY = startY + vy;
           return (
@@ -463,12 +481,19 @@ export default function TreasureHunt({ energy, onSpendEnergy, onEarnOrb, onSpend
                   isRev && !isTrig && isMine   ? '#1F0E12' :
                   isRev && !isTrig && isSpider ? '#1A0F1F' :
                   null;
+                const dxAdj = worldX - pos[0];
+                const dyAdj = worldY - pos[1];
+                const isAdjacent = Math.abs(dxAdj) + Math.abs(dyAdj) === 1;
                 return (
-                  <View key={vx} style={[
-                    s.cell,
-                    { backgroundColor: dangerBg ?? bg },
-                    isPlayer && s.playerCell,
-                  ]}>
+                  <TouchableOpacity
+                    key={vx}
+                    activeOpacity={isAdjacent ? 0.6 : 1}
+                    onPress={() => { if (isAdjacent) move(dxAdj, dyAdj); }}
+                    style={[
+                      s.cell,
+                      { backgroundColor: dangerBg ?? bg },
+                      isPlayer && s.playerCell,
+                    ]}>
                     {isClosedChest ? (
                       <Animated.Text style={[s.cellTxt, { transform: [{ scale: chestPulseAnim }] }]}>
                         {icon}
@@ -478,7 +503,7 @@ export default function TreasureHunt({ energy, onSpendEnergy, onEarnOrb, onSpend
                         {icon}
                       </Text>
                     )}
-                  </View>
+                  </TouchableOpacity>
                 );
               })}
             </View>
@@ -519,33 +544,9 @@ export default function TreasureHunt({ energy, onSpendEnergy, onEarnOrb, onSpend
         </View>
       </View>
 
-      {/* D-pad */}
-      <View style={s.dpad}>
-        <View style={s.dpadRow}>
-          <View style={s.dpadEmpty} />
-          <TouchableOpacity style={s.dpadBtn} onPress={() => move(0, -1)}>
-            <Text style={s.dpadTxt}>▲</Text>
-          </TouchableOpacity>
-          <View style={s.dpadEmpty} />
-        </View>
-        <View style={s.dpadRow}>
-          <TouchableOpacity style={s.dpadBtn} onPress={() => move(-1, 0)}>
-            <Text style={s.dpadTxt}>◄</Text>
-          </TouchableOpacity>
-          <View style={[s.dpadBtn, s.dpadCenter]}>
-            <Text style={s.dpadCenterTxt}>⚡</Text>
-          </View>
-          <TouchableOpacity style={s.dpadBtn} onPress={() => move(1, 0)}>
-            <Text style={s.dpadTxt}>►</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={s.dpadRow}>
-          <View style={s.dpadEmpty} />
-          <TouchableOpacity style={s.dpadBtn} onPress={() => move(0, 1)}>
-            <Text style={s.dpadTxt}>▼</Text>
-          </TouchableOpacity>
-          <View style={s.dpadEmpty} />
-        </View>
+      {/* Controls hint (swipe / tap replaced the old D-pad) */}
+      <View style={s.controlsHint}>
+        <Text style={s.controlsHintTxt}>👆 Свайпни по карте или тапни соседнюю клетку, чтобы идти</Text>
       </View>
 
       <Text style={s.hint}>
@@ -609,12 +610,8 @@ const s = StyleSheet.create({
   waterTxt:       { fontSize: 14 },
   compassBadge:   { position: 'absolute', bottom: 4, right: 6 },
   compassTxt:     { color: '#475569', fontSize: 10 },
-  dpad:           { marginTop: 16, gap: 4 },
-  dpadRow:        { flexDirection: 'row', gap: 4, justifyContent: 'center' },
-  dpadBtn:        { width: 60, height: 60, backgroundColor: '#1E293B', borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#334155' },
-  dpadEmpty:      { width: 60, height: 60 },
-  dpadCenter:     { backgroundColor: '#0F172A' },
-  dpadTxt:        { color: '#FACC15', fontSize: 24 },
-  dpadCenterTxt:  { color: '#38BDF8', fontSize: 24 },
-  hint:           { color: '#475569', fontSize: 11, marginTop: 12, textAlign: 'center', paddingHorizontal: 24 },
+  controlsHint:   { marginTop: 14, backgroundColor: 'rgba(99,60,200,0.14)', borderRadius: 16,
+                    paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1, borderColor: 'rgba(139,92,246,0.3)' },
+  controlsHintTxt:{ color: '#A5B4CB', fontSize: 12, fontWeight: '700', textAlign: 'center' },
+  hint:           { color: '#64748B', fontSize: 11, marginTop: 12, textAlign: 'center', paddingHorizontal: 24 },
 });
