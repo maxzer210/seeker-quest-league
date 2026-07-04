@@ -231,7 +231,7 @@ export default function SKORAWallet({ orb, onSpendOrb, deviceId }: Props) {
               value={walletInput}
               onChangeText={setWalletInput}
               placeholder={t('skora.walletHint')}
-              placeholderTextColor="#334155"
+              placeholderTextColor="#7C8BA5"
               autoCapitalize="none"
               autoCorrect={false}
             />
@@ -260,7 +260,7 @@ export default function SKORAWallet({ orb, onSpendOrb, deviceId }: Props) {
               style={[s.claimBtn, s.claimBtnDisabled]}
               disabled={true}
             >
-              <Text style={s.claimBtnTxt}>{t('skora.comingSoon')}</Text>
+              <Text style={[s.claimBtnTxt, s.claimBtnTxtDisabled]}>🔒  {t('skora.comingSoon')}</Text>
             </TouchableOpacity>
 
             <Text style={s.claimNote}>{t('skora.claimNote')}</Text>
@@ -394,8 +394,9 @@ const s = StyleSheet.create({
   summaryRow:   { color: '#94A3B8', fontSize: 13 },
 
   claimBtn:     { backgroundColor: CYAN, borderRadius: 16, paddingVertical: 15, alignItems: 'center', marginBottom: 12 },
-  claimBtnDisabled: { backgroundColor: '#1E293B' },
+  claimBtnDisabled: { backgroundColor: 'rgba(148,163,184,0.12)', borderWidth: 1, borderColor: 'rgba(148,163,184,0.35)' },
   claimBtnTxt:  { color: '#000', fontSize: 15, fontWeight: '900', letterSpacing: 1 },
+  claimBtnTxtDisabled: { color: '#94A3B8' },
   claimNote:    { color: '#334155', fontSize: 10, textAlign: 'center', lineHeight: 16 },
 
   // Info tab

@@ -2043,7 +2043,7 @@ function AppInner() {
               value={sendRecipient}
               onChangeText={setSendRecipient}
               placeholder={t('p2p.recipientHint')}
-              placeholderTextColor="#475569"
+              placeholderTextColor="#7C8BA5"
               autoCapitalize="none"
               autoCorrect={false}
             />
@@ -2055,7 +2055,7 @@ function AppInner() {
               value={sendAmount}
               onChangeText={(txt) => setSendAmount(txt.replace(/[^0-9]/g, ''))}
               placeholder={t('p2p.amountMin', { n: ORB_TRADE_MIN.toLocaleString() })}
-              placeholderTextColor="#475569"
+              placeholderTextColor="#7C8BA5"
               keyboardType="number-pad"
             />
 
@@ -2212,7 +2212,7 @@ function AppInner() {
                   value={refCodeInput}
                   onChangeText={(txt) => setRefCodeInput(txt.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8))}
                   placeholder={t('ref.enterHint')}
-                  placeholderTextColor="#475569"
+                  placeholderTextColor="#7C8BA5"
                   autoCapitalize="characters"
                   autoCorrect={false}
                 />
@@ -3273,7 +3273,7 @@ function AppInner() {
                       value={walletInput}
                       onChangeText={setWalletInput}
                       placeholder="Solana address (e.g. 7xKp...)"
-                      placeholderTextColor="#334155"
+                      placeholderTextColor="#7C8BA5"
                       autoCapitalize="none"
                       autoCorrect={false}
                     />
@@ -3507,7 +3507,7 @@ function AppInner() {
                       maxLength={20}
                       autoFocus
                       selectTextOnFocus
-                      placeholderTextColor="#475569"
+                      placeholderTextColor="#7C8BA5"
                     />
                     <TouchableOpacity style={styles.profileEditSave} onPress={saveUsername}>
                       <Text style={styles.profileEditSaveTxt}>✓</Text>
@@ -4085,8 +4085,8 @@ function HomeQuestRow({ label, value, max, color }: { label: string; value: numb
 }
 const hqs = StyleSheet.create({
   row:   { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  label: { color: '#64748B', fontSize: 12, fontWeight: '700', width: 52 },
-  track: { flex: 1, height: 5, backgroundColor: 'rgba(30,16,64,0.9)', borderRadius: 999, overflow: 'hidden', marginHorizontal: 10 },
+  label: { color: '#94A3B8', fontSize: 12, fontWeight: '700', width: 52 },
+  track: { flex: 1, height: 6, backgroundColor: 'rgba(148,163,184,0.22)', borderRadius: 999, overflow: 'hidden', marginHorizontal: 10 },
   fill:  { height: '100%', borderRadius: 999 },
   count: { fontSize: 11, fontWeight: '800', width: 38, textAlign: 'right' },
 });
@@ -4165,17 +4165,18 @@ const styles = StyleSheet.create({
                       paddingHorizontal: 10, paddingVertical: 4, borderRadius: 14 },
   compactChipTxt:   { color: '#C084FC', fontSize: 11, fontWeight: '800' },
 
-  // Version chip — top-right, всегда видимая
+  // Version chip — bottom-left, subtle (no longer overlaps top balances)
   versionChip: {
-    position: 'absolute', top: 6, right: 8,
-    backgroundColor: 'rgba(20,241,149,0.12)',
-    borderWidth: 1, borderColor: 'rgba(20,241,149,0.35)',
-    paddingHorizontal: 8, paddingVertical: 2,
+    position: 'absolute', bottom: 74, left: 10,
+    backgroundColor: 'rgba(20,241,149,0.08)',
+    borderWidth: 1, borderColor: 'rgba(20,241,149,0.22)',
+    paddingHorizontal: 7, paddingVertical: 2,
     borderRadius: 8,
+    opacity: 0.7,
     zIndex: 200,
   },
   versionChipTxt: {
-    color: '#14F195', fontSize: 9, fontWeight: '900', letterSpacing: 1,
+    color: '#14F195', fontSize: 8, fontWeight: '900', letterSpacing: 1,
   },
 
   // Shop Hub grid
@@ -4523,11 +4524,15 @@ const styles = StyleSheet.create({
                    paddingTop: 10, paddingHorizontal: 4 },
   navItem:       { flex: 1, alignItems: 'center', paddingVertical: 6, position: 'relative' },
   navActivePill: { position: 'absolute', top: 0, left: 4, right: 4, bottom: 0,
-                   borderRadius: 14, zIndex: 0 },
+                   borderRadius: 14, zIndex: 0,
+                   shadowColor: '#A855F7', shadowRadius: 12, shadowOpacity: 0.7,
+                   shadowOffset: { width: 0, height: 0 }, elevation: 8 },
   navIcon:       { fontSize: 22, opacity: 0.5, zIndex: 1 },
-  navIconActive: { opacity: 1 },
-  navText:       { color: '#475569', fontSize: 9, fontWeight: '800', letterSpacing: 0.5, marginTop: 3, zIndex: 1 },
-  navActive:     { color: '#A855F7' },
+  navIconActive: { opacity: 1, textShadowColor: 'rgba(168,85,247,0.9)', textShadowRadius: 10,
+                   textShadowOffset: { width: 0, height: 0 } },
+  navText:       { color: '#64748B', fontSize: 9, fontWeight: '800', letterSpacing: 0.5, marginTop: 3, zIndex: 1 },
+  navActive:     { color: '#C084FC', textShadowColor: 'rgba(168,85,247,0.8)', textShadowRadius: 8,
+                   textShadowOffset: { width: 0, height: 0 } },
   navDot:        { width: 16, height: 3, borderRadius: 2, backgroundColor: '#A855F7',
                    marginTop: 3, shadowColor: '#A855F7', shadowRadius: 6,
                    shadowOpacity: 0.8, elevation: 6, zIndex: 1 },
