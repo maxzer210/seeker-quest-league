@@ -3,9 +3,9 @@
 // Видимая в Home + Settings.
 // ─────────────────────────────────────────────────────────────────────────
 
-export const APP_VERSION = '1.1.0';
-export const BUILD_TIME  = '2026-06-06 16:53';
-export const BUILD_CODE  = 'growth-update';
+export const APP_VERSION = '1.1.1';
+export const BUILD_TIME  = '2026-07-04 15:48';
+export const BUILD_CODE  = 'payment-progress-fixes';
 
 /** Compact label for UI: "v1.0.0" */
 export const VERSION_LABEL = `v${APP_VERSION}`;
