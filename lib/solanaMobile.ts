@@ -181,7 +181,29 @@ function ensureTreasuryWallet() {
  * transfer of exactly `lamports` into the treasury within `windowSec`. If we
  * find one, the payment really happened — return its signature so the caller
  * can treat it as success instead of charging the user twice.
+ *
+ * SECURITY: we skip any candidate whose signature is ALREADY recorded in
+ * wheel_sol_payments. Matching by amount alone let a user reuse a previous
+ * payment's tx (pay once for spin #1, then cancel spin #2 before it broadcasts
+ * — recovery would find spin #1's tx and grant spin #2 free). Amounts also
+ * collide across purposes (wheel/energy/pvp are all 0.01 SOL). A tx that
+ * already backs a recorded payment can never back a new one.
  */
+async function isSignatureAlreadyRecorded(signature: string): Promise<boolean> {
+  try {
+    const { data } = await supabase
+      .from('wheel_sol_payments')
+      .select('tx_signature')
+      .eq('tx_signature', signature)
+      .maybeSingle();
+    return !!data;
+  } catch (_) {
+    // On lookup failure, be conservative and treat it as already-recorded so
+    // recovery can't accidentally reuse a tx we couldn't verify as fresh.
+    return true;
+  }
+}
+
 async function recoverRecentPayment(
   connection: Connection,
   fromAddress: string,
@@ -214,7 +236,10 @@ async function recoverRecentPayment(
         const pre  = tx.meta?.preBalances?.[idx];
         const post = tx.meta?.postBalances?.[idx];
         if (pre == null || post == null) continue;
-        if (post - pre === lamports) return s.signature;
+        if (post - pre !== lamports) continue;
+        // Fresh tx only — one that already backs a recorded payment is off limits.
+        if (await isSignatureAlreadyRecorded(s.signature)) continue;
+        return s.signature;
       }
     } catch (_) {}
   }
