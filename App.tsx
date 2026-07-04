@@ -4,6 +4,7 @@ import { Audio } from 'expo-av';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  AppState,
   Dimensions,
   Linking,
   Modal,
@@ -113,6 +114,12 @@ const HORSE_POWERS = [4, 5, 6, 8, 10, 14];
 const MAX_LEVEL         = 5;
 const MAX_ENERGY        = 500;
 const ENERGY_REGEN_SEC  = 20;  // seconds per +1 energy (3/min) — kept in sync online & offline
+const INITIAL_ORB       = 2450; // starting gift for brand-new players
+const INITIAL_TICKETS   = 100;
+// Persisted progress snapshot (orb/tickets/level/xp/upgrades). Without it every
+// cold start reset the balance to defaults and the first sync clobbered the
+// server row — including items bought for real SOL.
+const PLAYER_SNAPSHOT_KEY = 'sk_player_v1';
 const COMBO_MULTIPLIERS = [1, 2, 3, 5];
 const COMBO_TAPS        = 5;   // taps per level
 const COMBO_RESET_MS    = 1500;
@@ -309,8 +316,8 @@ function AppInner() {
 
   // ── state ──────────────────────────────────────────────────────────────────
   const [screen, setScreen]         = useState<Screen>('home');
-  const [orb, setOrb]               = useState(2450);
-  const [tickets, setTickets]       = useState(100);
+  const [orb, setOrb]               = useState(INITIAL_ORB);
+  const [tickets, setTickets]       = useState(INITIAL_TICKETS);
   const [lastWheelReward, setLastWheelReward] = useState<string>('');
 
   const [score, setScore]           = useState(0);
@@ -381,6 +388,20 @@ function AppInner() {
   const syncTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSyncRef = useRef<{ orb: number; level: number; streak: number } | null>(null);
   const energyWriteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Progress persistence — restore-on-start guards.
+  // hydratedRef blocks syncScore until saved progress is loaded, so a fresh
+  // launch can never overwrite the server row with default values.
+  const hydratedRef     = useRef(false);
+  const achLoadedRef    = useRef(false);
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const playerSnapRef   = useRef<{
+    orb: number; tickets: number; level: number; xp: number;
+    upgrades: Record<UpgradeKey, number>;
+  }>({
+    orb: INITIAL_ORB, tickets: INITIAL_TICKETS, level: 1, xp: 0,
+    upgrades: { signalPower: 0, critChance: 0, wheelLuck: 0, horsePower: 0 },
+  });
 
   // Win celebration
   const winRef = useRef<WinCelebrationHandle>(null);
@@ -463,15 +484,21 @@ function AppInner() {
 
   // Load claimed achievements on mount
   useEffect(() => {
-    AsyncStorage.getItem('sk_achievements').then(v => {
-      if (v) {
-        try { setClaimedAch(new Set(JSON.parse(v))); } catch (_) {}
-      }
-    });
+    AsyncStorage.getItem('sk_achievements')
+      .then(v => {
+        if (v) {
+          try { setClaimedAch(new Set(JSON.parse(v))); } catch (_) {}
+        }
+      })
+      .catch(() => {})
+      // Auto-claim must wait for this — otherwise restored progress (high orb/
+      // level) re-grants achievements that were already claimed.
+      .finally(() => { achLoadedRef.current = true; });
   }, []);
 
   // Auto-claim achievements when conditions met
   useEffect(() => {
+    if (!achLoadedRef.current) return;
     const state: AchievementState = { streakCount, level, orb, tournamentScore };
     const newly: Achievement[] = [];
     for (const a of ACHIEVEMENTS) {
@@ -563,12 +590,16 @@ function AppInner() {
         }
       }
     });
-    getOrCreateDeviceId().then(id => {
+    getOrCreateDeviceId().then(async id => {
       deviceIdRef.current = id;
       const defaultName = 'Seeker#' + id.slice(-4).toUpperCase();
       setUsername(defaultName);
       setPendingUsername(defaultName);
-      initPlayer(id, orb, level).then(() => initReferrals(id));
+      // Restore saved progress FIRST — everything that writes orb to the
+      // server (initReferrals, syncScore) must see the real balance.
+      const restored = await hydratePlayer(id);
+      await initPlayer(id, restored.orb, restored.level);
+      initReferrals(id);
     });
     loadWallet();
     return () => {
@@ -596,6 +627,34 @@ function AppInner() {
       });
     }, 1000);
     return () => clearInterval(id);
+  }, []);
+
+  // Persist progress snapshot: debounced on every change, so a cold start
+  // restores exactly where the player left off.
+  useEffect(() => {
+    playerSnapRef.current = { orb, tickets, level, xp, upgrades };
+    if (!hydratedRef.current) return;
+    if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    persistTimerRef.current = setTimeout(() => {
+      AsyncStorage.setItem(
+        PLAYER_SNAPSHOT_KEY,
+        JSON.stringify({ ...playerSnapRef.current, savedAt: Date.now() }),
+      ).catch(() => {});
+    }, 800);
+  }, [orb, tickets, level, xp, upgrades]);
+
+  // Flush the snapshot immediately when the app goes to background — Android
+  // can kill the process any moment after that.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', s => {
+      if (s !== 'active' && hydratedRef.current) {
+        AsyncStorage.setItem(
+          PLAYER_SNAPSHOT_KEY,
+          JSON.stringify({ ...playerSnapRef.current, savedAt: Date.now() }),
+        ).catch(() => {});
+      }
+    });
+    return () => sub.remove();
   }, []);
 
   async function loadSounds() {
@@ -683,6 +742,85 @@ function AppInner() {
     } catch (_) {}
   }
 
+  // ── progress restore ───────────────────────────────────────────────────────
+
+  function asNum(v: unknown): number | null {
+    return typeof v === 'number' && Number.isFinite(v) ? v : null;
+  }
+
+  function sanitizeUpgrades(u: unknown): Record<UpgradeKey, number> | null {
+    if (!u || typeof u !== 'object') return null;
+    const out: Record<UpgradeKey, number> = { signalPower: 0, critChance: 0, wheelLuck: 0, horsePower: 0 };
+    for (const k of Object.keys(out) as UpgradeKey[]) {
+      const v = asNum((u as Record<string, unknown>)[k]);
+      if (v !== null) out[k] = Math.max(0, Math.min(MAX_LEVEL, Math.floor(v)));
+    }
+    return out;
+  }
+
+  /**
+   * Restore saved progress on launch. Local snapshot wins (freshest local
+   * truth); the server row is the fallback for reinstalls / pre-snapshot
+   * versions. Applied as a delta against the defaults so taps that happen
+   * while the (async) restore is in flight are not lost.
+   * Returns the values initPlayer should seed for brand-new players.
+   */
+  async function hydratePlayer(id: string): Promise<{ orb: number; level: number }> {
+    let savedOrb: number | null = null;
+    let savedLevel: number | null = null;
+
+    try {
+      const raw = await AsyncStorage.getItem(PLAYER_SNAPSHOT_KEY);
+      if (raw) {
+        const snap = JSON.parse(raw);
+        savedOrb   = asNum(snap.orb);
+        savedLevel = asNum(snap.level);
+        const tix  = asNum(snap.tickets);
+        const sxp  = asNum(snap.xp);
+        if (tix !== null) setTickets(cur => Math.max(0, Math.floor(tix) + (cur - INITIAL_TICKETS)));
+        if (sxp !== null) setXp(Math.max(0, Math.min(99, Math.floor(sxp))));
+        const upg = sanitizeUpgrades(snap.upgrades);
+        if (upg) setUpgrades(upg);
+      }
+    } catch (_) {}
+
+    // Fallback: server row (progress from before the snapshot existed).
+    if (savedOrb === null) {
+      try {
+        const { data } = await supabase
+          .from('players')
+          .select('orb, level, username')
+          .eq('device_id', id)
+          .maybeSingle();
+        if (data) {
+          savedOrb   = asNum(data.orb);
+          savedLevel = savedLevel ?? asNum(data.level);
+          // Custom username also used to reset to Seeker#XXXX on every launch.
+          if (typeof data.username === 'string' && data.username.trim()) {
+            setUsername(data.username);
+            setPendingUsername(data.username);
+          }
+        }
+      } catch (_) {}
+    }
+
+    let restoredOrb = INITIAL_ORB;
+    if (savedOrb !== null) {
+      const target = Math.max(0, Math.floor(savedOrb));
+      restoredOrb = target;
+      // Delta-apply: earnings/spends since mount shift the restored value.
+      setOrb(cur => Math.max(0, target + (cur - INITIAL_ORB)));
+    }
+    let restoredLevel = 1;
+    if (savedLevel !== null) {
+      restoredLevel = Math.max(1, Math.floor(savedLevel));
+      setLevel(cur => Math.max(cur, restoredLevel));
+    }
+
+    hydratedRef.current = true;
+    return { orb: restoredOrb, level: restoredLevel };
+  }
+
   // ── Referrals ───────────────────────────────────────────────────────────
   async function initReferrals(id: string) {
     try {
@@ -750,7 +888,8 @@ function AppInner() {
   }
 
   async function syncScore(currentOrb: number, currentLevel: number, currentStreak: number) {
-    if (!deviceIdRef.current) return;
+    // Never push defaults to the server before saved progress is restored.
+    if (!deviceIdRef.current || !hydratedRef.current) return;
     try {
       await supabase.from('players').update({
         orb:        currentOrb,
