@@ -270,6 +270,84 @@ export type SolPurpose = 'wheel_spin' | 'energy_refill' | 'shop_upgrade' | 'pvp_
   | 'founder_silver' | 'founder_gold' | 'founder_diamond'
   | 'runner_continue';
 
+/**
+ * Sign in the wallet, then broadcast + confirm OURSELVES.
+ *
+ * The old flow used wallet.signAndSendTransactions, which makes the WALLET
+ * broadcast the tx and wait for confirmation. On the rate-limited public
+ * mainnet RPC that wait routinely outlived the MWA association and threw
+ * java.util.concurrent.CancellationException — so paid transactions never
+ * landed (zero mainnet payments were ever recorded).
+ *
+ * Now the wallet ONLY signs (fast, no network); the MWA session ends
+ * immediately and the app sends the raw tx on its own connection. The
+ * blockhash is fetched BEFORE the session so no network call happens inside it.
+ *
+ * `setFrom` lets the caller capture payer/authToken for on-chain recovery even
+ * if a later step throws.
+ */
+async function signAndBroadcast(
+  connection: Connection,
+  treasury: PublicKey,
+  lamports: number,
+  onStatus: ((status: WheelPaymentStatus) => void) | undefined,
+  setFrom: (address: string, authToken: string, walletUriBase?: string) => void,
+): Promise<{ address: string; authToken: string; walletUriBase?: string; signature: string }> {
+  onStatus?.('opening_wallet');
+  const latestBlockhash = await connection.getLatestBlockhash('confirmed');
+
+  const signed = await transact(async wallet => {
+    onStatus?.('authorizing');
+    const authorization = await wallet.authorize({ chain: SOLANA_CHAIN, identity: APP_IDENTITY });
+    const account = authorization.accounts[0];
+    if (!account) throw new Error('Wallet returned no authorized account.');
+
+    onStatus?.('preparing_transaction');
+    const fromPubkey = publicKeyFromMwaAddress(account.address);
+    setFrom(fromPubkey.toBase58(), authorization.auth_token, authorization.wallet_uri_base);
+    const transaction = new Transaction({ ...latestBlockhash, feePayer: fromPubkey }).add(
+      SystemProgram.transfer({ fromPubkey, toPubkey: treasury, lamports }),
+    );
+
+    onStatus?.('requesting_signature');
+    // Sign only — do NOT let the wallet broadcast/confirm (that wait is what cancels).
+    const [signedTx] = await wallet.signTransactions({ transactions: [transaction] });
+    if (!signedTx) throw new Error('Wallet did not return a signed transaction.');
+    return {
+      signedTx,
+      address: fromPubkey.toBase58(),
+      authToken: authorization.auth_token,
+      walletUriBase: authorization.wallet_uri_base,
+    };
+  });
+
+  // Broadcast + confirm on our own connection, outside the wallet session.
+  const signature = await connection.sendRawTransaction(signed.signedTx.serialize(), {
+    skipPreflight: false,
+    preflightCommitment: 'confirmed',
+  });
+  try {
+    await connection.confirmTransaction(
+      {
+        signature,
+        blockhash: latestBlockhash.blockhash,
+        lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+      },
+      'confirmed',
+    );
+  } catch (_) {
+    // Confirmation timeout on a slow RPC — the tx may still land. Save it and let
+    // the caller verify; recovery covers the "broadcast but unconfirmed" case.
+  }
+
+  return {
+    address: signed.address,
+    authToken: signed.authToken,
+    walletUriBase: signed.walletUriBase,
+    signature,
+  };
+}
+
 export async function paySolToTreasury(
   deviceId: string,
   lamports: number,
@@ -288,69 +366,24 @@ export async function paySolToTreasury(
   let walletUriOuter: string | undefined;
 
   try {
-    onStatus?.('opening_wallet');
-    const result = await transact(async wallet => {
-      onStatus?.('authorizing');
-      const authorization = await wallet.authorize({
-        chain: SOLANA_CHAIN,
-        identity: APP_IDENTITY,
-      });
-      const account = authorization.accounts[0];
-      if (!account) throw new Error('Wallet returned no authorized account.');
-
-      onStatus?.('preparing_transaction');
-      const fromPubkey = publicKeyFromMwaAddress(account.address);
-      fromAddress    = fromPubkey.toBase58();
-      authTokenOuter = authorization.auth_token;
-      walletUriOuter = authorization.wallet_uri_base;
-      const latestBlockhash = await connection.getLatestBlockhash('confirmed');
-      const transaction = new Transaction({
-        ...latestBlockhash,
-        feePayer: fromPubkey,
-      }).add(
-        SystemProgram.transfer({
-          fromPubkey,
-          toPubkey: treasury,
-          lamports,
-        }),
-      );
-
-      onStatus?.('requesting_signature');
-      const [signature] = await wallet.signAndSendTransactions({
-        transactions: [transaction],
-        commitment: 'confirmed',
-      });
-      if (!signature) throw new Error('Wallet did not return a transaction signature.');
-
-      return {
-        address: fromPubkey.toBase58(),
-        authToken: authorization.auth_token,
-        walletUriBase: authorization.wallet_uri_base,
-        signature,
-        lamports,
-        sol,
-      };
-    });
-
-    try {
-      await connection.confirmTransaction(result.signature, 'confirmed');
-    } catch (_) {}
+    const r = await signAndBroadcast(connection, treasury, lamports, onStatus,
+      (addr, tok, uri) => { fromAddress = addr; authTokenOuter = tok; walletUriOuter = uri; });
 
     onStatus?.('saving_payment');
     await supabase.from('wheel_sol_payments').insert({
       device_id: deviceId,
-      wallet_address: result.address,
-      tx_signature: result.signature,
-      lamports: result.lamports,
-      sol_amount: result.sol,
+      wallet_address: r.address,
+      tx_signature: r.signature,
+      lamports,
+      sol_amount: sol,
       network: SOLANA_NETWORK,
       status: `confirmed:${purpose}`,
     });
 
     onStatus?.('confirmed');
-    return result;
+    return { address: r.address, authToken: r.authToken, walletUriBase: r.walletUriBase, signature: r.signature, lamports, sol };
   } catch (e) {
-    // The session may have cancelled AFTER the tx was broadcast — verify on-chain
+    // The wallet session may have cancelled AFTER we broadcast — verify on-chain
     // before declaring failure, so we never charge the user twice.
     if (fromAddress) {
       const recovered = await recoverRecentPayment(connection, fromAddress, treasury, lamports);
@@ -397,72 +430,24 @@ export async function payForWheelSpin(
   let walletUriOuter: string | undefined;
 
   try {
-    onStatus?.('opening_wallet');
-    const result = await transact(async wallet => {
-    onStatus?.('authorizing');
-    const authorization = await wallet.authorize({
-      chain: SOLANA_CHAIN,
-      identity: APP_IDENTITY,
-    });
-    const account = authorization.accounts[0];
-    if (!account) throw new Error('Wallet returned no authorized account.');
-
-    onStatus?.('preparing_transaction');
-    const fromPubkey = publicKeyFromMwaAddress(account.address);
-    fromAddress    = fromPubkey.toBase58();
-    authTokenOuter = authorization.auth_token;
-    walletUriOuter = authorization.wallet_uri_base;
-    const latestBlockhash = await connection.getLatestBlockhash('confirmed');
-    const transaction = new Transaction({
-      ...latestBlockhash,
-      feePayer: fromPubkey,
-    }).add(
-      SystemProgram.transfer({
-        fromPubkey,
-        toPubkey: treasury,
-        lamports: WHEEL_SPIN_LAMPORTS,
-      }),
-    );
-
-    onStatus?.('requesting_signature');
-    const [signature] = await wallet.signAndSendTransactions({
-      transactions: [transaction],
-      commitment: 'confirmed',
-    });
-    if (!signature) throw new Error('Wallet did not return a transaction signature.');
-
-    return {
-      address: fromPubkey.toBase58(),
-      authToken: authorization.auth_token,
-      walletUriBase: authorization.wallet_uri_base,
-      signature,
-      lamports: WHEEL_SPIN_LAMPORTS,
-      sol: WHEEL_SPIN_SOL,
-    };
-    });
-
-    // Confirm transaction is finalized on chain before saving to DB
-    try {
-      await connection.confirmTransaction(result.signature, 'confirmed');
-    } catch (_) {
-      // If confirmation times out, still save — RPC may be slow. Caller can verify via explorer.
-    }
+    const r = await signAndBroadcast(connection, treasury, WHEEL_SPIN_LAMPORTS, onStatus,
+      (addr, tok, uri) => { fromAddress = addr; authTokenOuter = tok; walletUriOuter = uri; });
 
     onStatus?.('saving_payment');
     await supabase.from('wheel_sol_payments').insert({
       device_id: deviceId,
-      wallet_address: result.address,
-      tx_signature: result.signature,
-      lamports: result.lamports,
-      sol_amount: result.sol,
+      wallet_address: r.address,
+      tx_signature: r.signature,
+      lamports: WHEEL_SPIN_LAMPORTS,
+      sol_amount: WHEEL_SPIN_SOL,
       network: SOLANA_NETWORK,
       status: 'confirmed',
     });
 
     onStatus?.('confirmed');
-    return result;
+    return { address: r.address, authToken: r.authToken, walletUriBase: r.walletUriBase, signature: r.signature, lamports: WHEEL_SPIN_LAMPORTS, sol: WHEEL_SPIN_SOL };
   } catch (e) {
-    // The session may have cancelled AFTER the tx was broadcast — verify on-chain
+    // The wallet session may have cancelled AFTER we broadcast — verify on-chain
     // before declaring failure, so we never charge the user twice.
     if (fromAddress) {
       const recovered = await recoverRecentPayment(connection, fromAddress, treasury, WHEEL_SPIN_LAMPORTS);
