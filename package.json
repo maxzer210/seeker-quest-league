@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-three/fiber": "^9.4.0",
     "@solana-mobile/mobile-wallet-adapter-protocol": "^2.2.8",
     "@solana-mobile/mobile-wallet-adapter-protocol-web3js": "^2.2.8",
     "@solana/web3.js": "^1.98.4",
@@ -20,6 +21,7 @@
     "expo-av": "~16.0.8",
     "expo-clipboard": "~8.0.8",
     "expo-dev-client": "~6.0.21",
+    "expo-gl": "~16.0.7",
     "expo-linear-gradient": "~15.0.8",
     "expo-notifications": "~0.32.17",
     "expo-status-bar": "~3.0.9",
@@ -30,12 +32,14 @@
     "react-native-get-random-values": "^2.0.0",
     "react-native-safe-area-context": "^5.8.0",
     "react-native-url-polyfill": "^3.0.0",
-    "seeker-sdk": "^0.2.1"
+    "seeker-sdk": "^0.2.1",
+    "three": "^0.166.1"
   },
   "devDependencies": {
     "@solana-mobile/dapp-store-cli": "^1.0.0",
     "@solana/spl-token": "^0.4.14",
     "@types/react": "~19.1.0",
+    "@types/three": "~0.166.0",
     "patch-package": "^8.0.1",
     "typescript": "~5.9.2"
   },

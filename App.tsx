@@ -67,6 +67,7 @@ import SpaceRunner from './components/SpaceRunner';
 import SKORAWallet from './components/SKORAWallet';
 import FortuneWheel from './components/FortuneWheel';
 import HorseRace from './components/HorseRace';
+import LabyrinthOfAbyss from './components/LabyrinthOfAbyss';
 import Onboarding from './components/Onboarding';
 import WinCelebration, { WinCelebrationHandle } from './components/WinCelebration';
 import {
@@ -105,7 +106,7 @@ const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
-type Screen = 'home' | 'quests' | 'wheel' | 'leaderboard' | 'signal' | 'horse' | 'shop' | 'wallet' | 'treasure' | 'arena' | 'lands' | 'tournament' | 'runner' | 'skora' | 'games' | 'profile' | 'news' | 'earn' | 'pvp';
+type Screen = 'home' | 'quests' | 'wheel' | 'leaderboard' | 'signal' | 'horse' | 'shop' | 'wallet' | 'treasure' | 'arena' | 'lands' | 'tournament' | 'runner' | 'skora' | 'games' | 'profile' | 'news' | 'earn' | 'pvp' | 'labyrinth';
 type UpgradeKey = 'signalPower' | 'critChance' | 'wheelLuck' | 'horsePower';
 
 // ─── upgrade config ───────────────────────────────────────────────────────────
@@ -1801,6 +1802,7 @@ function AppInner() {
       arena:       'games',
       lands:       'games',
       pvp:         'games',
+      labyrinth:   'games',
       leaderboard: 'tournament',
       signal:      'home',
       quests:      'home',
@@ -3453,6 +3455,7 @@ function AppInner() {
 
               {/* All games — uniform full-width cards */}
               {([
+                { id: 'labyrinth', icon: '🕳️', name: 'ABYSS LABYRINTH', tag: 'NEW · 3D', desc: 'Real-3D maze — slay shades, loot artifacts, escape alive', reward: 'Up to 10,000+ ORB per run', color: '#8B5CF6' },
                 { id: 'runner',   icon: '🚀', name: 'SPACE RUNNER',  tag: t('games.featured'),   desc: t('gameDesc.runner'),   reward: t('gameReward.runner'),   color: '#00E5FF' },
                 { id: 'wheel',    icon: '🎰', name: 'FORTUNE WHEEL', tag: t('gameTag.luck'),     desc: t('gameDesc.wheel'),    reward: t('gameReward.wheel'),    color: '#A855F7' },
                 { id: 'pvp',      icon: '⚡', name: 'PvP ARENA',     tag: 'LIVE',                desc: t('gameDesc.pvp'),      reward: t('gameReward.pvp'),      color: '#EC4899' },
@@ -3924,7 +3927,7 @@ function AppInner() {
             { id: 'profile',    icon: '👤',  label: t('nav.me')    },
           ] as { id: Screen; icon: string; label: string }[]).map(({ id, icon, label }) => {
             const active = screen === id ||
-              (id === 'games'      && ['runner','arena','treasure','horse','wheel','lands','pvp'].includes(screen)) ||
+              (id === 'games'      && ['runner','arena','treasure','horse','wheel','lands','pvp','labyrinth'].includes(screen)) ||
               (id === 'profile'    && ['wallet'].includes(screen)) ||
               (id === 'shop'       && ['earn','skora'].includes(screen)) ||
               (id === 'tournament' && screen === 'leaderboard') ||
@@ -4004,6 +4007,40 @@ function AppInner() {
               onEarnOrb={(n) => { const next = orb + n; setOrb(next); syncScore(next, level, streakCount); winRef.current?.show(n); }}
               onEarnTickets={(n) => setTickets(t => t + n)}
               onBack={() => setScreen('games')}
+            />
+          </View>
+        )}
+
+        {/* ═══ ABYSS LABYRINTH FULLSCREEN (real 3D) ═══ */}
+        {screen === 'labyrinth' && (
+          <View style={styles.fullscreenGame}>
+            <LabyrinthOfAbyss
+              energy={energy}
+              onSpendEnergy={(n) => {
+                setEnergy(prev => {
+                  const next = Math.max(0, prev - n);
+                  AsyncStorage.setItem('sk_energy', next.toString()).catch(() => {});
+                  return next;
+                });
+              }}
+              onEarnOrb={(n) => {
+                // Functional update: a barrel blast can grant several rewards
+                // within one frame — a closure over `orb` would drop them.
+                setOrb(prev => {
+                  const next = prev + n;
+                  scheduleSyncScore(next, level, streakCount);
+                  return next;
+                });
+              }}
+              onAddScore={addTournamentScore}
+              onPlaySound={(snd) => {
+                if      (snd === 'tap')     playSound(sndTap.current);
+                else if (snd === 'crit')    playSound(sndCrit.current);
+                else if (snd === 'jackpot') playSound(sndJackpot.current);
+                else if (snd === 'levelup') playSound(sndLevelUp.current);
+                else if (snd === 'dead')    playSound(sndDead.current);
+              }}
+              onExit={() => setScreen('games')}
             />
           </View>
         )}
