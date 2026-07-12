@@ -34,8 +34,10 @@
     "react-native": "0.81.5",
     "react-native-device-info": "^15.0.2",
     "react-native-get-random-values": "^2.0.0",
+    "react-native-reanimated": "~4.1.1",
     "react-native-safe-area-context": "^5.8.0",
     "react-native-url-polyfill": "^3.0.0",
+    "react-native-worklets": "0.5.1",
     "seeker-sdk": "^0.2.1",
     "three": "^0.166.1"
   },
