@@ -27,6 +27,7 @@ export const ATTACK_ARC_COS  = Math.cos(Math.PI / 1.5); // 120° cone
 export const ATTACK_DMG      = 50;
 export const ATTACK_COOLDOWN = 0.4;
 export const KNOCKBACK_FORCE = 10;
+export const SWING_TIME      = 0.28;        // blade-arc duration for the render
 
 export const MONSTER_COUNT   = 30;
 export const BRUTE_CHANCE    = 0.2;
@@ -86,6 +87,10 @@ export type LootItem = {
 export type Trap   = { id: number; pos: Vec2; triggered: boolean };
 export type Barrel = { id: number; pos: Vec2; exploded: boolean };
 
+// Transient FX for juice (spark bursts, floating damage/reward numbers)
+export type Particle = { x: number; z: number; vx: number; vz: number; life: number; max: number; color: string; size: number };
+export type FloatText = { x: number; z: number; text: string; life: number; max: number; color: string; vy: number };
+
 export type RunState = {
   grid: number[][];        // 1 = wall
   gridW: number;
@@ -108,6 +113,11 @@ export type RunState = {
   clock: number;           // run time, seconds
   kills: number;
   runOrb: number;          // ORB earned this run (already granted via callback)
+  // FX
+  particles: Particle[];
+  floats: FloatText[];
+  shake: number;           // decaying screen-shake magnitude
+  swordSwing: number;      // 1 → 0 over a swing, for the blade arc
 };
 
 // ── Maze generation (verbatim port) ──────────────────────────────────────────
@@ -265,7 +275,251 @@ export function createRun(): RunState {
     clock: 0,
     kills: 0,
     runOrb: 0,
+    particles: [],
+    floats: [],
+    shake: 0,
+    swordSwing: 0,
   };
+}
+
+// ── FX helpers ────────────────────────────────────────────────────────────────
+export function spawnBurst(run: RunState, x: number, z: number, color: string, count: number, speed: number) {
+  for (let i = 0; i < count; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const s = speed * (0.4 + Math.random() * 0.8);
+    run.particles.push({
+      x, z, vx: Math.cos(a) * s, vz: Math.sin(a) * s,
+      life: 0.5 + Math.random() * 0.35, max: 0.85,
+      color, size: 2 + Math.random() * 2.5,
+    });
+  }
+  if (run.particles.length > 240) run.particles.splice(0, run.particles.length - 240);
+}
+
+export function addFloat(run: RunState, x: number, z: number, text: string, color: string) {
+  run.floats.push({ x, z, text, life: 1, max: 1, color, vy: 1.4 });
+  if (run.floats.length > 40) run.floats.splice(0, run.floats.length - 40);
+}
+
+export type SimInput = { jx: number; jz: number; attack: boolean; dash: boolean };
+export type SimEvents = {
+  setHp: (hp: number) => void;
+  setCollected: (n: number) => void;
+  setRunOrb: (n: number) => void;
+  setMsg: (m: string) => void;
+  onHitFlash: () => void;
+  onEnd: (won: boolean) => void;
+  playSound: (s: 'tap' | 'crit' | 'jackpot' | 'levelup' | 'dead') => void;
+  earnOrb: (n: number) => void;
+};
+
+/**
+ * Advance the whole simulation by `dt` seconds. Pure logic + FX; the renderer
+ * only reads state. Ported verbatim from the original 3D useFrame loop, plus
+ * particle/float/shake juice.
+ */
+export function stepSimulation(run: RunState, input: SimInput, dt: number, ev: SimEvents) {
+  const r = run;
+  const p = r.player;
+  r.clock += dt;
+
+  // decay FX
+  if (r.shake > 0) r.shake = Math.max(0, r.shake - dt * 22);
+  if (r.swordSwing > 0) r.swordSwing = Math.max(0, r.swordSwing - dt / SWING_TIME);
+  for (let i = r.particles.length - 1; i >= 0; i--) {
+    const pa = r.particles[i];
+    pa.life -= dt;
+    if (pa.life <= 0) { r.particles.splice(i, 1); continue; }
+    pa.x += pa.vx * dt; pa.z += pa.vz * dt;
+    pa.vx *= (1 - 3 * dt); pa.vz *= (1 - 3 * dt);
+  }
+  for (let i = r.floats.length - 1; i >= 0; i--) {
+    const f = r.floats[i];
+    f.life -= dt * 1.1;
+    if (f.life <= 0) { r.floats.splice(i, 1); continue; }
+    f.z -= f.vy * dt;
+  }
+
+  // timers
+  if (p.attackCooldown > 0) p.attackCooldown -= dt;
+  if (p.dashCooldown  > 0) p.dashCooldown  -= dt;
+  if (p.dashTime > 0) { p.dashTime -= dt; if (p.dashTime <= 0) p.isDashing = false; }
+
+  // movement
+  let dx = input.jx, dz = input.jz;
+  const len = Math.sqrt(dx * dx + dz * dz);
+  if (len > 1) { dx /= len; dz /= len; }
+
+  if (input.dash && p.dashCooldown <= 0 && len > 0.15) {
+    p.isDashing = true;
+    p.dashTime = DASH_TIME;
+    p.dashCooldown = DASH_COOLDOWN;
+    spawnBurst(r, p.pos.x, p.pos.z, '#c4b5fd', 8, 6);
+    ev.playSound('tap');
+  }
+  input.dash = false;
+
+  const speed = p.isDashing ? DASH_SPEED : PLAYER_SPEED;
+  if (len > 0.15 || p.isDashing) {
+    const mx = p.isDashing ? p.dir.x : dx;
+    const mz = p.isDashing ? p.dir.z : dz;
+    let next = { x: p.pos.x + mx * speed * dt, z: p.pos.z + mz * speed * dt };
+    next = resolveWallCollision(r.grid, r.gridW, r.gridH, next, PLAYER_RADIUS);
+    p.pos = clampToBounds(next, r.gridW, r.gridH);
+    if (len > 0.15) {
+      const inv = 1 / (Math.sqrt(dx * dx + dz * dz) || 1);
+      p.dir = { x: dx * inv, z: dz * inv };
+    }
+  }
+
+  // attack
+  if (input.attack) {
+    input.attack = false;
+    if (p.attackCooldown <= 0) {
+      p.attackCooldown = ATTACK_COOLDOWN;
+      r.swordSwing = 1;
+      let hit = false;
+
+      for (const b of r.barrels) {
+        if (b.exploded || dist(b.pos, p.pos) > ATTACK_RANGE) continue;
+        const tb = { x: b.pos.x - p.pos.x, z: b.pos.z - p.pos.z };
+        const tl = Math.sqrt(tb.x * tb.x + tb.z * tb.z) || 1;
+        if ((tb.x / tl) * p.dir.x + (tb.z / tl) * p.dir.z < ATTACK_ARC_COS) continue;
+        b.exploded = true; hit = true;
+        r.shake = Math.max(r.shake, 9);
+        spawnBurst(r, b.pos.x, b.pos.z, '#f97316', 22, 12);
+        for (const m of r.monsters) {
+          if (m.dead || dist(m.pos, b.pos) > BARREL_BLAST_R) continue;
+          m.hp -= BARREL_MONSTER_DMG;
+          m.damageFlash = 0.5;
+          const kb = { x: m.pos.x - b.pos.x, z: m.pos.z - b.pos.z };
+          const kl = Math.sqrt(kb.x * kb.x + kb.z * kb.z) || 1;
+          m.knockback = { x: (kb.x / kl) * 20, z: (kb.z / kl) * 20 };
+          if (m.hp <= 0 && !m.dead) {
+            m.dead = true; r.kills += 1;
+            const reward = m.type === 'brute' ? BRUTE_REWARD : NORMAL_REWARD;
+            r.runOrb += reward; ev.earnOrb(reward); ev.setRunOrb(r.runOrb);
+            addFloat(r, m.pos.x, m.pos.z, `+${reward}`, '#facc15');
+            spawnBurst(r, m.pos.x, m.pos.z, '#ef4444', 12, 8);
+          }
+        }
+        if (dist(p.pos, b.pos) < BARREL_BLAST_R) {
+          p.hp -= BARREL_PLAYER_DMG;
+          ev.setHp(Math.max(0, p.hp));
+          addFloat(r, p.pos.x, p.pos.z, `-${BARREL_PLAYER_DMG}`, '#ef4444');
+          ev.onHitFlash();
+        }
+      }
+
+      for (const m of r.monsters) {
+        if (m.dead || dist(m.pos, p.pos) > ATTACK_RANGE) continue;
+        const tm = { x: m.pos.x - p.pos.x, z: m.pos.z - p.pos.z };
+        const tl = Math.sqrt(tm.x * tm.x + tm.z * tm.z) || 1;
+        if ((tm.x / tl) * p.dir.x + (tm.z / tl) * p.dir.z < ATTACK_ARC_COS) continue;
+        m.hp -= ATTACK_DMG;
+        m.damageFlash = 0.2;
+        m.knockback = { x: p.dir.x * KNOCKBACK_FORCE, z: p.dir.z * KNOCKBACK_FORCE };
+        hit = true;
+        addFloat(r, m.pos.x, m.pos.z, String(ATTACK_DMG), '#ffffff');
+        spawnBurst(r, m.pos.x, m.pos.z, '#fca5a5', 6, 7);
+        if (m.hp <= 0) {
+          m.dead = true; r.kills += 1;
+          r.shake = Math.max(r.shake, 5);
+          const reward = m.type === 'brute' ? BRUTE_REWARD : NORMAL_REWARD;
+          r.runOrb += reward; ev.earnOrb(reward); ev.setRunOrb(r.runOrb);
+          addFloat(r, m.pos.x, m.pos.z - 0.6, `+${reward}`, '#facc15');
+          spawnBurst(r, m.pos.x, m.pos.z, '#ef4444', 14, 9);
+          ev.setMsg(`${m.type === 'brute' ? 'Brute' : 'Shade'} slain · +${reward} ORB`);
+        }
+      }
+      ev.playSound(hit ? 'crit' : 'tap');
+    }
+  }
+
+  // monsters
+  for (const m of r.monsters) {
+    if (m.dead) continue;
+    if (m.damageFlash > 0) m.damageFlash -= dt;
+    if (m.knockback.x !== 0 || m.knockback.z !== 0) {
+      m.pos.x += m.knockback.x * dt;
+      m.pos.z += m.knockback.z * dt;
+      const decay = Math.max(0, 1 - 4 * dt);
+      m.knockback.x *= decay; m.knockback.z *= decay;
+      if (Math.abs(m.knockback.x) + Math.abs(m.knockback.z) < 0.1) m.knockback = { x: 0, z: 0 };
+    }
+    const d = dist(m.pos, p.pos);
+    if (d < MONSTER_AGGRO && d > MONSTER_HIT_DIST * 0.8) {
+      const ux = (p.pos.x - m.pos.x) / d;
+      const uz = (p.pos.z - m.pos.z) / d;
+      let next = { x: m.pos.x + ux * m.speed * dt, z: m.pos.z + uz * m.speed * dt };
+      next = resolveWallCollision(r.grid, r.gridW, r.gridH, next, 1.0);
+      m.pos = next;
+    }
+    if (d <= MONSTER_HIT_DIST && r.clock - m.lastAttack > MONSTER_ATK_CD) {
+      m.lastAttack = r.clock;
+      if (!p.isDashing) {
+        const dmg = m.type === 'brute' ? BRUTE_DMG : NORMAL_DMG;
+        p.hp -= dmg;
+        ev.setHp(Math.max(0, p.hp));
+        r.shake = Math.max(r.shake, 4);
+        addFloat(r, p.pos.x, p.pos.z, `-${dmg}`, '#ef4444');
+        ev.onHitFlash();
+        ev.playSound('dead');
+      }
+    }
+  }
+
+  // traps
+  if (!p.isDashing) {
+    for (const t of r.traps) {
+      if (t.triggered || dist(t.pos, p.pos) > TRAP_DIST) continue;
+      t.triggered = true;
+      p.hp -= TRAP_DMG;
+      ev.setHp(Math.max(0, p.hp));
+      r.shake = Math.max(r.shake, 4);
+      addFloat(r, p.pos.x, p.pos.z, `-${TRAP_DMG}`, '#f43f5e');
+      ev.onHitFlash();
+      ev.setMsg('Trap sprung · -10 HP');
+    }
+  }
+
+  // loot
+  for (const it of r.items) {
+    if (it.collected || dist(it.pos, p.pos) > COLLECT_DIST) continue;
+    it.collected = true;
+    const orb = it.type === 'artifact' ? ARTIFACT_ORB : TREASURE_ORB;
+    r.runOrb += orb; ev.earnOrb(orb); ev.setRunOrb(r.runOrb);
+    const col = it.type === 'artifact' ? '#22d3ee' : '#facc15';
+    addFloat(r, it.pos.x, it.pos.z, `+${orb}`, col);
+    spawnBurst(r, it.pos.x, it.pos.z, col, 16, 8);
+    const left = r.items.filter(x => !x.collected).length;
+    if (left === 0) {
+      r.portalActive = true;
+      let pp = { x: p.pos.x, z: p.pos.z + 10 };
+      pp = resolveWallCollision(r.grid, r.gridW, r.gridH, pp, 2);
+      r.portalPos = clampToBounds(pp, r.gridW, r.gridH);
+      ev.setMsg('All artifacts found · reach the portal!');
+      ev.playSound('levelup');
+    } else {
+      ev.playSound('tap');
+    }
+    ev.setCollected(ITEM_COUNT - left);
+  }
+
+  // portal / win
+  if (r.portalActive && dist(r.portalPos, p.pos) < PORTAL_DIST) {
+    r.runOrb += WIN_BONUS_ORB;
+    ev.earnOrb(WIN_BONUS_ORB); ev.setRunOrb(r.runOrb);
+    ev.playSound('jackpot');
+    ev.onEnd(true);
+    return;
+  }
+
+  // death
+  if (p.hp <= 0) {
+    ev.playSound('dead');
+    ev.onEnd(false);
+  }
 }
 
 /** Build wall instance positions (world coords) for rendering. */

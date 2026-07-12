@@ -75,3 +75,12 @@ _emuwin*.png
 _pkgs/
 build-*.log
 metro.log
+
+# scratch / local test artifacts
+_scr*.png
+_desktop.png
+_emuwin*.png
+_emu/
+_pkgs/
+build-*.log
+metro.log

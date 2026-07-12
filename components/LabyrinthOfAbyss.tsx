@@ -1,497 +1,326 @@
 /**
- * ABYSS LABYRINTH — real-3D dungeon crawler (expo-gl + react-three-fiber).
+ * ABYSS LABYRINTH — 2D pixel-art dungeon crawler (Skia renderer).
  *
- * Ported from the AI-Studio web prototype: procedural maze over a bottomless
- * abyss, sword combat, dash i-frames, traps, exploding barrels, loot and an
- * exit portal. Differences from the web build (RN constraints):
- *  - Rapier physics (WASM) replaced with grid push-out (lib/labyrinth.ts)
- *  - Bloom/postprocessing replaced with emissive materials + fog + torch light
- *  - drei/Html HUD replaced with an RN overlay (joystick, buttons, bars)
+ * The 3D expo-gl build rendered black on the emulator (EGL_BAD_MATCH), so this
+ * is a top-down 2.5D rewrite on react-native-skia: a torch-lit maze with fog of
+ * war, pixel-art sprites, particle juice and screen shake — reliable on every
+ * device and iterable with live visual feedback.
  *
- * All world mutation happens inside useFrame via refs — React state is only
- * touched on sparse gameplay events (damage, pickup, kill, phase change).
+ * All gameplay lives in lib/labyrinth.ts (stepSimulation); this file only reads
+ * state to draw and owns the RN overlay HUD (joystick, buttons, menus).
  */
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  Animated, PanResponder, StyleSheet, Text, TouchableOpacity, View,
+  Animated, PanResponder, Platform, StyleSheet, Text, TouchableOpacity,
+  View, useWindowDimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Canvas, useFrame } from '@react-three/fiber/native';
-import * as THREE from 'three';
-// expo-three's loadAsync is the only reliable way to decode bundled images
-// into GL textures in React Native (three's TextureLoader needs DOM <img>).
-import { loadAsync } from 'expo-three';
+import {
+  Canvas, Picture, createPicture, Skia,
+  TileMode, BlendMode, BlurStyle, PaintStyle,
+  matchFont, type SkCanvas, type SkFont, type SkPaint,
+} from '@shopify/react-native-skia';
 import * as L from '../lib/labyrinth';
+import { SEEKER, SHADE, BRUTE, GEM, GEM_GOLD, BARREL, spriteW, type Sprite } from '../lib/labyrinthSprites';
 
-// ── shared input / fx bridges (RN overlay <-> GL loop) ───────────────────────
-type InputState = { jx: number; jz: number; attack: boolean; dash: boolean };
+const TILE = 46;           // screen px per maze cell
+const CELL = L.CELL_SIZE;  // world units per cell
 
-type LoopEvents = {
-  setHp: (hp: number) => void;
-  setCollected: (n: number) => void;
-  setRunOrb: (n: number) => void;
-  setMsg: (m: string) => void;
-  onHitFlash: () => void;
-  onEnd: (won: boolean) => void;
-  playSound: (s: 'tap' | 'crit' | 'jackpot' | 'levelup' | 'dead') => void;
-  earnOrb: (n: number) => void;
-};
-
-type Phase = 'menu' | 'playing' | 'dead' | 'won';
-
-/** Rock textures for walls/floor; null = still loading, {} = failed (flat colors). */
-type WorldTextures = { wall?: THREE.Texture; wallNormal?: THREE.Texture; floor?: THREE.Texture };
-
-const BEST_KEY = 'sk_labyrinth_best';
-const DUST_COUNT = 220;
-
-// ── 3D world ──────────────────────────────────────────────────────────────────
-function GameWorld({
-  runRef, inputRef, phaseRef, events, tex,
-}: {
-  runRef: React.MutableRefObject<L.RunState | null>;
-  inputRef: React.MutableRefObject<InputState>;
-  phaseRef: React.MutableRefObject<Phase>;
-  events: React.MutableRefObject<LoopEvents>;
-  tex: WorldTextures;
-}) {
-  const run = runRef.current!;
-
-  // Drifting dust motes — sells depth and air in the torch light
-  const dustRef = useRef<THREE.Points>(null);
-  const dustPositions = useMemo(() => {
-    const arr = new Float32Array(DUST_COUNT * 3);
-    const span = ((run.gridW - 1) * L.CELL_SIZE) / 2;
-    for (let i = 0; i < DUST_COUNT; i++) {
-      arr[i * 3]     = (Math.random() * 2 - 1) * span;
-      arr[i * 3 + 1] = 0.3 + Math.random() * 3.4;
-      arr[i * 3 + 2] = (Math.random() * 2 - 1) * span;
-    }
-    return arr;
-  }, [run]);
-
-  const playerRef  = useRef<THREE.Group>(null);
-  const swordRef   = useRef<THREE.Group>(null);
-  const torchRef   = useRef<THREE.PointLight>(null);
-  const wallsRef   = useRef<THREE.InstancedMesh>(null);
-  const portalRef  = useRef<THREE.Group>(null);
-  const monsterRefs = useRef<(THREE.Group | null)[]>([]);
-  const monsterMats = useRef<(THREE.MeshStandardMaterial | null)[]>([]);
-  const itemRefs    = useRef<(THREE.Mesh | null)[]>([]);
-  const trapRefs    = useRef<(THREE.Mesh | null)[]>([]);
-  const barrelRefs  = useRef<(THREE.Mesh | null)[]>([]);
-
-  const walls = useMemo(
-    () => L.collectWallCells(run.grid, run.gridW, run.gridH),
-    [run],
-  );
-
-  // Place wall instances once
-  useEffect(() => {
-    const mesh = wallsRef.current;
-    if (!mesh) return;
-    const m = new THREE.Matrix4();
-    walls.forEach((w, i) => {
-      m.setPosition(w.x, L.WALL_HEIGHT / 2, w.z);
-      mesh.setMatrixAt(i, m);
+// ── fonts (system, synchronous) ──────────────────────────────────────────────
+function tryFont(size: number, weight: '400' | '700' | '900'): SkFont | null {
+  try {
+    return matchFont({
+      fontFamily: Platform.select({ android: 'sans-serif', default: 'Helvetica' }) as string,
+      fontSize: size, fontStyle: 'normal', fontWeight: weight,
     });
-    mesh.instanceMatrix.needsUpdate = true;
-  }, [walls]);
+  } catch { return null; }
+}
+const FONT_FLOAT = tryFont(19, '900');
 
-  useFrame(({ camera }, rawDelta) => {
-    const r = runRef.current;
-    if (!r || phaseRef.current !== 'playing') return;
-    const dt = Math.min(rawDelta, 0.05);
-    const ev = events.current;
-    const inp = inputRef.current;
-    const p = r.player;
-    r.clock += dt;
+// ── reusable paints ──────────────────────────────────────────────────────────
+const px = () => Skia.Paint();
+const scratch = px();
+const glowPaint = px();
+glowPaint.setMaskFilter(Skia.MaskFilter.MakeBlur(BlurStyle.Normal, 8, true));
 
-    // ── timers ──
-    if (p.attackCooldown > 0) p.attackCooldown -= dt;
-    if (p.dashCooldown  > 0) p.dashCooldown  -= dt;
-    if (p.dashTime > 0) { p.dashTime -= dt; if (p.dashTime <= 0) p.isDashing = false; }
+function col(c: string) { return Skia.Color(c); }
 
-    // ── movement ──
-    let dx = inp.jx, dz = inp.jz;
-    const len = Math.sqrt(dx * dx + dz * dz);
-    if (len > 1) { dx /= len; dz /= len; }
-
-    if (inp.dash && p.dashCooldown <= 0 && len > 0.15) {
-      p.isDashing = true;
-      p.dashTime = L.DASH_TIME;
-      p.dashCooldown = L.DASH_COOLDOWN;
-      ev.playSound('tap');
+// ── pixel-sprite draw ─────────────────────────────────────────────────────────
+function drawSprite(
+  canvas: SkCanvas, sprite: Sprite, cx: number, cy: number,
+  target: number, flipX: boolean, tint?: string,
+) {
+  const w = spriteW(sprite);
+  const h = sprite.rows.length;
+  const p = target / w;                     // px size so sprite spans `target`
+  const x0 = cx - (w * p) / 2;
+  const y0 = cy - (h * p) / 2;
+  for (let r = 0; r < h; r++) {
+    const row = sprite.rows[r];
+    for (let c = 0; c < row.length; c++) {
+      const ch = row[c];
+      if (ch === '.' || ch === ' ') continue;
+      const color = tint ?? sprite.pal[ch];
+      if (!color) continue;
+      scratch.setColor(col(color));
+      const dc = flipX ? (w - 1 - c) : c;
+      canvas.drawRect(Skia.XYWHRect(x0 + dc * p, y0 + r * p, p + 0.6, p + 0.6), scratch);
     }
-    inp.dash = false;
-
-    const speed = p.isDashing ? L.DASH_SPEED : L.PLAYER_SPEED;
-    if (len > 0.15 || p.isDashing) {
-      // While dashing keep the last facing direction
-      const mx = p.isDashing ? p.dir.x : dx;
-      const mz = p.isDashing ? p.dir.z : dz;
-      let next = { x: p.pos.x + mx * speed * dt, z: p.pos.z + mz * speed * dt };
-      next = L.resolveWallCollision(r.grid, r.gridW, r.gridH, next, L.PLAYER_RADIUS);
-      p.pos = L.clampToBounds(next, r.gridW, r.gridH);
-      if (len > 0.15) {
-        const inv = 1 / (Math.sqrt(dx * dx + dz * dz) || 1);
-        p.dir = { x: dx * inv, z: dz * inv };
-      }
-    }
-
-    // ── attack ──
-    if (inp.attack) {
-      inp.attack = false;
-      if (p.attackCooldown <= 0) {
-        p.attackCooldown = L.ATTACK_COOLDOWN;
-        let hit = false;
-
-        // Barrels: chain-explode into monsters and the player
-        for (const b of r.barrels) {
-          if (b.exploded || L.dist(b.pos, p.pos) > L.ATTACK_RANGE) continue;
-          const tb = { x: b.pos.x - p.pos.x, z: b.pos.z - p.pos.z };
-          const tl = Math.sqrt(tb.x * tb.x + tb.z * tb.z) || 1;
-          if ((tb.x / tl) * p.dir.x + (tb.z / tl) * p.dir.z < L.ATTACK_ARC_COS) continue;
-          b.exploded = true;
-          hit = true;
-          for (const m of r.monsters) {
-            if (m.dead || L.dist(m.pos, b.pos) > L.BARREL_BLAST_R) continue;
-            m.hp -= L.BARREL_MONSTER_DMG;
-            m.damageFlash = 0.5;
-            const kb = { x: m.pos.x - b.pos.x, z: m.pos.z - b.pos.z };
-            const kl = Math.sqrt(kb.x * kb.x + kb.z * kb.z) || 1;
-            m.knockback = { x: (kb.x / kl) * 20, z: (kb.z / kl) * 20 };
-            if (m.hp <= 0 && !m.dead) {
-              m.dead = true;
-              r.kills += 1;
-              const reward = m.type === 'brute' ? L.BRUTE_REWARD : L.NORMAL_REWARD;
-              r.runOrb += reward;
-              ev.earnOrb(reward);
-              ev.setRunOrb(r.runOrb);
-              ev.setMsg(`💥 Barrel kill! +${reward} ORB`);
-            }
-          }
-          if (L.dist(p.pos, b.pos) < L.BARREL_BLAST_R) {
-            p.hp -= L.BARREL_PLAYER_DMG;
-            ev.setHp(Math.max(0, p.hp));
-            ev.onHitFlash();
-          }
-        }
-
-        // Sword cone
-        for (const m of r.monsters) {
-          if (m.dead || L.dist(m.pos, p.pos) > L.ATTACK_RANGE) continue;
-          const tm = { x: m.pos.x - p.pos.x, z: m.pos.z - p.pos.z };
-          const tl = Math.sqrt(tm.x * tm.x + tm.z * tm.z) || 1;
-          if ((tm.x / tl) * p.dir.x + (tm.z / tl) * p.dir.z < L.ATTACK_ARC_COS) continue;
-          m.hp -= L.ATTACK_DMG;
-          m.damageFlash = 0.2;
-          m.knockback = { x: p.dir.x * L.KNOCKBACK_FORCE, z: p.dir.z * L.KNOCKBACK_FORCE };
-          hit = true;
-          if (m.hp <= 0) {
-            m.dead = true;
-            r.kills += 1;
-            const reward = m.type === 'brute' ? L.BRUTE_REWARD : L.NORMAL_REWARD;
-            r.runOrb += reward;
-            ev.earnOrb(reward);
-            ev.setRunOrb(r.runOrb);
-            ev.setMsg(`⚔️ ${m.type === 'brute' ? 'Brute' : 'Shade'} slain! +${reward} ORB`);
-          }
-        }
-        ev.playSound(hit ? 'crit' : 'tap');
-      }
-    }
-
-    // ── monsters ──
-    for (const m of r.monsters) {
-      if (m.dead) continue;
-      if (m.damageFlash > 0) m.damageFlash -= dt;
-
-      // knockback decay
-      if (m.knockback.x !== 0 || m.knockback.z !== 0) {
-        m.pos.x += m.knockback.x * dt;
-        m.pos.z += m.knockback.z * dt;
-        const decay = Math.max(0, 1 - 4 * dt);
-        m.knockback.x *= decay; m.knockback.z *= decay;
-        if (Math.abs(m.knockback.x) + Math.abs(m.knockback.z) < 0.1) m.knockback = { x: 0, z: 0 };
-      }
-
-      const d = L.dist(m.pos, p.pos);
-      if (d < L.MONSTER_AGGRO && d > L.MONSTER_HIT_DIST * 0.8) {
-        const ux = (p.pos.x - m.pos.x) / d;
-        const uz = (p.pos.z - m.pos.z) / d;
-        let next = { x: m.pos.x + ux * m.speed * dt, z: m.pos.z + uz * m.speed * dt };
-        next = L.resolveWallCollision(r.grid, r.gridW, r.gridH, next, 1.0);
-        m.pos = next;
-      }
-      if (d <= L.MONSTER_HIT_DIST && r.clock - m.lastAttack > L.MONSTER_ATK_CD) {
-        m.lastAttack = r.clock;
-        if (!p.isDashing) {
-          p.hp -= m.type === 'brute' ? L.BRUTE_DMG : L.NORMAL_DMG;
-          ev.setHp(Math.max(0, p.hp));
-          ev.onHitFlash();
-          ev.playSound('dead');
-        }
-      }
-    }
-
-    // ── traps ──
-    if (!p.isDashing) {
-      for (const t of r.traps) {
-        if (t.triggered || L.dist(t.pos, p.pos) > L.TRAP_DIST) continue;
-        t.triggered = true;
-        p.hp -= L.TRAP_DMG;
-        ev.setHp(Math.max(0, p.hp));
-        ev.onHitFlash();
-        ev.setMsg('🩸 Trap! -10 HP');
-      }
-    }
-
-    // ── loot ──
-    for (const it of r.items) {
-      if (it.collected || L.dist(it.pos, p.pos) > L.COLLECT_DIST) continue;
-      it.collected = true;
-      const orb = it.type === 'artifact' ? L.ARTIFACT_ORB : L.TREASURE_ORB;
-      r.runOrb += orb;
-      ev.earnOrb(orb);
-      ev.setRunOrb(r.runOrb);
-      const left = r.items.filter(x => !x.collected).length;
-      if (left === 0) {
-        r.portalActive = true;
-        let pp = { x: p.pos.x, z: p.pos.z + 10 };
-        pp = L.resolveWallCollision(r.grid, r.gridW, r.gridH, pp, 2);
-        r.portalPos = L.clampToBounds(pp, r.gridW, r.gridH);
-        ev.setMsg('🌀 All artifacts found! Reach the portal!');
-        ev.playSound('levelup');
-      } else {
-        ev.setMsg(`✨ +${orb} ORB · ${L.ITEM_COUNT - left}/${L.ITEM_COUNT}`);
-        ev.playSound('tap');
-      }
-      ev.setCollected(L.ITEM_COUNT - left);
-    }
-
-    // ── portal / win ──
-    if (r.portalActive && L.dist(r.portalPos, p.pos) < L.PORTAL_DIST) {
-      r.runOrb += L.WIN_BONUS_ORB;
-      ev.earnOrb(L.WIN_BONUS_ORB);
-      ev.setRunOrb(r.runOrb);
-      ev.playSound('jackpot');
-      ev.onEnd(true);
-      return;
-    }
-
-    // ── death ──
-    if (p.hp <= 0) {
-      ev.playSound('dead');
-      ev.onEnd(false);
-      return;
-    }
-
-    // ── write world transforms ──
-    const pg = playerRef.current;
-    if (pg) {
-      pg.position.set(p.pos.x, 0, p.pos.z);
-      pg.rotation.y = Math.atan2(p.dir.x, p.dir.z);
-    }
-    const sw = swordRef.current;
-    if (sw) {
-      // Swing: cooldown runs ATTACK_COOLDOWN → 0; arc during the first 60%
-      const k = Math.max(0, p.attackCooldown / L.ATTACK_COOLDOWN);
-      sw.rotation.y = k > 0.4 ? -((1 - k) / 0.6) * Math.PI * 1.2 : 0;
-    }
-    const tr = torchRef.current;
-    if (tr) {
-      tr.position.set(p.pos.x, 3.2, p.pos.z);
-      // Subtle torch flicker
-      tr.intensity = 380 + Math.sin(r.clock * 9) * 40 + Math.sin(r.clock * 23) * 20;
-    }
-    r.monsters.forEach((m, i) => {
-      const g = monsterRefs.current[i];
-      if (!g) return;
-      g.visible = !m.dead;
-      if (m.dead) return;
-      const bob = Math.sin(r.clock * (m.type === 'brute' ? 8 : 12) + i) * 0.15;
-      g.position.set(m.pos.x, 1 + bob, m.pos.z);
-      const mat = monsterMats.current[i];
-      if (mat) {
-        mat.color.set(m.damageFlash > 0 ? '#ffffff' : (m.type === 'brute' ? '#7f1d1d' : '#ef4444'));
-      }
-    });
-    r.items.forEach((it, i) => {
-      const mesh = itemRefs.current[i];
-      if (!mesh) return;
-      mesh.visible = !it.collected;
-      if (!it.collected) {
-        mesh.rotation.y += dt * 2;
-        mesh.position.y = 1.2 + Math.sin(r.clock * 3 + i) * 0.25;
-      }
-    });
-    r.traps.forEach((t, i) => {
-      const mesh = trapRefs.current[i];
-      if (mesh) mesh.visible = !t.triggered;
-    });
-    r.barrels.forEach((b, i) => {
-      const mesh = barrelRefs.current[i];
-      if (mesh) mesh.visible = !b.exploded;
-    });
-    const po = portalRef.current;
-    if (po) {
-      po.visible = r.portalActive;
-      if (r.portalActive) {
-        po.position.set(r.portalPos.x, 2, r.portalPos.z);
-        po.rotation.y += dt * 1.5;
-      }
-    }
-
-    // Dust drifts in a slow spiral — barely visible, but the air feels alive
-    const dust = dustRef.current;
-    if (dust) dust.rotation.y += dt * 0.015;
-
-    // ── camera: third-person chase ──
-    camera.position.lerp(new THREE.Vector3(p.pos.x, 21, p.pos.z + 16), 0.08);
-    camera.lookAt(p.pos.x, 0, p.pos.z);
-  });
-
-  return (
-    <>
-      <fog attach="fog" args={['#05010d', 10, 60]} />
-      <ambientLight intensity={0.35} color="#5b4a8a" />
-      {/* Player torch — the only strong light; darkness sells the abyss */}
-      <pointLight ref={torchRef} color="#ff9e4d" intensity={380} distance={46} decay={2} />
-
-      {/* Abyss floor — real rock, tinted deep violet so the torch reveals detail */}
-      <mesh position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[420, 420]} />
-        <meshStandardMaterial
-          map={tex.floor}
-          color={tex.floor ? '#5f5470' : '#0a0618'}
-          roughness={0.95} metalness={0.1}
-        />
-      </mesh>
-
-      {/* Walls — carved stone */}
-      <instancedMesh ref={wallsRef} args={[undefined, undefined, walls.length]}>
-        <boxGeometry args={[L.CELL_SIZE, L.WALL_HEIGHT, L.CELL_SIZE]} />
-        <meshStandardMaterial
-          map={tex.wall}
-          normalMap={tex.wallNormal}
-          color={tex.wall ? '#9b8fc4' : '#241a3f'}
-          roughness={0.85} metalness={0.15}
-        />
-      </instancedMesh>
-
-      {/* Dust motes */}
-      <points ref={dustRef}>
-        <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[dustPositions, 3]} />
-        </bufferGeometry>
-        <pointsMaterial
-          color="#c4b5fd" size={0.28} sizeAttenuation
-          transparent opacity={0.4} depthWrite={false}
-          blending={THREE.AdditiveBlending}
-        />
-      </points>
-
-      {/* Player: hooded seeker + sword pivot */}
-      <group ref={playerRef}>
-        <mesh position={[0, 1, 0]}>
-          <coneGeometry args={[0.8, 2, 8]} />
-          <meshStandardMaterial color="#7C3AED" emissive="#7C3AED" emissiveIntensity={0.35} />
-        </mesh>
-        <mesh position={[0, 2.1, 0]}>
-          <sphereGeometry args={[0.42, 12, 12]} />
-          <meshStandardMaterial color="#C4B5FD" emissive="#C4B5FD" emissiveIntensity={0.5} />
-        </mesh>
-        <group ref={swordRef} position={[0, 1.2, 0]}>
-          <mesh position={[0.9, 0, 0.5]} rotation={[Math.PI / 2, 0, 0]}>
-            <boxGeometry args={[0.14, 0.14, 2.1]} />
-            <meshStandardMaterial color="#E2E8F0" emissive="#93C5FD" emissiveIntensity={1.4} />
-          </mesh>
-        </group>
-      </group>
-
-      {/* Monsters — horned shades with burning eyes */}
-      {run.monsters.map((m, i) => {
-        const sz = m.type === 'brute' ? 1.5 : 0.8;
-        const eyeColor = m.type === 'brute' ? '#f97316' : '#fef08a';
-        return (
-          <group key={m.id} ref={el => { monsterRefs.current[i] = el; }}>
-            {/* Body: dark drop-shaped shade (cone shell over sphere core) */}
-            <mesh position={[0, sz * 0.15, 0]}>
-              <coneGeometry args={[sz, sz * 2.2, 7]} />
-              <meshStandardMaterial
-                ref={el => { monsterMats.current[i] = el; }}
-                color={m.type === 'brute' ? '#7f1d1d' : '#ef4444'}
-                roughness={0.55} metalness={0.2}
-              />
-            </mesh>
-            {/* Horns */}
-            <mesh position={[-sz * 0.45, sz * 1.35, 0]} rotation={[0, 0, 0.5]}>
-              <coneGeometry args={[sz * 0.14, sz * 0.8, 5]} />
-              <meshStandardMaterial color="#1c1917" roughness={0.4} />
-            </mesh>
-            <mesh position={[sz * 0.45, sz * 1.35, 0]} rotation={[0, 0, -0.5]}>
-              <coneGeometry args={[sz * 0.14, sz * 0.8, 5]} />
-              <meshStandardMaterial color="#1c1917" roughness={0.4} />
-            </mesh>
-            {/* Burning eyes — face the camera side (+z) */}
-            <mesh position={[-sz * 0.3, sz * 0.8, sz * 0.55]}>
-              <sphereGeometry args={[sz * 0.16, 6, 6]} />
-              <meshStandardMaterial color={eyeColor} emissive={eyeColor} emissiveIntensity={2.4} />
-            </mesh>
-            <mesh position={[sz * 0.3, sz * 0.8, sz * 0.55]}>
-              <sphereGeometry args={[sz * 0.16, 6, 6]} />
-              <meshStandardMaterial color={eyeColor} emissive={eyeColor} emissiveIntensity={2.4} />
-            </mesh>
-          </group>
-        );
-      })}
-
-      {/* Loot */}
-      {run.items.map((it, i) => (
-        <mesh key={it.id} ref={el => { itemRefs.current[i] = el; }}
-          position={[it.pos.x, 1.2, it.pos.z]}>
-          <octahedronGeometry args={[it.type === 'artifact' ? 0.75 : 0.55]} />
-          <meshStandardMaterial
-            color={it.type === 'artifact' ? '#22d3ee' : '#facc15'}
-            emissive={it.type === 'artifact' ? '#22d3ee' : '#facc15'}
-            emissiveIntensity={1.6}
-          />
-        </mesh>
-      ))}
-
-      {/* Traps */}
-      {run.traps.map((t, i) => (
-        <mesh key={t.id} ref={el => { trapRefs.current[i] = el; }}
-          position={[t.pos.x, 0.06, t.pos.z]} rotation={[-Math.PI / 2, 0, 0]}>
-          <circleGeometry args={[1.6, 12]} />
-          <meshStandardMaterial color="#450a0a" emissive="#dc2626" emissiveIntensity={0.35}
-            transparent opacity={0.85} />
-        </mesh>
-      ))}
-
-      {/* Barrels */}
-      {run.barrels.map((b, i) => (
-        <mesh key={b.id} ref={el => { barrelRefs.current[i] = el; }}
-          position={[b.pos.x, 0.9, b.pos.z]}>
-          <cylinderGeometry args={[0.8, 0.95, 1.8, 10]} />
-          <meshStandardMaterial color="#92400e" emissive="#f97316" emissiveIntensity={0.25} />
-        </mesh>
-      ))}
-
-      {/* Exit portal */}
-      <group ref={portalRef} visible={false}>
-        <mesh>
-          <torusGeometry args={[2.2, 0.35, 10, 32]} />
-          <meshStandardMaterial color="#22d3ee" emissive="#22d3ee" emissiveIntensity={2.2} />
-        </mesh>
-        <pointLight color="#22d3ee" intensity={220} distance={26} decay={2} />
-      </group>
-    </>
-  );
+  }
 }
 
-// ── main component ────────────────────────────────────────────────────────────
+// deterministic per-cell variation
+function hash(a: number, b: number): number {
+  const n = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
+  return n - Math.floor(n);
+}
+
+const FLOOR_SHADES = ['#141024', '#181330', '#110d20', '#1b1436'];
+const WALL_BASE = '#2a2145';
+const WALL_TOP  = '#3d2f66';
+const WALL_DARK = '#150f28';
+
+// ── the whole scene, drawn imperatively each frame ───────────────────────────
+function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number) {
+  const p = run.player;
+  const ox = ((run.gridW - 1) * CELL) / 2;
+  const oz = ((run.gridH - 1) * CELL) / 2;
+  const pcx = (p.pos.x + ox) / CELL;
+  const pcz = (p.pos.z + oz) / CELL;
+
+  const sx = run.shake > 0 ? (Math.random() * 2 - 1) * run.shake : 0;
+  const sy = run.shake > 0 ? (Math.random() * 2 - 1) * run.shake : 0;
+  const camX = W / 2 + sx;
+  const camY = H / 2 + sy;
+
+  // world → screen
+  const wsx = (wx: number) => camX + ((wx + ox) / CELL - pcx) * TILE;
+  const wsy = (wz: number) => camY + ((wz + oz) / CELL - pcz) * TILE;
+  // cell centre → screen
+  const csx = (c: number) => camX + (c + 0.5 - pcx) * TILE;
+  const csy = (c: number) => camY + (c + 0.5 - pcz) * TILE;
+
+  // background
+  canvas.drawColor(col('#05010d'));
+
+  // torch flicker
+  const flick = Math.sin(run.clock * 9) * 0.18 + Math.sin(run.clock * 23) * 0.09;
+  const torchCells = 4.1 + flick;                 // radius in cells
+  const torchR = torchCells * TILE;
+
+  // only draw cells near the torch (everything else is black anyway)
+  const vis = Math.ceil(torchCells) + 2;
+  const cx0 = Math.max(0, Math.floor(pcx) - vis);
+  const cx1 = Math.min(run.gridW - 1, Math.ceil(pcx) + vis);
+  const cz0 = Math.max(0, Math.floor(pcz) - vis);
+  const cz1 = Math.min(run.gridH - 1, Math.ceil(pcz) + vis);
+
+  // ── floor ──
+  for (let cz = cz0; cz <= cz1; cz++) {
+    for (let cx = cx0; cx <= cx1; cx++) {
+      const scx = csx(cx), scy = csy(cz);
+      const shade = FLOOR_SHADES[Math.floor(hash(cx, cz) * FLOOR_SHADES.length)];
+      scratch.setColor(col(shade));
+      canvas.drawRect(Skia.XYWHRect(scx - TILE / 2, scy - TILE / 2, TILE + 0.6, TILE + 0.6), scratch);
+      // occasional crack / speck for texture
+      if (hash(cx * 3, cz * 7) > 0.82) {
+        scratch.setColor(col('#0c0a18'));
+        canvas.drawRect(Skia.XYWHRect(scx - 4, scy + 2, 8, 3), scratch);
+      }
+    }
+  }
+
+  // ── walls (chunky bricks with a lit top face) ──
+  for (let cz = cz0; cz <= cz1; cz++) {
+    for (let cx = cx0; cx <= cx1; cx++) {
+      if (run.grid[cz][cx] !== 1) continue;
+      const scx = csx(cx), scy = csy(cz);
+      const x = scx - TILE / 2, y = scy - TILE / 2;
+      // body
+      scratch.setColor(col(hash(cx, cz) > 0.5 ? WALL_BASE : '#251d3e'));
+      canvas.drawRect(Skia.XYWHRect(x, y, TILE + 0.6, TILE + 0.6), scratch);
+      // lit top strip
+      scratch.setColor(col(WALL_TOP));
+      canvas.drawRect(Skia.XYWHRect(x, y, TILE + 0.6, 6), scratch);
+      // dark base
+      scratch.setColor(col(WALL_DARK));
+      canvas.drawRect(Skia.XYWHRect(x, y + TILE - 5, TILE + 0.6, 6), scratch);
+      // brick seam
+      scratch.setColor(col('#1c1636'));
+      canvas.drawRect(Skia.XYWHRect(x, y + TILE / 2 - 1, TILE + 0.6, 2), scratch);
+      canvas.drawRect(Skia.XYWHRect(x + TILE / 2 - 1, y, 2, TILE / 2), scratch);
+    }
+  }
+
+  // ── traps ──
+  scratch.setStyle(PaintStyle.Stroke);
+  scratch.setStrokeWidth(2.5);
+  for (const t of run.traps) {
+    if (t.triggered) continue;
+    const dx = t.pos.x - p.pos.x, dz = t.pos.z - p.pos.z;
+    if (dx * dx + dz * dz > (torchR / TILE * CELL) ** 2) continue;
+    const tx = wsx(t.pos.x), ty = wsy(t.pos.z);
+    const pulse = 0.4 + 0.3 * Math.sin(run.clock * 4 + t.id);
+    scratch.setColor(col('#dc2626'));
+    scratch.setAlphaf(pulse);
+    canvas.drawCircle(tx, ty, TILE * 0.32, scratch);
+    // rune spikes
+    for (let a = 0; a < 4; a++) {
+      const ang = (a / 4) * Math.PI * 2 + run.clock * 0.6;
+      canvas.drawLine(tx, ty, tx + Math.cos(ang) * TILE * 0.3, ty + Math.sin(ang) * TILE * 0.3, scratch);
+    }
+  }
+  scratch.setStyle(PaintStyle.Fill);
+  scratch.setAlphaf(1);
+
+  // ── barrels ──
+  for (const b of run.barrels) {
+    if (b.exploded) continue;
+    const dx = b.pos.x - p.pos.x, dz = b.pos.z - p.pos.z;
+    if (dx * dx + dz * dz > (torchR / TILE * CELL) ** 2) continue;
+    // shadow
+    scratch.setColor(col('#00000066'));
+    canvas.drawOval(Skia.XYWHRect(wsx(b.pos.x) - 16, wsy(b.pos.z) + 12, 32, 10), scratch);
+    drawSprite(canvas, BARREL, wsx(b.pos.x), wsy(b.pos.z), TILE * 0.78, false);
+  }
+
+  // ── loot (glow + bob) ──
+  for (const it of run.items) {
+    if (it.collected) continue;
+    const dx = it.pos.x - p.pos.x, dz = it.pos.z - p.pos.z;
+    if (dx * dx + dz * dz > (torchR / TILE * CELL) ** 2) continue;
+    const gx = wsx(it.pos.x);
+    const gy = wsy(it.pos.z) + Math.sin(run.clock * 3 + it.id) * 5;
+    const gem = it.type === 'artifact' ? GEM : GEM_GOLD;
+    const glow = it.type === 'artifact' ? '#22d3ee' : '#facc15';
+    glowPaint.setColor(col(glow));
+    glowPaint.setAlphaf(0.5 + 0.2 * Math.sin(run.clock * 4 + it.id));
+    canvas.drawCircle(gx, gy, TILE * 0.34, glowPaint);
+    drawSprite(canvas, gem, gx, gy, TILE * 0.5, false);
+  }
+
+  // ── portal ──
+  if (run.portalActive) {
+    const dx = run.portalPos.x - p.pos.x, dz = run.portalPos.z - p.pos.z;
+    if (dx * dx + dz * dz <= (torchR / TILE * CELL * 1.4) ** 2) {
+      const qx = wsx(run.portalPos.x), qy = wsy(run.portalPos.z);
+      glowPaint.setColor(col('#22d3ee'));
+      glowPaint.setAlphaf(0.75);
+      canvas.drawCircle(qx, qy, TILE * 0.9, glowPaint);
+      scratch.setStyle(PaintStyle.Stroke);
+      for (let ring = 0; ring < 3; ring++) {
+        scratch.setStrokeWidth(4 - ring);
+        scratch.setColor(col(ring % 2 ? '#67e8f9' : '#22d3ee'));
+        scratch.setAlphaf(0.9 - ring * 0.2);
+        canvas.drawCircle(qx, qy, TILE * (0.4 + ring * 0.18) + Math.sin(run.clock * 3) * 3, scratch);
+      }
+      scratch.setStyle(PaintStyle.Fill);
+      scratch.setAlphaf(1);
+    }
+  }
+
+  // ── monsters ──
+  for (const m of run.monsters) {
+    if (m.dead) continue;
+    const dx = m.pos.x - p.pos.x, dz = m.pos.z - p.pos.z;
+    if (dx * dx + dz * dz > (torchR / TILE * CELL + CELL) ** 2) continue;
+    const mx = wsx(m.pos.x);
+    const bob = Math.sin(run.clock * (m.type === 'brute' ? 8 : 12) + m.id) * 4;
+    const my = wsy(m.pos.z) + bob;
+    // shadow
+    scratch.setColor(col('#00000055'));
+    const sw = m.type === 'brute' ? 40 : 26;
+    canvas.drawOval(Skia.XYWHRect(mx - sw / 2, wsy(m.pos.z) + 14, sw, 9), scratch);
+    const sprite = m.type === 'brute' ? BRUTE : SHADE;
+    const size = m.type === 'brute' ? TILE * 1.25 : TILE * 0.82;
+    drawSprite(canvas, sprite, mx, my, size, m.pos.x < p.pos.x, m.damageFlash > 0 ? '#ffffff' : undefined);
+  }
+
+  // ── player + sword ──
+  {
+    const facing = Math.atan2(p.dir.x, -p.dir.z);   // 0 = up
+    // shadow
+    scratch.setColor(col('#00000066'));
+    canvas.drawOval(Skia.XYWHRect(camX - 16, camY + 16, 32, 10), scratch);
+    // sword arc during a swing
+    if (run.swordSwing > 0) {
+      const k = run.swordSwing;                       // 1 → 0
+      const sweep = (1 - k) * Math.PI * 1.4 - Math.PI * 0.7;
+      const ang = Math.atan2(p.dir.z, p.dir.x) + sweep;
+      const bx = camX + Math.cos(ang) * TILE * 0.85;
+      const by = camY + Math.sin(ang) * TILE * 0.85;
+      glowPaint.setColor(col('#bae6fd'));
+      glowPaint.setAlphaf(k * 0.8);
+      canvas.drawCircle(bx, by, 10, glowPaint);
+      scratch.setStyle(PaintStyle.Stroke);
+      scratch.setStrokeWidth(5);
+      scratch.setColor(col('#e0f2fe'));
+      scratch.setAlphaf(k);
+      canvas.drawLine(camX + Math.cos(ang) * 12, camY + Math.sin(ang) * 12, bx, by, scratch);
+      scratch.setStyle(PaintStyle.Fill);
+      scratch.setAlphaf(1);
+    }
+    drawSprite(canvas, SEEKER, camX, camY, TILE * 0.95, p.dir.x < -0.05, p.isDashing ? '#c4b5fd' : undefined);
+  }
+
+  // ── particles (additive) ──
+  scratch.setBlendMode(BlendMode.Plus);
+  for (const pa of run.particles) {
+    const a = Math.max(0, pa.life / pa.max);
+    scratch.setColor(col(pa.color));
+    scratch.setAlphaf(a);
+    canvas.drawCircle(wsx(pa.x), wsy(pa.z), pa.size * (0.5 + a * 0.6), scratch);
+  }
+  scratch.setBlendMode(BlendMode.SrcOver);
+  scratch.setAlphaf(1);
+
+  // ── lighting: torch hole + fog ──
+  const lightP = px();
+  lightP.setShader(Skia.Shader.MakeRadialGradient(
+    { x: camX, y: camY }, torchR,
+    [col('#05010d00'), col('#05010d33'), col('#05010de6'), col('#05010dff')],
+    [0, 0.5, 0.82, 1], TileMode.Clamp,
+  ));
+  canvas.drawRect(Skia.XYWHRect(0, 0, W, H), lightP);
+
+  // warm torch glow (additive)
+  const warmP = px();
+  warmP.setBlendMode(BlendMode.Plus);
+  warmP.setShader(Skia.Shader.MakeRadialGradient(
+    { x: camX, y: camY }, TILE * 2.4,
+    [col('#ff9e4d3a'), col('#ff9e4d00')],
+    [0, 1], TileMode.Clamp,
+  ));
+  canvas.drawRect(Skia.XYWHRect(0, 0, W, H), warmP);
+
+  // ── floating damage / reward numbers ──
+  if (FONT_FLOAT) {
+    for (const f of run.floats) {
+      const a = Math.max(0, Math.min(1, f.life / f.max));
+      scratch.setColor(col(f.color));
+      scratch.setAlphaf(a);
+      const tw = FONT_FLOAT.getTextWidth(f.text);
+      canvas.drawText(f.text, wsx(f.x) - tw / 2, wsy(f.z), scratch, FONT_FLOAT);
+    }
+    scratch.setAlphaf(1);
+  }
+
+  // ── vignette ──
+  const vig = px();
+  vig.setShader(Skia.Shader.MakeRadialGradient(
+    { x: W / 2, y: H / 2 }, Math.max(W, H) * 0.72,
+    [col('#00000000'), col('#00000000'), col('#000000b0')],
+    [0, 0.62, 1], TileMode.Clamp,
+  ));
+  canvas.drawRect(Skia.XYWHRect(0, 0, W, H), vig);
+}
+
+// ── input / phase ─────────────────────────────────────────────────────────────
+type InputState = { jx: number; jz: number; attack: boolean; dash: boolean };
+type Phase = 'menu' | 'playing' | 'dead' | 'won';
+
+const BEST_KEY = 'sk_labyrinth_best';
+
 type Props = {
   energy: number;
   onSpendEnergy: (n: number) => void;
@@ -504,47 +333,23 @@ type Props = {
 export default function LabyrinthOfAbyss({
   energy, onSpendEnergy, onEarnOrb, onAddScore, onPlaySound, onExit,
 }: Props) {
-  const [phase, setPhase] = useState<Phase>('menu');
-  const [hp, setHp]             = useState(L.PLAYER_MAX_HP);
-  const [collected, setCollected] = useState(0);
-  const [runOrb, setRunOrb]     = useState(0);
-  const [msg, setMsg]           = useState('');
-  const [best, setBest]         = useState(0);
+  const { width: W, height: H } = useWindowDimensions();
 
-  const runRef   = useRef<L.RunState | null>(null);
-  const phaseRef = useRef<Phase>('menu');
-  const inputRef = useRef<InputState>({ jx: 0, jz: 0, attack: false, dash: false });
-  const eventsRef = useRef<LoopEvents>(null as unknown as LoopEvents);
+  const [phase, setPhase]         = useState<Phase>('menu');
+  const [hp, setHp]               = useState(L.PLAYER_MAX_HP);
+  const [collected, setCollected] = useState(0);
+  const [runOrb, setRunOrb]       = useState(0);
+  const [msg, setMsg]             = useState('');
+  const [best, setBest]           = useState(0);
+  const [, setFrame]              = useState(0);
+
+  const runRef    = useRef<L.RunState | null>(null);
+  const phaseRef  = useRef<Phase>('menu');
+  const inputRef  = useRef<InputState>({ jx: 0, jz: 0, attack: false, dash: false });
+  const eventsRef = useRef<L.SimEvents>(null as unknown as L.SimEvents);
 
   const hitFlash = useRef(new Animated.Value(0)).current;
   const stickPos = useRef(new Animated.ValueXY()).current;
-
-  // Rock textures. On failure we fall back to flat colors — the game must
-  // never be blocked by an asset decode problem.
-  const [tex, setTex] = useState<WorldTextures | null>(null);
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const [wall, wallNormal] = await Promise.all([
-          loadAsync(require('../assets/labyrinth/rock_color.jpg')),
-          loadAsync(require('../assets/labyrinth/rock_normal.jpg')),
-        ]) as [THREE.Texture, THREE.Texture];
-        [wall, wallNormal].forEach(t => {
-          t.wrapS = t.wrapT = THREE.RepeatWrapping;
-          t.needsUpdate = true;
-        });
-        // Floor reuses the wall rock, tiled densely and tinted darker
-        const floor = wall.clone();
-        floor.repeat.set(46, 46);
-        floor.needsUpdate = true;
-        if (alive) setTex({ wall, wallNormal, floor });
-      } catch (_) {
-        if (alive) setTex({});
-      }
-    })();
-    return () => { alive = false; };
-  }, []);
 
   useEffect(() => {
     AsyncStorage.getItem(BEST_KEY).then(v => {
@@ -558,7 +363,6 @@ export default function LabyrinthOfAbyss({
     phaseRef.current = won ? 'won' : 'dead';
     setPhase(won ? 'won' : 'dead');
     if (r) {
-      // Tournament points — same shape as Space Runner (orb/10, server clamps 1..500)
       const pts = Math.max(1, Math.floor(r.runOrb / 10)) + (won ? L.WIN_TOURNAMENT_PTS : 0);
       onAddScore(pts);
       if (r.runOrb > best) {
@@ -568,21 +372,40 @@ export default function LabyrinthOfAbyss({
     }
   }
 
-  // Keep the loop-events object fresh without re-mounting the Canvas
   eventsRef.current = {
     setHp, setCollected, setRunOrb, setMsg,
     earnOrb: onEarnOrb,
     playSound: onPlaySound,
     onHitFlash: () => {
-      hitFlash.setValue(0.45);
+      hitFlash.setValue(0.4);
       Animated.timing(hitFlash, { toValue: 0, duration: 320, useNativeDriver: true }).start();
     },
     onEnd: endRun,
   };
 
+  // ── game loop ──
+  useEffect(() => {
+    if (phase !== 'playing') return;
+    let raf = 0;
+    let last = Date.now();
+    const tick = () => {
+      const now = Date.now();
+      const dt = Math.min((now - last) / 1000, 0.05);
+      last = now;
+      const r = runRef.current;
+      if (r && phaseRef.current === 'playing') {
+        L.stepSimulation(r, inputRef.current, dt, eventsRef.current);
+      }
+      setFrame(f => (f + 1) & 0xffff);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [phase]);
+
   function startRun() {
     if (energy < L.ENTRY_ENERGY) {
-      setMsg(`⚡ Need ${L.ENTRY_ENERGY} energy to descend`);
+      setMsg(`Need ${L.ENTRY_ENERGY} energy to descend`);
       return;
     }
     onSpendEnergy(L.ENTRY_ENERGY);
@@ -597,7 +420,7 @@ export default function LabyrinthOfAbyss({
     onPlaySound('levelup');
   }
 
-  // ── virtual joystick (left half) ──
+  // ── joystick ──
   const JOY_R = 56;
   const pan = useRef(
     PanResponder.create({
@@ -609,39 +432,30 @@ export default function LabyrinthOfAbyss({
         if (d > JOY_R) { dx = (dx / d) * JOY_R; dy = (dy / d) * JOY_R; }
         stickPos.setValue({ x: dx, y: dy });
         inputRef.current.jx = dx / JOY_R;
-        inputRef.current.jz = dy / JOY_R;   // screen down = +z (towards camera)
+        inputRef.current.jz = dy / JOY_R;
       },
       onPanResponderRelease: () => {
         stickPos.setValue({ x: 0, y: 0 });
-        inputRef.current.jx = 0;
-        inputRef.current.jz = 0;
+        inputRef.current.jx = 0; inputRef.current.jz = 0;
       },
       onPanResponderTerminate: () => {
         stickPos.setValue({ x: 0, y: 0 });
-        inputRef.current.jx = 0;
-        inputRef.current.jz = 0;
+        inputRef.current.jx = 0; inputRef.current.jz = 0;
       },
     }),
   ).current;
 
   const hpPct = Math.max(0, Math.min(1, hp / L.PLAYER_MAX_HP));
+  const run = runRef.current;
+  const scene = (phase !== 'menu' && run)
+    ? createPicture((canvas) => drawScene(canvas, run, W, H), { x: 0, y: 0, width: W, height: H })
+    : null;
 
   return (
     <View style={s.root}>
-      {(phase === 'playing' || phase === 'dead' || phase === 'won') && runRef.current && (
-        <Canvas
-          style={StyleSheet.absoluteFillObject}
-          camera={{ position: [0, 21, 16], fov: 52, near: 0.1, far: 140 }}
-          gl={{ antialias: false, stencil: false, depth: true, alpha: false }}
-          onCreated={({ camera }) => {
-            // Face the maze immediately — before this, the default camera
-            // orientation looks along -Z and never sees the floor/walls.
-            camera.lookAt(0, 0, 0);
-          }}
-        >
-          <color attach="background" args={['#05010d']} />
-          <GameWorld runRef={runRef} inputRef={inputRef} phaseRef={phaseRef} events={eventsRef}
-            tex={tex ?? {}} />
+      {scene && (
+        <Canvas style={{ width: W, height: H }}>
+          <Picture picture={scene} />
         </Canvas>
       )}
 
@@ -655,14 +469,14 @@ export default function LabyrinthOfAbyss({
           <Text style={s.menuIcon}>🕳️</Text>
           <Text style={s.menuTitle}>ABYSS LABYRINTH</Text>
           <Text style={s.menuSub}>
-            A real-3D descent. Find {L.ITEM_COUNT} artifacts in the dark maze,{'\n'}
-            slay shades with your blade, dash through traps —{'\n'}
+            A torch-lit descent. Find {L.ITEM_COUNT} artifacts in the dark maze,{'\n'}
+            cut down the shades, dash through traps —{'\n'}
             then escape through the portal.
           </Text>
           <View style={s.menuStats}>
-            <Text style={s.menuStat}>⚔️ Sword: {L.ATTACK_DMG} dmg</Text>
-            <Text style={s.menuStat}>💨 Dash: i-frames</Text>
-            <Text style={s.menuStat}>🏆 Best: {best.toLocaleString()} ORB</Text>
+            <Text style={s.menuStat}>⚔️ Sword {L.ATTACK_DMG}</Text>
+            <Text style={s.menuStat}>💨 Dash i-frames</Text>
+            <Text style={s.menuStat}>🏆 Best {best.toLocaleString()}</Text>
           </View>
           <TouchableOpacity onPress={startRun} activeOpacity={0.85} style={s.startBtn}>
             <Text style={s.startTxt}>▼  DESCEND  ·  {L.ENTRY_ENERGY}⚡</Text>
@@ -691,8 +505,7 @@ export default function LabyrinthOfAbyss({
               <Text style={s.hudChip}>✨ {collected}/{L.ITEM_COUNT}</Text>
               <Text style={[s.hudChip, { color: '#facc15' }]}>+{runOrb.toLocaleString()}</Text>
             </View>
-            <TouchableOpacity onPress={() => { phaseRef.current = 'menu'; setPhase('menu'); }}
-              style={s.quitBtn}>
+            <TouchableOpacity onPress={() => { phaseRef.current = 'menu'; setPhase('menu'); }} style={s.quitBtn}>
               <Text style={s.quitTxt}>✕</Text>
             </TouchableOpacity>
           </View>
@@ -703,26 +516,20 @@ export default function LabyrinthOfAbyss({
             </View>
           )}
 
-          {/* Joystick */}
           <View style={s.joyZone} {...pan.panHandlers}>
             <View style={s.joyBase}>
               <Animated.View style={[s.joyStick, { transform: stickPos.getTranslateTransform() }]} />
             </View>
           </View>
 
-          {/* Action buttons */}
           <View style={s.btnCol} pointerEvents="box-none">
-            <TouchableOpacity
-              onPressIn={() => { inputRef.current.dash = true; }}
+            <TouchableOpacity onPressIn={() => { inputRef.current.dash = true; }}
               activeOpacity={0.7} style={[s.actBtn, s.dashBtn]}>
-              <Text style={s.actTxt}>💨</Text>
-              <Text style={s.actLbl}>DASH</Text>
+              <Text style={s.actTxt}>💨</Text><Text style={s.actLbl}>DASH</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              onPressIn={() => { inputRef.current.attack = true; }}
+            <TouchableOpacity onPressIn={() => { inputRef.current.attack = true; }}
               activeOpacity={0.7} style={[s.actBtn, s.atkBtn]}>
-              <Text style={s.actTxt}>⚔️</Text>
-              <Text style={s.actLbl}>STRIKE</Text>
+              <Text style={s.actTxt}>⚔️</Text><Text style={s.actLbl}>STRIKE</Text>
             </TouchableOpacity>
           </View>
         </>
@@ -736,11 +543,11 @@ export default function LabyrinthOfAbyss({
             {phase === 'won' ? 'ESCAPED THE ABYSS' : 'THE ABYSS CLAIMS YOU'}
           </Text>
           <View style={s.endStats}>
-            <Text style={s.endStat}>✨ Artifacts: {collected}/{L.ITEM_COUNT}</Text>
-            <Text style={s.endStat}>⚔️ Kills: {runRef.current?.kills ?? 0}</Text>
-            <Text style={[s.endStat, { color: '#facc15' }]}>💎 Earned: +{runOrb.toLocaleString()} ORB</Text>
+            <Text style={s.endStat}>✨ Artifacts {collected}/{L.ITEM_COUNT}</Text>
+            <Text style={s.endStat}>⚔️ Kills {run?.kills ?? 0}</Text>
+            <Text style={[s.endStat, { color: '#facc15' }]}>💎 +{runOrb.toLocaleString()} ORB</Text>
             {phase === 'won' && (
-              <Text style={[s.endStat, { color: '#22d3ee' }]}>🌀 Escape bonus: +{L.WIN_BONUS_ORB} ORB</Text>
+              <Text style={[s.endStat, { color: '#22d3ee' }]}>🌀 Escape bonus +{L.WIN_BONUS_ORB}</Text>
             )}
           </View>
           <TouchableOpacity onPress={startRun} activeOpacity={0.85} style={s.startBtn}>
@@ -755,7 +562,6 @@ export default function LabyrinthOfAbyss({
   );
 }
 
-// ── styles ────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#05010d' },
 
@@ -767,46 +573,37 @@ const s = StyleSheet.create({
   menuStat:  { color: '#7C3AED', fontSize: 11, fontWeight: '800' },
   menuMsg:   { color: '#f59e0b', fontSize: 12, fontWeight: '700', marginTop: 12 },
 
-  startBtn: { marginTop: 26, backgroundColor: '#7C3AED', paddingVertical: 16,
-              paddingHorizontal: 34, borderRadius: 18,
-              shadowColor: '#7C3AED', shadowRadius: 16, shadowOpacity: 0.6, elevation: 8 },
+  startBtn: { marginTop: 26, backgroundColor: '#7C3AED', paddingVertical: 16, paddingHorizontal: 34,
+              borderRadius: 18, shadowColor: '#7C3AED', shadowRadius: 16, shadowOpacity: 0.6, elevation: 8 },
   startTxt: { color: '#FFF', fontSize: 15, fontWeight: '900', letterSpacing: 2 },
   exitLink: { marginTop: 18, padding: 8 },
   exitLinkTxt: { color: '#475569', fontSize: 12, fontWeight: '800', letterSpacing: 2 },
 
-  hudTop:  { position: 'absolute', top: 46, left: 14, right: 14,
-             flexDirection: 'row', alignItems: 'center', gap: 10 },
+  hudTop:  { position: 'absolute', top: 46, left: 14, right: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },
   hpWrap:  { flex: 1 },
-  hpTrack: { height: 10, backgroundColor: 'rgba(15,23,42,0.85)', borderRadius: 6,
-             overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(124,58,237,0.4)' },
+  hpTrack: { height: 10, backgroundColor: 'rgba(15,23,42,0.85)', borderRadius: 6, overflow: 'hidden',
+             borderWidth: 1, borderColor: 'rgba(124,58,237,0.4)' },
   hpFill:  { height: '100%', borderRadius: 6 },
   hpTxt:   { color: '#E2E8F0', fontSize: 10, fontWeight: '800', marginTop: 3 },
   hudChips:{ flexDirection: 'row', gap: 8 },
-  hudChip: { color: '#C4B5FD', fontSize: 13, fontWeight: '900',
-             backgroundColor: 'rgba(15,23,42,0.8)', paddingHorizontal: 10, paddingVertical: 5,
-             borderRadius: 10, overflow: 'hidden' },
+  hudChip: { color: '#C4B5FD', fontSize: 13, fontWeight: '900', backgroundColor: 'rgba(15,23,42,0.8)',
+             paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, overflow: 'hidden' },
   quitBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(15,23,42,0.85)',
-             alignItems: 'center', justifyContent: 'center',
-             borderWidth: 1, borderColor: 'rgba(124,58,237,0.5)' },
+             alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(124,58,237,0.5)' },
   quitTxt: { color: '#94A3B8', fontSize: 16, fontWeight: '800' },
 
   msgWrap: { position: 'absolute', bottom: 190, left: 0, right: 0, alignItems: 'center' },
-  msgTxt:  { color: '#E2E8F0', fontSize: 13, fontWeight: '800',
-             backgroundColor: 'rgba(5,1,13,0.75)', paddingHorizontal: 16, paddingVertical: 8,
-             borderRadius: 14, overflow: 'hidden' },
+  msgTxt:  { color: '#E2E8F0', fontSize: 13, fontWeight: '800', backgroundColor: 'rgba(5,1,13,0.75)',
+             paddingHorizontal: 16, paddingVertical: 8, borderRadius: 14, overflow: 'hidden' },
 
-  joyZone: { position: 'absolute', left: 0, bottom: 0, width: '48%', height: 240,
-             alignItems: 'center', justifyContent: 'center' },
-  joyBase: { width: 128, height: 128, borderRadius: 64,
-             backgroundColor: 'rgba(124,58,237,0.10)',
-             borderWidth: 1.5, borderColor: 'rgba(124,58,237,0.35)',
-             alignItems: 'center', justifyContent: 'center' },
+  joyZone: { position: 'absolute', left: 0, bottom: 0, width: '48%', height: 240, alignItems: 'center', justifyContent: 'center' },
+  joyBase: { width: 128, height: 128, borderRadius: 64, backgroundColor: 'rgba(124,58,237,0.10)',
+             borderWidth: 1.5, borderColor: 'rgba(124,58,237,0.35)', alignItems: 'center', justifyContent: 'center' },
   joyStick:{ width: 54, height: 54, borderRadius: 27, backgroundColor: 'rgba(196,181,253,0.55)',
              borderWidth: 1.5, borderColor: '#C4B5FD' },
 
   btnCol:  { position: 'absolute', right: 18, bottom: 46, gap: 14, alignItems: 'center' },
-  actBtn:  { width: 76, height: 76, borderRadius: 38, alignItems: 'center', justifyContent: 'center',
-             borderWidth: 2 },
+  actBtn:  { width: 76, height: 76, borderRadius: 38, alignItems: 'center', justifyContent: 'center', borderWidth: 2 },
   atkBtn:  { backgroundColor: 'rgba(124,58,237,0.28)', borderColor: '#7C3AED' },
   dashBtn: { backgroundColor: 'rgba(34,211,238,0.18)', borderColor: 'rgba(34,211,238,0.6)' },
   actTxt:  { fontSize: 26 },

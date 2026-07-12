@@ -3,9 +3,9 @@
 // Видимая в Home + Settings.
 // ─────────────────────────────────────────────────────────────────────────
 
-export const APP_VERSION = '1.1.3';
-export const BUILD_TIME  = '2026-07-06 22:45';
-export const BUILD_CODE  = 'abyss-labyrinth-3d';
+export const APP_VERSION = '1.1.4';
+export const BUILD_TIME  = '2026-07-12 16:10';
+export const BUILD_CODE  = 'abyss-labyrinth-2d-skia';
 
 /** Compact label for UI: "v1.0.0" */
 export const VERSION_LABEL = `v${APP_VERSION}`;
