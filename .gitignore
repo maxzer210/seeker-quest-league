@@ -67,3 +67,11 @@ expo-start.*
 
 # Git backup snapshots (created by filter-branch operations)
 .git.backup-*
+
+# scratch screenshots & local package cache (session debugging)
+_scr*.png
+_desktop.png
+_emuwin*.png
+_pkgs/
+build-*.log
+metro.log

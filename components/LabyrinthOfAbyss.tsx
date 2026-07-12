@@ -18,6 +18,9 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Canvas, useFrame } from '@react-three/fiber/native';
 import * as THREE from 'three';
+// expo-three's loadAsync is the only reliable way to decode bundled images
+// into GL textures in React Native (three's TextureLoader needs DOM <img>).
+import { loadAsync } from 'expo-three';
 import * as L from '../lib/labyrinth';
 
 // ── shared input / fx bridges (RN overlay <-> GL loop) ───────────────────────
@@ -36,18 +39,36 @@ type LoopEvents = {
 
 type Phase = 'menu' | 'playing' | 'dead' | 'won';
 
+/** Rock textures for walls/floor; null = still loading, {} = failed (flat colors). */
+type WorldTextures = { wall?: THREE.Texture; wallNormal?: THREE.Texture; floor?: THREE.Texture };
+
 const BEST_KEY = 'sk_labyrinth_best';
+const DUST_COUNT = 220;
 
 // ── 3D world ──────────────────────────────────────────────────────────────────
 function GameWorld({
-  runRef, inputRef, phaseRef, events,
+  runRef, inputRef, phaseRef, events, tex,
 }: {
   runRef: React.MutableRefObject<L.RunState | null>;
   inputRef: React.MutableRefObject<InputState>;
   phaseRef: React.MutableRefObject<Phase>;
   events: React.MutableRefObject<LoopEvents>;
+  tex: WorldTextures;
 }) {
   const run = runRef.current!;
+
+  // Drifting dust motes — sells depth and air in the torch light
+  const dustRef = useRef<THREE.Points>(null);
+  const dustPositions = useMemo(() => {
+    const arr = new Float32Array(DUST_COUNT * 3);
+    const span = ((run.gridW - 1) * L.CELL_SIZE) / 2;
+    for (let i = 0; i < DUST_COUNT; i++) {
+      arr[i * 3]     = (Math.random() * 2 - 1) * span;
+      arr[i * 3 + 1] = 0.3 + Math.random() * 3.4;
+      arr[i * 3 + 2] = (Math.random() * 2 - 1) * span;
+    }
+    return arr;
+  }, [run]);
 
   const playerRef  = useRef<THREE.Group>(null);
   const swordRef   = useRef<THREE.Group>(null);
@@ -322,6 +343,10 @@ function GameWorld({
       }
     }
 
+    // Dust drifts in a slow spiral — barely visible, but the air feels alive
+    const dust = dustRef.current;
+    if (dust) dust.rotation.y += dt * 0.015;
+
     // ── camera: third-person chase ──
     camera.position.lerp(new THREE.Vector3(p.pos.x, 21, p.pos.z + 16), 0.08);
     camera.lookAt(p.pos.x, 0, p.pos.z);
@@ -334,17 +359,38 @@ function GameWorld({
       {/* Player torch — the only strong light; darkness sells the abyss */}
       <pointLight ref={torchRef} color="#ff9e4d" intensity={380} distance={46} decay={2} />
 
-      {/* Abyss floor */}
+      {/* Abyss floor — real rock, tinted deep violet so the torch reveals detail */}
       <mesh position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[420, 420]} />
-        <meshStandardMaterial color="#0a0618" roughness={0.95} metalness={0.1} />
+        <meshStandardMaterial
+          map={tex.floor}
+          color={tex.floor ? '#5f5470' : '#0a0618'}
+          roughness={0.95} metalness={0.1}
+        />
       </mesh>
 
-      {/* Walls */}
+      {/* Walls — carved stone */}
       <instancedMesh ref={wallsRef} args={[undefined, undefined, walls.length]}>
         <boxGeometry args={[L.CELL_SIZE, L.WALL_HEIGHT, L.CELL_SIZE]} />
-        <meshStandardMaterial color="#241a3f" roughness={0.85} metalness={0.25} />
+        <meshStandardMaterial
+          map={tex.wall}
+          normalMap={tex.wallNormal}
+          color={tex.wall ? '#9b8fc4' : '#241a3f'}
+          roughness={0.85} metalness={0.15}
+        />
       </instancedMesh>
+
+      {/* Dust motes */}
+      <points ref={dustRef}>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[dustPositions, 3]} />
+        </bufferGeometry>
+        <pointsMaterial
+          color="#c4b5fd" size={0.28} sizeAttenuation
+          transparent opacity={0.4} depthWrite={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </points>
 
       {/* Player: hooded seeker + sword pivot */}
       <group ref={playerRef}>
@@ -364,23 +410,42 @@ function GameWorld({
         </group>
       </group>
 
-      {/* Monsters */}
-      {run.monsters.map((m, i) => (
-        <group key={m.id} ref={el => { monsterRefs.current[i] = el; }}>
-          <mesh>
-            <sphereGeometry args={[m.type === 'brute' ? 1.5 : 0.8, 10, 10]} />
-            <meshStandardMaterial
-              ref={el => { monsterMats.current[i] = el; }}
-              color={m.type === 'brute' ? '#7f1d1d' : '#ef4444'}
-              roughness={0.6}
-            />
-          </mesh>
-          <mesh position={[0, m.type === 'brute' ? 1.1 : 0.65, 0]}>
-            <sphereGeometry args={[0.16, 6, 6]} />
-            <meshStandardMaterial color="#fef08a" emissive="#fef08a" emissiveIntensity={2} />
-          </mesh>
-        </group>
-      ))}
+      {/* Monsters — horned shades with burning eyes */}
+      {run.monsters.map((m, i) => {
+        const sz = m.type === 'brute' ? 1.5 : 0.8;
+        const eyeColor = m.type === 'brute' ? '#f97316' : '#fef08a';
+        return (
+          <group key={m.id} ref={el => { monsterRefs.current[i] = el; }}>
+            {/* Body: dark drop-shaped shade (cone shell over sphere core) */}
+            <mesh position={[0, sz * 0.15, 0]}>
+              <coneGeometry args={[sz, sz * 2.2, 7]} />
+              <meshStandardMaterial
+                ref={el => { monsterMats.current[i] = el; }}
+                color={m.type === 'brute' ? '#7f1d1d' : '#ef4444'}
+                roughness={0.55} metalness={0.2}
+              />
+            </mesh>
+            {/* Horns */}
+            <mesh position={[-sz * 0.45, sz * 1.35, 0]} rotation={[0, 0, 0.5]}>
+              <coneGeometry args={[sz * 0.14, sz * 0.8, 5]} />
+              <meshStandardMaterial color="#1c1917" roughness={0.4} />
+            </mesh>
+            <mesh position={[sz * 0.45, sz * 1.35, 0]} rotation={[0, 0, -0.5]}>
+              <coneGeometry args={[sz * 0.14, sz * 0.8, 5]} />
+              <meshStandardMaterial color="#1c1917" roughness={0.4} />
+            </mesh>
+            {/* Burning eyes — face the camera side (+z) */}
+            <mesh position={[-sz * 0.3, sz * 0.8, sz * 0.55]}>
+              <sphereGeometry args={[sz * 0.16, 6, 6]} />
+              <meshStandardMaterial color={eyeColor} emissive={eyeColor} emissiveIntensity={2.4} />
+            </mesh>
+            <mesh position={[sz * 0.3, sz * 0.8, sz * 0.55]}>
+              <sphereGeometry args={[sz * 0.16, 6, 6]} />
+              <meshStandardMaterial color={eyeColor} emissive={eyeColor} emissiveIntensity={2.4} />
+            </mesh>
+          </group>
+        );
+      })}
 
       {/* Loot */}
       {run.items.map((it, i) => (
@@ -453,6 +518,33 @@ export default function LabyrinthOfAbyss({
 
   const hitFlash = useRef(new Animated.Value(0)).current;
   const stickPos = useRef(new Animated.ValueXY()).current;
+
+  // Rock textures. On failure we fall back to flat colors — the game must
+  // never be blocked by an asset decode problem.
+  const [tex, setTex] = useState<WorldTextures | null>(null);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const [wall, wallNormal] = await Promise.all([
+          loadAsync(require('../assets/labyrinth/rock_color.jpg')),
+          loadAsync(require('../assets/labyrinth/rock_normal.jpg')),
+        ]) as [THREE.Texture, THREE.Texture];
+        [wall, wallNormal].forEach(t => {
+          t.wrapS = t.wrapT = THREE.RepeatWrapping;
+          t.needsUpdate = true;
+        });
+        // Floor reuses the wall rock, tiled densely and tinted darker
+        const floor = wall.clone();
+        floor.repeat.set(46, 46);
+        floor.needsUpdate = true;
+        if (alive) setTex({ wall, wallNormal, floor });
+      } catch (_) {
+        if (alive) setTex({});
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   useEffect(() => {
     AsyncStorage.getItem(BEST_KEY).then(v => {
@@ -540,10 +632,16 @@ export default function LabyrinthOfAbyss({
         <Canvas
           style={StyleSheet.absoluteFillObject}
           camera={{ position: [0, 21, 16], fov: 52, near: 0.1, far: 140 }}
-          gl={{ antialias: true }}
+          gl={{ antialias: false, stencil: false, depth: true, alpha: false }}
+          onCreated={({ camera }) => {
+            // Face the maze immediately — before this, the default camera
+            // orientation looks along -Z and never sees the floor/walls.
+            camera.lookAt(0, 0, 0);
+          }}
         >
           <color attach="background" args={['#05010d']} />
-          <GameWorld runRef={runRef} inputRef={inputRef} phaseRef={phaseRef} events={eventsRef} />
+          <GameWorld runRef={runRef} inputRef={inputRef} phaseRef={phaseRef} events={eventsRef}
+            tex={tex ?? {}} />
         </Canvas>
       )}
 
