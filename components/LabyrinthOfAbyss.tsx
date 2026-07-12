@@ -75,10 +75,11 @@ function hash(a: number, b: number): number {
   return n - Math.floor(n);
 }
 
-const FLOOR_SHADES = ['#141024', '#181330', '#110d20', '#1b1436'];
-const WALL_BASE = '#2a2145';
-const WALL_TOP  = '#3d2f66';
-const WALL_DARK = '#150f28';
+const FLOOR_SHADES = ['#241a44', '#2b2052', '#1e1638', '#322459'];
+const WALL_BASE = '#4a3a7a';
+const WALL_TOP  = '#6b53a8';
+const WALL_DARK = '#241a40';
+const WALL_SEAM = '#2f2456';
 
 // ── the whole scene, drawn imperatively each frame ───────────────────────────
 function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number) {
@@ -104,8 +105,8 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number) {
   canvas.drawColor(col('#05010d'));
 
   // torch flicker
-  const flick = Math.sin(run.clock * 9) * 0.18 + Math.sin(run.clock * 23) * 0.09;
-  const torchCells = 4.1 + flick;                 // radius in cells
+  const flick = Math.sin(run.clock * 9) * 0.2 + Math.sin(run.clock * 23) * 0.1;
+  const torchCells = 5.6 + flick;                 // radius in cells
   const torchR = torchCells * TILE;
 
   // only draw cells near the torch (everything else is black anyway)
@@ -146,7 +147,7 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number) {
       scratch.setColor(col(WALL_DARK));
       canvas.drawRect(Skia.XYWHRect(x, y + TILE - 5, TILE + 0.6, 6), scratch);
       // brick seam
-      scratch.setColor(col('#1c1636'));
+      scratch.setColor(col(WALL_SEAM));
       canvas.drawRect(Skia.XYWHRect(x, y + TILE / 2 - 1, TILE + 0.6, 2), scratch);
       canvas.drawRect(Skia.XYWHRect(x + TILE / 2 - 1, y, 2, TILE / 2), scratch);
     }
@@ -278,19 +279,22 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number) {
   const lightP = px();
   lightP.setShader(Skia.Shader.MakeRadialGradient(
     { x: camX, y: camY }, torchR,
-    [col('#05010d00'), col('#05010d33'), col('#05010de6'), col('#05010dff')],
-    [0, 0.5, 0.82, 1], TileMode.Clamp,
+    // Keep the near field clear, then ramp to black only near the edge — more
+    // of the maze stays readable while the abyss still swallows the distance.
+    [col('#05010d00'), col('#05010d00'), col('#05010d40'), col('#05010de0'), col('#05010dff')],
+    [0, 0.45, 0.68, 0.88, 1], TileMode.Clamp,
   ));
   canvas.drawRect(Skia.XYWHRect(0, 0, W, H), lightP);
 
-  // warm torch glow (additive)
+  // warm torch glow (additive) — cozy firelight near the seeker
   const warmP = px();
   warmP.setBlendMode(BlendMode.Plus);
   warmP.setShader(Skia.Shader.MakeRadialGradient(
-    { x: camX, y: camY }, TILE * 2.4,
-    [col('#ff9e4d3a'), col('#ff9e4d00')],
+    { x: camX, y: camY }, TILE * 3.2,
+    [col('#ffb266'), col('#ff9e4d00')],
     [0, 1], TileMode.Clamp,
   ));
+  warmP.setAlphaf(0.42);
   canvas.drawRect(Skia.XYWHRect(0, 0, W, H), warmP);
 
   // ── floating damage / reward numbers ──

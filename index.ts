@@ -1,3 +1,6 @@
+// Reanimated must initialize before anything that uses it (Skia's <Canvas>
+// pulls it in). Keep this the very first import.
+import 'react-native-reanimated';
 // ── Polyfills (MUST be at the very top, before any Solana / crypto imports) ──
 import 'react-native-get-random-values';
 import 'react-native-url-polyfill/auto';
