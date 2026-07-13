@@ -32,19 +32,43 @@ Show real screenshots at each step; don't work blind.
 - Two visual polish passes committed (brighter/contrast floor+walls, bigger torch,
   warm firelight, tile grout, wall drop-shadow height, player light aura, dust motes).
 
-### 🟡 IN PROGRESS — needs verification in the new chat
-- A **preview APK was just built** (x86_64-only release) at:
-  `C:\sk\android\app\build\outputs\apk\release\app-release.apk` (56 MB, v1.1.4 / vc 15).
-  It contains visual **batch 2** (`3b5941a`) but **has NOT been installed/screenshotted
-  yet**. FIRST TASK: install it, open Games → Abyss Labyrinth → Descend, screenshot,
-  and judge the new look. Then keep polishing.
+### ✅ DONE — visual batch 3b "light & atmosphere" (2026-07-13, verified on emulator)
+Cinematic lighting grade landed and screenshotted. All changes are in
+`components/LabyrinthOfAbyss.tsx` `drawScene` only — PURE VISUAL, no logic/balance
+change (sconces are derived deterministically from the grid at render time). TS clean.
+- **Teal-&-orange grade:** warm gold torch pool at the seeker ⟷ cool blue-teal
+  additive fill lifts the mid-field shadows; fog fades to a deep cool-blue then black.
+- **Wall sconces:** ~1-in-5 walls that have open floor below get a flickering torch
+  (bracket + flame + warm additive light pool). Secondary light sources = big atmosphere.
+- **Stone floor:** ambient-occlusion contact shadows on wall-adjacent edges, light
+  chips, faint corner moss.
+- **Runic traps:** pulsing sigil = circle + two counter-rotating triangles + bloom
+  (replaced the plain red crosshair).
+- **Loot bloom** + rising sparkles; **warm embers** rising from the seeker's torch.
+- **batch-3b tuning (important):** the first pass (3-layer warm + hot core, all
+  additive drawn last) BLEW OUT the hero to white. Fixed by making the warm/core
+  gradient inner stops transparent at the centre and cutting alphas (warm 0.42,
+  halo 0.32) so the sprite stays crisp inside the glow. If you touch the light,
+  keep the centre additive low or the player washes out again.
+Result: hero clearly lit + readable, warm/cool contrast, sconces punctuate the dark.
+Preview APK rebuilt (56 MB x86_64, v1.1.4/vc15) at `android/app/build/outputs/apk/release/app-release.apk`.
+NOT yet committed to git — working-tree change, awaiting user go-ahead.
 
 ### ⏭️ NEXT (in order)
-1. Finish labyrinth visual polish (light readability, monster/loot sprites, maybe a
-   Guardian mini-boss every N floors).
+1. (optional) further atmosphere micro-polish; monster/loot sprite art pass; the
+   Labyrinth **menu screen is still bare** (emoji hole) — weak first impression.
 2. **SOL shop inside the labyrinth** — torches/armor/potions/skins for SOL, via the
    already-hardened payment path (`paySolToTreasury`, sign-then-broadcast).
-3. **Missions** chain + "game in game".
+3. **Missions** chain + "game in game"; multi-floor + Guardian mini-boss.
+
+### ⚠️ EMULATOR NOTE (this session)
+`Medium_Phone_API_36.1` throws a recurring "System UI isn't responding" ANR on fresh
+boot, and it gets MUCH worse if the emulator boots while a Gradle build is running
+(CPU starvation on the 4-core PC). Lesson: **build FIRST, boot the emulator AFTER**
+on an idle CPU, then it settles and stops ANR-ing. `adb root`/killing systemui is
+blocked (production build). Between ANR pop-ups you can still descend + screenshot;
+the game view is drawn by the app process, not SystemUI. `settings put global
+anr_show_background 0` helps a little.
 
 ---
 

@@ -80,6 +80,8 @@ const WALL_BASE = '#4a3a7a';
 const WALL_TOP  = '#6b53a8';
 const WALL_DARK = '#241a40';
 const WALL_SEAM = '#2f2456';
+const FLOOR_CHIP = '#31265c';    // lighter stone chip that catches the firelight
+const MOSS       = '#2f6b4a';    // faint lichen near walls
 
 // ── the whole scene, drawn imperatively each frame ───────────────────────────
 function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number) {
@@ -102,7 +104,7 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number) {
   const csy = (c: number) => camY + (c + 0.5 - pcz) * TILE;
 
   // background
-  canvas.drawColor(col('#05010d'));
+  canvas.drawColor(col('#04060f'));
 
   // torch flicker
   const flick = Math.sin(run.clock * 9) * 0.2 + Math.sin(run.clock * 23) * 0.1;
@@ -116,22 +118,42 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number) {
   const cz0 = Math.max(0, Math.floor(pcz) - vis);
   const cz1 = Math.min(run.gridH - 1, Math.ceil(pcz) + vis);
 
-  // ── floor ──
+  // ── floor (ancient stone, ambient-occluded at the walls) ──
   for (let cz = cz0; cz <= cz1; cz++) {
     for (let cx = cx0; cx <= cx1; cx++) {
+      if (run.grid[cz][cx] === 1) continue;          // wall tiles are drawn opaque below
       const scx = csx(cx), scy = csy(cz);
+      const x = scx - TILE / 2, y = scy - TILE / 2;
       const shade = FLOOR_SHADES[Math.floor(hash(cx, cz) * FLOOR_SHADES.length)];
       scratch.setColor(col(shade));
-      canvas.drawRect(Skia.XYWHRect(scx - TILE / 2, scy - TILE / 2, TILE + 0.6, TILE + 0.6), scratch);
+      canvas.drawRect(Skia.XYWHRect(x, y, TILE + 0.6, TILE + 0.6), scratch);
       // tile grout — thin dark lines on right + bottom read the floor as tiles
       scratch.setColor(col('#0d0a1c'));
-      canvas.drawRect(Skia.XYWHRect(scx - TILE / 2, scy + TILE / 2 - 1, TILE + 0.6, 1.5), scratch);
-      canvas.drawRect(Skia.XYWHRect(scx + TILE / 2 - 1, scy - TILE / 2, 1.5, TILE + 0.6), scratch);
-      // occasional crack / speck for texture
-      if (hash(cx * 3, cz * 7) > 0.82) {
+      canvas.drawRect(Skia.XYWHRect(x, scy + TILE / 2 - 1, TILE + 0.6, 1.5), scratch);
+      canvas.drawRect(Skia.XYWHRect(scx + TILE / 2 - 1, y, 1.5, TILE + 0.6), scratch);
+      // stone detail — dark crack or a light chip that catches the torch
+      const hf = hash(cx * 3, cz * 7);
+      if (hf > 0.82) {
         scratch.setColor(col('#0c0a18'));
         canvas.drawRect(Skia.XYWHRect(scx - 4, scy + 2, 8, 3), scratch);
+      } else if (hf < 0.09) {
+        scratch.setColor(col(FLOOR_CHIP));
+        canvas.drawRect(Skia.XYWHRect(scx + 5, scy - 6, 4, 3), scratch);
       }
+      // ambient occlusion: soft dark contact shadow on edges that touch a wall
+      scratch.setColor(col('#000000'));
+      scratch.setAlphaf(0.36);
+      if (run.grid[cz]?.[cx - 1] === 1) canvas.drawRect(Skia.XYWHRect(x, y, 7, TILE + 0.6), scratch);
+      if (run.grid[cz]?.[cx + 1] === 1) canvas.drawRect(Skia.XYWHRect(x + TILE - 6, y, 7, TILE + 0.6), scratch);
+      if (run.grid[cz - 1]?.[cx] === 1) canvas.drawRect(Skia.XYWHRect(x, y, TILE + 0.6, 7), scratch);
+      if (run.grid[cz + 1]?.[cx] === 1) canvas.drawRect(Skia.XYWHRect(x, y + TILE - 6, TILE + 0.6, 7), scratch);
+      // faint moss where two walls meet a corner
+      if (hf > 0.6 && hf < 0.66 && run.grid[cz + 1]?.[cx] === 1) {
+        scratch.setColor(col(MOSS));
+        scratch.setAlphaf(0.5);
+        canvas.drawRect(Skia.XYWHRect(scx - 6, scy + TILE / 2 - 5, 12, 4), scratch);
+      }
+      scratch.setAlphaf(1);
     }
   }
 
@@ -165,26 +187,78 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number) {
     }
   }
 
-  // ── traps ──
-  scratch.setStyle(PaintStyle.Stroke);
-  scratch.setStrokeWidth(2.5);
+  // ── wall sconces (flickering torches that punctuate the dark) ──
+  // Chosen deterministically from the grid: a wall with open floor directly
+  // below it can hold a torch that faces the camera and spills light forward.
+  for (let cz = cz0; cz <= cz1; cz++) {
+    for (let cx = cx0; cx <= cx1; cx++) {
+      if (run.grid[cz][cx] !== 1) continue;
+      if (!(cz + 1 <= run.gridH - 1 && run.grid[cz + 1][cx] === 0)) continue;
+      if (hash(cx * 7 + 3, cz * 13 + 5) < 0.80) continue;     // ~1 in 5 eligible walls
+      const scx = csx(cx);
+      const baseY = csy(cz) + TILE * 0.28;                    // low on the wall face
+      const seed = cx * 2.3 + cz * 1.7;
+      const fl = 0.62 + 0.30 * Math.sin(run.clock * 11 + seed) + 0.12 * Math.sin(run.clock * 27 + seed * 2);
+      // warm light pool spilling onto the floor below the torch
+      const pool = px();
+      pool.setBlendMode(BlendMode.Plus);
+      pool.setShader(Skia.Shader.MakeRadialGradient(
+        { x: scx, y: baseY + TILE * 0.55 }, TILE * (1.7 + fl * 0.35),
+        [col('#ffa64d'), col('#ff8c3a00')], [0, 1], TileMode.Clamp,
+      ));
+      pool.setAlphaf(0.42 * fl);
+      canvas.drawRect(Skia.XYWHRect(scx - TILE * 2.4, baseY - TILE, TILE * 4.8, TILE * 3.8), pool);
+      // iron bracket
+      scratch.setColor(col('#1c1208'));
+      canvas.drawRect(Skia.XYWHRect(scx - 2, baseY, 4, 11), scratch);
+      // flame — glow halo, warm body, hot tip (height flickers)
+      const fh = 10 + fl * 7;
+      glowPaint.setColor(col('#ff7a1a'));
+      glowPaint.setAlphaf(0.9);
+      canvas.drawCircle(scx, baseY - fh * 0.4, 5 + fl * 2, glowPaint);
+      scratch.setColor(col('#ffb43c'));
+      canvas.drawCircle(scx, baseY - fh * 0.4, 3.2, scratch);
+      scratch.setColor(col('#ffe6a0'));
+      canvas.drawCircle(scx, baseY - fh * 0.58, 1.7, scratch);
+    }
+  }
+
+  // ── traps (arcane sigils etched into the floor) ──
   for (const t of run.traps) {
     if (t.triggered) continue;
     const dx = t.pos.x - p.pos.x, dz = t.pos.z - p.pos.z;
     if (dx * dx + dz * dz > (torchR / TILE * CELL) ** 2) continue;
     const tx = wsx(t.pos.x), ty = wsy(t.pos.z);
-    const pulse = 0.4 + 0.3 * Math.sin(run.clock * 4 + t.id);
-    scratch.setColor(col('#dc2626'));
+    const pulse = 0.45 + 0.35 * Math.sin(run.clock * 3.5 + t.id);
+    const R = TILE * 0.34;
+    // menacing bloom underneath
+    glowPaint.setColor(col('#ef4444'));
+    glowPaint.setAlphaf(0.16 + 0.28 * pulse);
+    canvas.drawCircle(tx, ty, R * 1.5, glowPaint);
+    // sigil strokes
+    scratch.setStyle(PaintStyle.Stroke);
+    scratch.setStrokeWidth(2.2);
+    scratch.setColor(col('#f87171'));
+    scratch.setAlphaf(0.5 + 0.4 * pulse);
+    canvas.drawCircle(tx, ty, R, scratch);
+    // two counter-rotating triangles = a slowly spinning arcane star
+    const tri = (rot: number, rad: number) => {
+      for (let i = 0; i < 3; i++) {
+        const a0 = rot + (i / 3) * Math.PI * 2;
+        const a1 = rot + ((i + 1) / 3) * Math.PI * 2;
+        canvas.drawLine(tx + Math.cos(a0) * rad, ty + Math.sin(a0) * rad,
+                        tx + Math.cos(a1) * rad, ty + Math.sin(a1) * rad, scratch);
+      }
+    };
+    tri(run.clock * 0.5 + t.id, R * 0.82);
+    tri(-run.clock * 0.5 + t.id, R * 0.82);
+    scratch.setStyle(PaintStyle.Fill);
+    // molten core
+    scratch.setColor(col('#fecaca'));
     scratch.setAlphaf(pulse);
-    canvas.drawCircle(tx, ty, TILE * 0.32, scratch);
-    // rune spikes
-    for (let a = 0; a < 4; a++) {
-      const ang = (a / 4) * Math.PI * 2 + run.clock * 0.6;
-      canvas.drawLine(tx, ty, tx + Math.cos(ang) * TILE * 0.3, ty + Math.sin(ang) * TILE * 0.3, scratch);
-    }
+    canvas.drawCircle(tx, ty, 2.6, scratch);
+    scratch.setAlphaf(1);
   }
-  scratch.setStyle(PaintStyle.Fill);
-  scratch.setAlphaf(1);
 
   // ── barrels ──
   for (const b of run.barrels) {
@@ -197,7 +271,7 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number) {
     drawSprite(canvas, BARREL, wsx(b.pos.x), wsy(b.pos.z), TILE * 0.78, false);
   }
 
-  // ── loot (glow + bob) ──
+  // ── loot (bloom + bob + rising sparkle) ──
   for (const it of run.items) {
     if (it.collected) continue;
     const dx = it.pos.x - p.pos.x, dz = it.pos.z - p.pos.z;
@@ -206,10 +280,25 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number) {
     const gy = wsy(it.pos.z) + Math.sin(run.clock * 3 + it.id) * 5;
     const gem = it.type === 'artifact' ? GEM : GEM_GOLD;
     const glow = it.type === 'artifact' ? '#22d3ee' : '#facc15';
+    const pulse = 0.5 + 0.25 * Math.sin(run.clock * 4 + it.id);
+    // ground-glow pool so the gem lights its tile
     glowPaint.setColor(col(glow));
-    glowPaint.setAlphaf(0.5 + 0.2 * Math.sin(run.clock * 4 + it.id));
-    canvas.drawCircle(gx, gy, TILE * 0.34, glowPaint);
+    glowPaint.setAlphaf(0.24 + 0.16 * pulse);
+    canvas.drawCircle(gx, wsy(it.pos.z) + 4, TILE * 0.5, glowPaint);
+    // hot halo around the gem
+    glowPaint.setAlphaf(0.45 * pulse);
+    canvas.drawCircle(gx, gy, TILE * 0.26, glowPaint);
     drawSprite(canvas, gem, gx, gy, TILE * 0.5, false);
+    // rising sparkles
+    scratch.setBlendMode(BlendMode.Plus);
+    scratch.setColor(col('#ffffff'));
+    for (let k = 0; k < 3; k++) {
+      const t2 = (run.clock * 0.6 + it.id + k * 0.33) % 1;
+      scratch.setAlphaf((1 - t2) * 0.6);
+      canvas.drawCircle(gx + Math.sin((it.id + k) * 2.1) * 8, gy - t2 * TILE * 0.7, 1.4, scratch);
+    }
+    scratch.setBlendMode(BlendMode.SrcOver);
+    scratch.setAlphaf(1);
   }
 
   // ── portal ──
@@ -251,10 +340,11 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number) {
 
   // ── player + sword ──
   {
-    // soft light aura so the seeker reads as the source of light
-    glowPaint.setColor(col('#a78bfa'));
-    glowPaint.setAlphaf(0.3);
-    canvas.drawCircle(camX, camY, TILE * 1.15, glowPaint);
+    // soft warm aura so the seeker reads as the source of light (drawn under
+    // the sprite, before the fog/warm overlays, so the hero stays the focus)
+    glowPaint.setColor(col('#c9a6ff'));
+    glowPaint.setAlphaf(0.34);
+    canvas.drawCircle(camX, camY, TILE * 1.2, glowPaint);
     // shadow
     scratch.setColor(col('#00000066'));
     canvas.drawOval(Skia.XYWHRect(camX - 16, camY + 16, 32, 10), scratch);
@@ -302,27 +392,66 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number) {
   }
   scratch.setAlphaf(1);
 
-  // ── lighting: torch hole + fog ──
+  // ── warm embers rising from the seeker's torch ──
+  scratch.setBlendMode(BlendMode.Plus);
+  for (let i = 0; i < 7; i++) {
+    const t2 = (run.clock * 0.35 + i * 0.37) % 1;
+    const ex = camX + Math.sin(run.clock * 0.6 + i * 2.1) * TILE * (0.5 + (i % 3) * 0.5);
+    const ey = camY + TILE * 0.6 - t2 * TILE * 2.4;
+    scratch.setColor(col(i % 2 ? '#ff9a3c' : '#ffcf6a'));
+    scratch.setAlphaf((1 - t2) * 0.5);
+    canvas.drawCircle(ex, ey, 1.5 + (1 - t2) * 1.2, scratch);
+  }
+  scratch.setBlendMode(BlendMode.SrcOver);
+  scratch.setAlphaf(1);
+
+  // ── cinematic lighting: warm torch core, cool abyss shadows ──
+  // 1) Fog: clear near field → deep cool-blue shadow → black abyss at the rim.
   const lightP = px();
   lightP.setShader(Skia.Shader.MakeRadialGradient(
     { x: camX, y: camY }, torchR,
-    // Keep the near field clear, then ramp to black only near the edge — more
-    // of the maze stays readable while the abyss still swallows the distance.
-    [col('#05010d00'), col('#05010d00'), col('#05010d40'), col('#05010de0'), col('#05010dff')],
-    [0, 0.45, 0.68, 0.88, 1], TileMode.Clamp,
+    [col('#060c1a00'), col('#060c1a00'), col('#070d1e55'), col('#060a16e8'), col('#04060fff')],
+    [0, 0.42, 0.66, 0.86, 1], TileMode.Clamp,
   ));
   canvas.drawRect(Skia.XYWHRect(0, 0, W, H), lightP);
 
-  // warm torch glow (additive) — cozy firelight near the seeker
+  // 2) Cool fill (additive): lift the mid-field shadows toward moonlit teal so
+  //    they read cool against the warm torch — the "teal & orange" grade. Zero
+  //    at the centre (kept warm) and at the black rim.
+  const coolP = px();
+  coolP.setBlendMode(BlendMode.Plus);
+  coolP.setShader(Skia.Shader.MakeRadialGradient(
+    { x: camX, y: camY }, torchR * 1.15,
+    [col('#0e1c3a00'), col('#17305c'), col('#0e1c3a00')],
+    [0.18, 0.6, 1], TileMode.Clamp,
+  ));
+  coolP.setAlphaf(0.44);
+  canvas.drawRect(Skia.XYWHRect(0, 0, W, H), coolP);
+
+  // 3) Warm torch glow (additive) — a firelit pool, gentle enough that the
+  //    seeker stays crisp inside it rather than blowing out to white. The
+  //    inner stop is transparent so it never washes the sprite at the centre.
   const warmP = px();
   warmP.setBlendMode(BlendMode.Plus);
   warmP.setShader(Skia.Shader.MakeRadialGradient(
-    { x: camX, y: camY }, TILE * 3.2,
-    [col('#ffb266'), col('#ff9e4d00')],
-    [0, 1], TileMode.Clamp,
+    { x: camX, y: camY }, TILE * 3.6,
+    [col('#ffcf8a00'), col('#ffbb70'), col('#ff9e4d00')],
+    [0, 0.42, 1], TileMode.Clamp,
   ));
   warmP.setAlphaf(0.42);
   canvas.drawRect(Skia.XYWHRect(0, 0, W, H), warmP);
+
+  // 4) A soft warm halo hugging the seeker — reads as torchlight without a
+  //    hard hot core, so the hooded sprite and its cyan eyes stay legible.
+  const coreP = px();
+  coreP.setBlendMode(BlendMode.Plus);
+  coreP.setShader(Skia.Shader.MakeRadialGradient(
+    { x: camX, y: camY }, TILE * 1.5,
+    [col('#ffe8c000'), col('#ffdca6'), col('#ffd9a000')],
+    [0.28, 0.55, 1], TileMode.Clamp,
+  ));
+  coreP.setAlphaf(0.32);
+  canvas.drawRect(Skia.XYWHRect(0, 0, W, H), coreP);
 
   // ── floating damage / reward numbers ──
   if (FONT_FLOAT) {
