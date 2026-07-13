@@ -123,6 +123,10 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number) {
       const shade = FLOOR_SHADES[Math.floor(hash(cx, cz) * FLOOR_SHADES.length)];
       scratch.setColor(col(shade));
       canvas.drawRect(Skia.XYWHRect(scx - TILE / 2, scy - TILE / 2, TILE + 0.6, TILE + 0.6), scratch);
+      // tile grout — thin dark lines on right + bottom read the floor as tiles
+      scratch.setColor(col('#0d0a1c'));
+      canvas.drawRect(Skia.XYWHRect(scx - TILE / 2, scy + TILE / 2 - 1, TILE + 0.6, 1.5), scratch);
+      canvas.drawRect(Skia.XYWHRect(scx + TILE / 2 - 1, scy - TILE / 2, 1.5, TILE + 0.6), scratch);
       // occasional crack / speck for texture
       if (hash(cx * 3, cz * 7) > 0.82) {
         scratch.setColor(col('#0c0a18'));
@@ -137,12 +141,20 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number) {
       if (run.grid[cz][cx] !== 1) continue;
       const scx = csx(cx), scy = csy(cz);
       const x = scx - TILE / 2, y = scy - TILE / 2;
+      // cast shadow onto the floor below — fakes block height
+      if (cz + 1 <= run.gridH - 1 && run.grid[cz + 1][cx] !== 1) {
+        scratch.setColor(col('#00000066'));
+        canvas.drawRect(Skia.XYWHRect(x + 3, y + TILE, TILE + 0.6, 8), scratch);
+      }
       // body
-      scratch.setColor(col(hash(cx, cz) > 0.5 ? WALL_BASE : '#251d3e'));
+      scratch.setColor(col(hash(cx, cz) > 0.5 ? WALL_BASE : '#3a2e5e'));
       canvas.drawRect(Skia.XYWHRect(x, y, TILE + 0.6, TILE + 0.6), scratch);
       // lit top strip
       scratch.setColor(col(WALL_TOP));
-      canvas.drawRect(Skia.XYWHRect(x, y, TILE + 0.6, 6), scratch);
+      canvas.drawRect(Skia.XYWHRect(x, y, TILE + 0.6, 7), scratch);
+      // left edge highlight (rim)
+      scratch.setColor(col('#5a4590'));
+      canvas.drawRect(Skia.XYWHRect(x, y, 3, TILE + 0.6), scratch);
       // dark base
       scratch.setColor(col(WALL_DARK));
       canvas.drawRect(Skia.XYWHRect(x, y + TILE - 5, TILE + 0.6, 6), scratch);
@@ -239,7 +251,10 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number) {
 
   // ── player + sword ──
   {
-    const facing = Math.atan2(p.dir.x, -p.dir.z);   // 0 = up
+    // soft light aura so the seeker reads as the source of light
+    glowPaint.setColor(col('#a78bfa'));
+    glowPaint.setAlphaf(0.3);
+    canvas.drawCircle(camX, camY, TILE * 1.15, glowPaint);
     // shadow
     scratch.setColor(col('#00000066'));
     canvas.drawOval(Skia.XYWHRect(camX - 16, camY + 16, 32, 10), scratch);
@@ -273,6 +288,18 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number) {
     canvas.drawCircle(wsx(pa.x), wsy(pa.z), pa.size * (0.5 + a * 0.6), scratch);
   }
   scratch.setBlendMode(BlendMode.SrcOver);
+  scratch.setAlphaf(1);
+
+  // ── ambient dust motes drifting in the torchlight ──
+  scratch.setColor(col('#c4b5fd'));
+  for (let i = 0; i < 16; i++) {
+    const a = run.clock * 0.25 + i * 0.85;
+    const rad = TILE * (0.8 + (i % 6) * 0.7);
+    const dxp = Math.cos(a) * rad;
+    const dyp = Math.sin(a * 0.7 + i) * rad * 0.6;
+    scratch.setAlphaf(0.18 + 0.14 * Math.sin(run.clock * 2 + i));
+    canvas.drawCircle(camX + dxp, camY + dyp, 1.7, scratch);
+  }
   scratch.setAlphaf(1);
 
   // ── lighting: torch hole + fog ──
