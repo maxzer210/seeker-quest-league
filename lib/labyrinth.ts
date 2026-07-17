@@ -43,6 +43,13 @@ export const NORMAL_SPEED    = 5.5;
 export const NORMAL_DMG      = 5;
 export const NORMAL_REWARD   = 150;
 
+// The Guardian — one slow, heavily-armoured mini-boss per run. Big HP, big hurt,
+// big payout. Rendered large with its own boss HP bar.
+export const GUARDIAN_HP     = 700;
+export const GUARDIAN_SPEED  = 3.6;
+export const GUARDIAN_DMG    = 24;
+export const GUARDIAN_REWARD = 3000;
+
 export const ITEM_COUNT      = 15;
 export const TREASURE_ORB    = 200;
 export const ARTIFACT_ORB    = 500;
@@ -65,17 +72,32 @@ export const WIN_TOURNAMENT_PTS = 60;
 // ── Types ─────────────────────────────────────────────────────────────────────
 export type Vec2 = { x: number; z: number };
 
+export type MonsterType = 'brute' | 'normal' | 'guardian';
+
 export type Monster = {
   id: number;
   pos: Vec2;
   hp: number;
-  type: 'brute' | 'normal';
+  maxHp: number;           // for damage bars (boss)
+  type: MonsterType;
+  variant: number;         // picks the sprite among normal-monster variants
   speed: number;
   dead: boolean;
   lastAttack: number;      // run-clock seconds
   damageFlash: number;     // seconds remaining of white flash
   knockback: Vec2;         // decaying velocity
 };
+
+/** ORB payout / contact damage for a monster type. */
+export function rewardFor(t: MonsterType): number {
+  return t === 'guardian' ? GUARDIAN_REWARD : t === 'brute' ? BRUTE_REWARD : NORMAL_REWARD;
+}
+export function dmgFor(t: MonsterType): number {
+  return t === 'guardian' ? GUARDIAN_DMG : t === 'brute' ? BRUTE_DMG : NORMAL_DMG;
+}
+export function monsterName(t: MonsterType): string {
+  return t === 'guardian' ? 'The Guardian' : t === 'brute' ? 'Brute' : 'Shade';
+}
 
 export type LootItem = {
   id: number;
@@ -103,6 +125,8 @@ export type RunState = {
     isDashing: boolean;
     dashTime: number;
     dashCooldown: number;
+    moving: boolean;       // for the walk-cycle animation
+    stepPhase: number;     // advances only while moving → bouncy stride
   };
   monsters: Monster[];
   items: LootItem[];
@@ -245,19 +269,35 @@ export function createRun(): RunState {
       hp: PLAYER_MAX_HP,
       attackCooldown: 0,
       isDashing: false, dashTime: 0, dashCooldown: 0,
+      moving: false, stepPhase: 0,
     },
-    monsters: Array.from({ length: MONSTER_COUNT }, (_, i) => {
-      const isBrute = Math.random() < BRUTE_CHANCE;
-      return {
-        id: i,
+    monsters: [
+      ...Array.from({ length: MONSTER_COUNT }, (_, i): Monster => {
+        const isBrute = Math.random() < BRUTE_CHANCE;
+        const hp = isBrute ? BRUTE_HP : NORMAL_HP;
+        return {
+          id: i,
+          pos: emptyPos(),
+          hp, maxHp: hp,
+          type: isBrute ? 'brute' : 'normal',
+          variant: Math.floor(Math.random() * 3),
+          speed: isBrute ? BRUTE_SPEED : NORMAL_SPEED,
+          dead: false, lastAttack: 0, damageFlash: 0,
+          knockback: { x: 0, z: 0 },
+        };
+      }),
+      // The Guardian mini-boss — spawned far from the centre so the descent
+      // builds toward the encounter.
+      {
+        id: MONSTER_COUNT,
         pos: emptyPos(),
-        hp: isBrute ? BRUTE_HP : NORMAL_HP,
-        type: isBrute ? 'brute' as const : 'normal' as const,
-        speed: isBrute ? BRUTE_SPEED : NORMAL_SPEED,
+        hp: GUARDIAN_HP, maxHp: GUARDIAN_HP,
+        type: 'guardian', variant: 0,
+        speed: GUARDIAN_SPEED,
         dead: false, lastAttack: 0, damageFlash: 0,
         knockback: { x: 0, z: 0 },
-      };
-    }),
+      },
+    ],
     items: Array.from({ length: ITEM_COUNT }, (_, i) => ({
       id: i,
       pos: emptyPos(),
@@ -361,6 +401,8 @@ export function stepSimulation(run: RunState, input: SimInput, dt: number, ev: S
 
   const speed = p.isDashing ? DASH_SPEED : PLAYER_SPEED;
   if (len > 0.15 || p.isDashing) {
+    p.moving = true;
+    p.stepPhase += dt * (p.isDashing ? 30 : 17);   // stride cadence
     const mx = p.isDashing ? p.dir.x : dx;
     const mz = p.isDashing ? p.dir.z : dz;
     let next = { x: p.pos.x + mx * speed * dt, z: p.pos.z + mz * speed * dt };
@@ -370,6 +412,8 @@ export function stepSimulation(run: RunState, input: SimInput, dt: number, ev: S
       const inv = 1 / (Math.sqrt(dx * dx + dz * dz) || 1);
       p.dir = { x: dx * inv, z: dz * inv };
     }
+  } else {
+    p.moving = false;
   }
 
   // attack
@@ -378,6 +422,8 @@ export function stepSimulation(run: RunState, input: SimInput, dt: number, ev: S
     if (p.attackCooldown <= 0) {
       p.attackCooldown = ATTACK_COOLDOWN;
       r.swordSwing = 1;
+      // a quick arc of sparks so even a whiffed swing has weight
+      spawnBurst(r, p.pos.x + p.dir.x * 3.5, p.pos.z + p.dir.z * 3.5, '#e0f2fe', 5, 6);
       let hit = false;
 
       for (const b of r.barrels) {
@@ -397,10 +443,11 @@ export function stepSimulation(run: RunState, input: SimInput, dt: number, ev: S
           m.knockback = { x: (kb.x / kl) * 20, z: (kb.z / kl) * 20 };
           if (m.hp <= 0 && !m.dead) {
             m.dead = true; r.kills += 1;
-            const reward = m.type === 'brute' ? BRUTE_REWARD : NORMAL_REWARD;
+            const reward = rewardFor(m.type);
             r.runOrb += reward; ev.earnOrb(reward); ev.setRunOrb(r.runOrb);
             addFloat(r, m.pos.x, m.pos.z, `+${reward}`, '#facc15');
             spawnBurst(r, m.pos.x, m.pos.z, '#ef4444', 12, 8);
+            if (m.type === 'guardian') { r.shake = Math.max(r.shake, 16); spawnBurst(r, m.pos.x, m.pos.z, '#22d3ee', 40, 15); ev.setMsg('THE GUARDIAN FALLS · +3000 ORB'); ev.playSound('jackpot'); }
           }
         }
         if (dist(p.pos, b.pos) < BARREL_BLAST_R) {
@@ -417,19 +464,30 @@ export function stepSimulation(run: RunState, input: SimInput, dt: number, ev: S
         const tl = Math.sqrt(tm.x * tm.x + tm.z * tm.z) || 1;
         if ((tm.x / tl) * p.dir.x + (tm.z / tl) * p.dir.z < ATTACK_ARC_COS) continue;
         m.hp -= ATTACK_DMG;
-        m.damageFlash = 0.2;
-        m.knockback = { x: p.dir.x * KNOCKBACK_FORCE, z: p.dir.z * KNOCKBACK_FORCE };
+        m.damageFlash = 0.22;
+        const kbForce = m.type === 'guardian' ? 2 : m.type === 'brute' ? 6 : KNOCKBACK_FORCE;
+        m.knockback = { x: p.dir.x * kbForce, z: p.dir.z * kbForce };
         hit = true;
+        r.shake = Math.max(r.shake, 3);                 // every clean hit thumps
         addFloat(r, m.pos.x, m.pos.z, String(ATTACK_DMG), '#ffffff');
-        spawnBurst(r, m.pos.x, m.pos.z, '#fca5a5', 6, 7);
+        spawnBurst(r, m.pos.x, m.pos.z, '#fca5a5', 10, 9);
+        spawnBurst(r, m.pos.x, m.pos.z, '#ffffff', 4, 12);   // bright impact flash
         if (m.hp <= 0) {
           m.dead = true; r.kills += 1;
-          r.shake = Math.max(r.shake, 5);
-          const reward = m.type === 'brute' ? BRUTE_REWARD : NORMAL_REWARD;
+          const reward = rewardFor(m.type);
           r.runOrb += reward; ev.earnOrb(reward); ev.setRunOrb(r.runOrb);
           addFloat(r, m.pos.x, m.pos.z - 0.6, `+${reward}`, '#facc15');
-          spawnBurst(r, m.pos.x, m.pos.z, '#ef4444', 14, 9);
-          ev.setMsg(`${m.type === 'brute' ? 'Brute' : 'Shade'} slain · +${reward} ORB`);
+          if (m.type === 'guardian') {
+            r.shake = Math.max(r.shake, 16);
+            spawnBurst(r, m.pos.x, m.pos.z, '#22d3ee', 44, 16);
+            spawnBurst(r, m.pos.x, m.pos.z, '#ffffff', 18, 10);
+            ev.setMsg('THE GUARDIAN FALLS · +3000 ORB');
+            ev.playSound('jackpot');
+          } else {
+            r.shake = Math.max(r.shake, 8);
+            spawnBurst(r, m.pos.x, m.pos.z, '#ef4444', 16, 11);
+            ev.setMsg(`${monsterName(m.type)} slain · +${reward} ORB`);
+          }
         }
       }
       ev.playSound(hit ? 'crit' : 'tap');
@@ -458,11 +516,12 @@ export function stepSimulation(run: RunState, input: SimInput, dt: number, ev: S
     if (d <= MONSTER_HIT_DIST && r.clock - m.lastAttack > MONSTER_ATK_CD) {
       m.lastAttack = r.clock;
       if (!p.isDashing) {
-        const dmg = m.type === 'brute' ? BRUTE_DMG : NORMAL_DMG;
+        const dmg = dmgFor(m.type);
         p.hp -= dmg;
         ev.setHp(Math.max(0, p.hp));
-        r.shake = Math.max(r.shake, 4);
+        r.shake = Math.max(r.shake, m.type === 'guardian' ? 9 : 4);
         addFloat(r, p.pos.x, p.pos.z, `-${dmg}`, '#ef4444');
+        spawnBurst(r, p.pos.x, p.pos.z, '#ef4444', 6, 6);
         ev.onHitFlash();
         ev.playSound('dead');
       }

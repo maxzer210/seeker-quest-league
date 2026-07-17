@@ -21,7 +21,7 @@ import {
   matchFont, type SkCanvas, type SkFont, type SkPaint,
 } from '@shopify/react-native-skia';
 import * as L from '../lib/labyrinth';
-import { SEEKER, SHADE, BRUTE, GEM, GEM_GOLD, BARREL, spriteW, type Sprite } from '../lib/labyrinthSprites';
+import { SEEKER, SHADE_VARIANTS, BRUTE, GUARDIAN, GEM, GEM_GOLD, BARREL, spriteW, type Sprite } from '../lib/labyrinthSprites';
 
 const TILE = 46;           // screen px per maze cell
 const CELL = L.CELL_SIZE;  // world units per cell
@@ -48,7 +48,7 @@ function col(c: string) { return Skia.Color(c); }
 // ── pixel-sprite draw ─────────────────────────────────────────────────────────
 function drawSprite(
   canvas: SkCanvas, sprite: Sprite, cx: number, cy: number,
-  target: number, flipX: boolean, tint?: string,
+  target: number, flipX: boolean, tint?: string, hideEyes = false,
 ) {
   const w = spriteW(sprite);
   const h = sprite.rows.length;
@@ -60,13 +60,34 @@ function drawSprite(
     for (let c = 0; c < row.length; c++) {
       const ch = row[c];
       if (ch === '.' || ch === ' ') continue;
-      const color = tint ?? sprite.pal[ch];
+      // blink: draw the eyes with the face-shadow colour for a few frames
+      let color = tint ?? sprite.pal[ch];
+      if (hideEyes && ch === 'E') color = tint ?? sprite.pal['F'] ?? '';
       if (!color) continue;
       scratch.setColor(col(color));
       const dc = flipX ? (w - 1 - c) : c;
       canvas.drawRect(Skia.XYWHRect(x0 + dc * p, y0 + r * p, p + 0.6, p + 0.6), scratch);
     }
   }
+}
+
+/**
+ * Sprite draw wrapped in a squash/stretch + lean transform around its centre —
+ * the basis of the procedural character animation (walk bounce, breathing,
+ * attack lunge, hit recoil). `sx`/`sy` scale, `lean` shears horizontally.
+ */
+function drawSpriteA(
+  canvas: SkCanvas, sprite: Sprite, cx: number, cy: number,
+  target: number, flipX: boolean, tint: string | undefined,
+  sx: number, sy: number, lean: number, hideEyes: boolean,
+) {
+  canvas.save();
+  canvas.translate(cx, cy);
+  if (lean) canvas.skew(lean, 0);
+  canvas.scale(sx, sy);
+  canvas.translate(-cx, -cy);
+  drawSprite(canvas, sprite, cx, cy, target, flipX, tint, hideEyes);
+  canvas.restore();
 }
 
 // deterministic per-cell variation
@@ -288,7 +309,8 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number) {
     // hot halo around the gem
     glowPaint.setAlphaf(0.45 * pulse);
     canvas.drawCircle(gx, gy, TILE * 0.26, glowPaint);
-    drawSprite(canvas, gem, gx, gy, TILE * 0.5, false);
+    const spin = Math.max(0.2, Math.abs(Math.cos(run.clock * 2 + it.id)));   // slow horizontal spin
+    drawSpriteA(canvas, gem, gx, gy, TILE * 0.5, false, undefined, spin, 1, 0, false);
     // rising sparkles
     scratch.setBlendMode(BlendMode.Plus);
     scratch.setColor(col('#ffffff'));
@@ -321,21 +343,40 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number) {
     }
   }
 
-  // ── monsters ──
+  // ── monsters (normal variants, brutes, and the Guardian boss) ──
   for (const m of run.monsters) {
     if (m.dead) continue;
+    const isGuardian = m.type === 'guardian';
+    const isBrute = m.type === 'brute';
     const dx = m.pos.x - p.pos.x, dz = m.pos.z - p.pos.z;
-    if (dx * dx + dz * dz > (torchR / TILE * CELL + CELL) ** 2) continue;
+    const cullCells = (torchR / TILE) * (isGuardian ? 1.35 : 1) + 1;
+    if (dx * dx + dz * dz > (cullCells * CELL) ** 2) continue;
     const mx = wsx(m.pos.x);
-    const bob = Math.sin(run.clock * (m.type === 'brute' ? 8 : 12) + m.id) * 4;
+    const bob = Math.sin(run.clock * (isGuardian ? 5 : isBrute ? 8 : 12) + m.id) * (isGuardian ? 3 : 4);
     const my = wsy(m.pos.z) + bob;
     // shadow
     scratch.setColor(col('#00000055'));
-    const sw = m.type === 'brute' ? 40 : 26;
-    canvas.drawOval(Skia.XYWHRect(mx - sw / 2, wsy(m.pos.z) + 14, sw, 9), scratch);
-    const sprite = m.type === 'brute' ? BRUTE : SHADE;
-    const size = m.type === 'brute' ? TILE * 1.25 : TILE * 0.82;
-    drawSprite(canvas, sprite, mx, my, size, m.pos.x < p.pos.x, m.damageFlash > 0 ? '#ffffff' : undefined);
+    const sw = isGuardian ? 62 : isBrute ? 40 : 26;
+    canvas.drawOval(Skia.XYWHRect(mx - sw / 2, wsy(m.pos.z) + (isGuardian ? 24 : 14), sw, isGuardian ? 13 : 9), scratch);
+    // the Guardian's core throbs with light
+    if (isGuardian) {
+      glowPaint.setColor(col('#22d3ee'));
+      glowPaint.setAlphaf(0.38 + 0.16 * Math.sin(run.clock * 4));
+      canvas.drawCircle(mx, my, TILE * 0.75, glowPaint);
+    }
+    const sprite = isGuardian ? GUARDIAN : isBrute ? BRUTE : SHADE_VARIANTS[m.variant % SHADE_VARIANTS.length];
+    const size = isGuardian ? TILE * 2.15 : isBrute ? TILE * 1.25 : TILE * 0.85;
+    // procedural animation: breathing pulse, attack pounce, hit recoil, chase lean
+    const breathe = Math.sin(run.clock * (isGuardian ? 3 : 6) + m.id * 1.7);
+    let asy = 1 + breathe * (isGuardian ? 0.05 : 0.09);
+    let asx = 1 - (asy - 1) * 0.7;
+    const sinceAtk = run.clock - m.lastAttack;
+    if (sinceAtk < 0.22) { const l = 1 - sinceAtk / 0.22; asy += l * 0.18; asx += l * 0.1; }
+    if (m.damageFlash > 0) { asx *= 1.14; asy *= 0.86; }
+    const chasing = dx * dx + dz * dz < L.MONSTER_AGGRO * L.MONSTER_AGGRO;
+    const lean = chasing && !isGuardian ? (m.pos.x < p.pos.x ? -0.06 : 0.06) : 0;
+    drawSpriteA(canvas, sprite, mx, my, size, m.pos.x < p.pos.x,
+      m.damageFlash > 0 ? '#ffffff' : undefined, asx, asy, lean, false);
   }
 
   // ── player + sword ──
@@ -348,25 +389,41 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number) {
     // shadow
     scratch.setColor(col('#00000066'));
     canvas.drawOval(Skia.XYWHRect(camX - 16, camY + 16, 32, 10), scratch);
-    // sword arc during a swing
+    // sword arc during a swing — a big sweeping crescent with a bright tip
     if (run.swordSwing > 0) {
-      const k = run.swordSwing;                       // 1 → 0
-      const sweep = (1 - k) * Math.PI * 1.4 - Math.PI * 0.7;
-      const ang = Math.atan2(p.dir.z, p.dir.x) + sweep;
-      const bx = camX + Math.cos(ang) * TILE * 0.85;
-      const by = camY + Math.sin(ang) * TILE * 0.85;
-      glowPaint.setColor(col('#bae6fd'));
-      glowPaint.setAlphaf(k * 0.8);
-      canvas.drawCircle(bx, by, 10, glowPaint);
+      const k = run.swordSwing;                          // 1 → 0
+      const face = Math.atan2(p.dir.z, p.dir.x);
+      const reach = TILE * 1.15;
+      const lead = face + ((1 - k) * 1.7 - 0.85) * Math.PI; // leading edge sweeps across
       scratch.setStyle(PaintStyle.Stroke);
-      scratch.setStrokeWidth(5);
-      scratch.setColor(col('#e0f2fe'));
-      scratch.setAlphaf(k);
-      canvas.drawLine(camX + Math.cos(ang) * 12, camY + Math.sin(ang) * 12, bx, by, scratch);
+      scratch.setStrokeWidth(6);
+      for (let t = 0; t < 7; t++) {
+        const a = lead - t * 0.17;
+        scratch.setColor(col(t < 2 ? '#ffffff' : '#bae6fd'));
+        scratch.setAlphaf(k * (1 - t / 7) * 0.9);
+        canvas.drawLine(
+          camX + Math.cos(a) * reach * 0.42, camY + Math.sin(a) * reach * 0.42,
+          camX + Math.cos(a) * reach, camY + Math.sin(a) * reach, scratch);
+      }
       scratch.setStyle(PaintStyle.Fill);
+      const bx = camX + Math.cos(lead) * reach, by = camY + Math.sin(lead) * reach;
+      glowPaint.setColor(col('#e0f2fe'));
+      glowPaint.setAlphaf(k * 0.9);
+      canvas.drawCircle(bx, by, 13, glowPaint);
       scratch.setAlphaf(1);
     }
-    drawSprite(canvas, SEEKER, camX, camY, TILE * 0.95, p.dir.x < -0.05, p.isDashing ? '#c4b5fd' : undefined);
+    // procedural walk / idle animation
+    const moving = p.moving;
+    const bounce = moving ? Math.abs(Math.sin(p.stepPhase)) : 0;
+    const breath = Math.sin(run.clock * 2.2) * 0.02;
+    const psy = 1 + (moving ? bounce * 0.12 - 0.04 : breath);
+    const psx = 1 - (psy - 1) * 0.6;
+    const plean = moving ? (p.dir.x < -0.05 ? 0.05 : p.dir.x > 0.05 ? -0.05 : 0) : 0;
+    const footY = moving ? -bounce * 4 : 0;
+    const blink = (run.clock % 3.4) < 0.11;
+    const pop = run.swordSwing > 0.6 ? (run.swordSwing - 0.6) * 0.5 : 0;   // brief pop as the swing starts
+    drawSpriteA(canvas, SEEKER, camX, camY + footY, TILE * 0.95, p.dir.x < -0.05,
+      p.isDashing ? '#c4b5fd' : undefined, psx + pop, psy + pop, plean, blink);
   }
 
   // ── particles (additive) ──
@@ -670,6 +727,22 @@ export default function LabyrinthOfAbyss({
             </TouchableOpacity>
           </View>
 
+          {(() => {
+            const g = run?.monsters.find(m => m.type === 'guardian' && !m.dead);
+            if (!g) return null;
+            const d = Math.hypot(g.pos.x - run!.player.pos.x, g.pos.z - run!.player.pos.z);
+            if (d > L.MONSTER_AGGRO) return null;   // only once the boss is engaged
+            const pct = Math.max(0, Math.min(1, g.hp / g.maxHp));
+            return (
+              <View style={s.bossWrap} pointerEvents="none">
+                <Text style={s.bossName}>⚔  THE GUARDIAN</Text>
+                <View style={s.bossTrack}>
+                  <View style={[s.bossFill, { width: `${pct * 100}%` }]} />
+                </View>
+              </View>
+            );
+          })()}
+
           {msg !== '' && (
             <View style={s.msgWrap} pointerEvents="none">
               <Text style={s.msgTxt}>{msg}</Text>
@@ -751,6 +824,12 @@ const s = StyleSheet.create({
   quitBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(15,23,42,0.85)',
              alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(124,58,237,0.5)' },
   quitTxt: { color: '#94A3B8', fontSize: 16, fontWeight: '800' },
+
+  bossWrap:  { position: 'absolute', top: 92, left: 44, right: 44, alignItems: 'center' },
+  bossName:  { color: '#f472b6', fontSize: 11, fontWeight: '900', letterSpacing: 2, marginBottom: 4 },
+  bossTrack: { height: 9, width: '100%', backgroundColor: 'rgba(15,23,42,0.85)', borderRadius: 5,
+               overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(244,114,182,0.55)' },
+  bossFill:  { height: '100%', backgroundColor: '#ec4899', borderRadius: 5 },
 
   msgWrap: { position: 'absolute', bottom: 190, left: 0, right: 0, alignItems: 'center' },
   msgTxt:  { color: '#E2E8F0', fontSize: 13, fontWeight: '800', backgroundColor: 'rgba(5,1,13,0.75)',
