@@ -532,6 +532,112 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number) {
   canvas.drawRect(Skia.XYWHRect(0, 0, W, H), vig);
 }
 
+// ── menu backdrop: the seeker at the brink of a glowing abyss, drawn live ─────
+function drawMenuScene(canvas: SkCanvas, clock: number, W: number, H: number) {
+  // 1) deep cosmic gradient
+  const bg = px();
+  bg.setShader(Skia.Shader.MakeLinearGradient(
+    { x: 0, y: 0 }, { x: 0, y: H },
+    [col('#0c0724'), col('#0a0618'), col('#04060f')], [0, 0.5, 1], TileMode.Clamp,
+  ));
+  canvas.drawRect(Skia.XYWHRect(0, 0, W, H), bg);
+
+  // purple nebula glow behind the title
+  glowPaint.setColor(col('#3b1d6e'));
+  glowPaint.setAlphaf(0.45);
+  canvas.drawCircle(W * 0.5, H * 0.2, W * 0.55, glowPaint);
+
+  // 2) faint twinkling starfield in the upper field
+  scratch.setColor(col('#c4b5fd'));
+  for (let i = 0; i < 44; i++) {
+    const sx = (((i * 97) % 100) / 100) * W;
+    const sy = (((i * 53) % 100) / 100) * H * 0.66;
+    const tw = 0.25 + 0.6 * Math.abs(Math.sin(clock * 1.4 + i));
+    scratch.setAlphaf(tw * 0.5);
+    canvas.drawCircle(sx, sy, i % 3 === 0 ? 1.7 : 1, scratch);
+  }
+  scratch.setAlphaf(1);
+
+  const cx = W / 2;
+  const portalY = H * 0.6;
+  const portalR = Math.min(W * 0.3, 150);
+  const pulse = 0.55 + 0.2 * Math.sin(clock * 2);
+
+  // 3) stone lip so the portal reads as a pit carved in the floor
+  scratch.setColor(col('#160f2c'));
+  canvas.drawOval(Skia.XYWHRect(cx - portalR * 1.55, portalY - portalR * 0.58, portalR * 3.1, portalR * 1.3), scratch);
+  scratch.setColor(col('#241a44'));
+  canvas.drawOval(Skia.XYWHRect(cx - portalR * 1.38, portalY - portalR * 0.5, portalR * 2.76, portalR * 1.12), scratch);
+  scratch.setColor(col('#05010d'));
+  canvas.drawOval(Skia.XYWHRect(cx - portalR, portalY - portalR * 0.42, portalR * 2, portalR * 0.88), scratch);
+
+  // 4) abyss energy welling up + swirling rings
+  glowPaint.setColor(col('#22d3ee'));
+  glowPaint.setAlphaf(0.35 * pulse + 0.2);
+  canvas.drawOval(Skia.XYWHRect(cx - portalR * 0.85, portalY - portalR * 0.36, portalR * 1.7, portalR * 0.72), glowPaint);
+  scratch.setStyle(PaintStyle.Stroke);
+  for (let r = 0; r < 4; r++) {
+    scratch.setStrokeWidth(3 - r * 0.5);
+    scratch.setColor(col(r % 2 ? '#67e8f9' : '#a855f7'));
+    scratch.setAlphaf((0.7 - r * 0.13) * pulse);
+    const rr = portalR * (0.34 + r * 0.16) + Math.sin(clock * 2 + r) * 4;
+    canvas.drawOval(Skia.XYWHRect(cx - rr, portalY - rr * 0.45, rr * 2, rr * 0.9), scratch);
+  }
+  scratch.setStyle(PaintStyle.Fill);
+  scratch.setAlphaf(1);
+
+  // 5) embers rising out of the abyss (additive, warm + cyan)
+  scratch.setBlendMode(BlendMode.Plus);
+  for (let i = 0; i < 20; i++) {
+    const t = (clock * 0.28 + i * 0.37) % 1;
+    const ex = cx + Math.sin(clock * 0.5 + i * 2.1) * portalR * (0.35 + (i % 4) * 0.2);
+    const ey = portalY - t * H * 0.46;
+    scratch.setColor(col(i % 2 ? '#ff9a3c' : '#67e8f9'));
+    scratch.setAlphaf((1 - t) * 0.5);
+    canvas.drawCircle(ex, ey, 1.3 + (1 - t) * 1.7, scratch);
+  }
+  scratch.setBlendMode(BlendMode.SrcOver);
+  scratch.setAlphaf(1);
+
+  // 6) the seeker standing at the brink, torch-lit, idle breathing + blink
+  const heroY = portalY - portalR * 0.72;
+  glowPaint.setColor(col('#c9a6ff'));
+  glowPaint.setAlphaf(0.28);
+  canvas.drawCircle(cx, heroY, TILE * 1.7, glowPaint);
+  const warm = px();
+  warm.setBlendMode(BlendMode.Plus);
+  warm.setShader(Skia.Shader.MakeRadialGradient(
+    { x: cx, y: heroY }, TILE * 2.8,
+    [col('#ffcf8a'), col('#ff9e4d00')], [0, 1], TileMode.Clamp,
+  ));
+  warm.setAlphaf(0.28);
+  canvas.drawRect(Skia.XYWHRect(0, 0, W, H), warm);
+  scratch.setColor(col('#00000066'));
+  canvas.drawOval(Skia.XYWHRect(cx - 26, heroY + 28, 52, 15), scratch);
+  const breath = Math.sin(clock * 2.2) * 0.03;
+  drawSpriteA(canvas, SEEKER, cx, heroY - breath * TILE, TILE * 1.75, false, undefined,
+    1 - breath * 0.6, 1 + breath, 0, clock % 3.4 < 0.11);
+
+  // 7) drifting dust
+  scratch.setColor(col('#c4b5fd'));
+  for (let i = 0; i < 14; i++) {
+    const a = clock * 0.2 + i * 0.9;
+    const dxp = Math.cos(a) * W * 0.32;
+    const dyp = Math.sin(a * 0.7 + i) * H * 0.14;
+    scratch.setAlphaf(0.08 + 0.1 * Math.sin(clock * 2 + i));
+    canvas.drawCircle(cx + dxp, portalY * 0.62 + dyp, 1.6, scratch);
+  }
+  scratch.setAlphaf(1);
+
+  // 8) vignette
+  const vig = px();
+  vig.setShader(Skia.Shader.MakeRadialGradient(
+    { x: W / 2, y: H / 2 }, Math.max(W, H) * 0.72,
+    [col('#00000000'), col('#00000000'), col('#000000cc')], [0, 0.55, 1], TileMode.Clamp,
+  ));
+  canvas.drawRect(Skia.XYWHRect(0, 0, W, H), vig);
+}
+
 // ── input / phase ─────────────────────────────────────────────────────────────
 type InputState = { jx: number; jz: number; attack: boolean; dash: boolean };
 type Phase = 'menu' | 'playing' | 'dead' | 'won';
@@ -567,6 +673,7 @@ export default function LabyrinthOfAbyss({
 
   const hitFlash = useRef(new Animated.Value(0)).current;
   const stickPos = useRef(new Animated.ValueXY()).current;
+  const menuClock = useRef(0);          // drives the animated menu backdrop
 
   useEffect(() => {
     AsyncStorage.getItem(BEST_KEY).then(v => {
@@ -613,6 +720,22 @@ export default function LabyrinthOfAbyss({
       if (r && phaseRef.current === 'playing') {
         L.stepSimulation(r, inputRef.current, dt, eventsRef.current);
       }
+      setFrame(f => (f + 1) & 0xffff);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [phase]);
+
+  // ── menu backdrop animation loop (torch flicker, embers, portal pulse) ──
+  useEffect(() => {
+    if (phase !== 'menu') return;
+    let raf = 0;
+    let last = Date.now();
+    const tick = () => {
+      const now = Date.now();
+      menuClock.current += Math.min((now - last) / 1000, 0.05);
+      last = now;
       setFrame(f => (f + 1) & 0xffff);
       raf = requestAnimationFrame(tick);
     };
@@ -667,12 +790,21 @@ export default function LabyrinthOfAbyss({
   const scene = (phase !== 'menu' && run)
     ? createPicture((canvas) => drawScene(canvas, run, W, H), { x: 0, y: 0, width: W, height: H })
     : null;
+  const menuScene = phase === 'menu'
+    ? createPicture((canvas) => drawMenuScene(canvas, menuClock.current, W, H), { x: 0, y: 0, width: W, height: H })
+    : null;
+  const enough = energy >= L.ENTRY_ENERGY;
 
   return (
     <View style={s.root}>
       {scene && (
         <Canvas style={{ width: W, height: H }}>
           <Picture picture={scene} />
+        </Canvas>
+      )}
+      {menuScene && (
+        <Canvas style={{ width: W, height: H }}>
+          <Picture picture={menuScene} />
         </Canvas>
       )}
 
@@ -682,26 +814,47 @@ export default function LabyrinthOfAbyss({
 
       {/* ═══ MENU ═══ */}
       {phase === 'menu' && (
-        <View style={s.menuWrap}>
-          <Text style={s.menuIcon}>🕳️</Text>
-          <Text style={s.menuTitle}>ABYSS LABYRINTH</Text>
-          <Text style={s.menuSub}>
-            A torch-lit descent. Find {L.ITEM_COUNT} artifacts in the dark maze,{'\n'}
-            cut down the shades, dash through traps —{'\n'}
-            then escape through the portal.
-          </Text>
-          <View style={s.menuStats}>
-            <Text style={s.menuStat}>⚔️ Sword {L.ATTACK_DMG}</Text>
-            <Text style={s.menuStat}>💨 Dash i-frames</Text>
-            <Text style={s.menuStat}>🏆 Best {best.toLocaleString()}</Text>
+        <View style={s.menuWrap} pointerEvents="box-none">
+          <View style={s.menuTop} pointerEvents="none">
+            <Text style={s.menuKicker}>· GENESIS PRE-SEASON ·</Text>
+            <Text style={s.menuTitle}>ABYSS{'\n'}LABYRINTH</Text>
+            <View style={s.menuRule} />
+            <Text style={s.menuTagline}>The dark calls the brave.  Descend, and it remembers.</Text>
           </View>
-          <TouchableOpacity onPress={startRun} activeOpacity={0.85} style={s.startBtn}>
-            <Text style={s.startTxt}>▼  DESCEND  ·  {L.ENTRY_ENERGY}⚡</Text>
-          </TouchableOpacity>
-          {msg !== '' && <Text style={s.menuMsg}>{msg}</Text>}
-          <TouchableOpacity onPress={onExit} style={s.exitLink}>
-            <Text style={s.exitLinkTxt}>‹ BACK TO ARCADE</Text>
-          </TouchableOpacity>
+
+          <View style={s.menuBottom} pointerEvents="box-none">
+            <View style={s.menuStats}>
+              <View style={s.statCard}>
+                <Text style={s.statIcon}>🏆</Text>
+                <Text style={s.statVal}>{best.toLocaleString()}</Text>
+                <Text style={s.statLbl}>BEST ORB</Text>
+              </View>
+              <View style={s.statCard}>
+                <Text style={s.statIcon}>⚔️</Text>
+                <Text style={s.statVal}>{L.ATTACK_DMG}</Text>
+                <Text style={s.statLbl}>SWORD</Text>
+              </View>
+              <View style={s.statCard}>
+                <Text style={s.statIcon}>✨</Text>
+                <Text style={s.statVal}>{L.ITEM_COUNT}</Text>
+                <Text style={s.statLbl}>ARTIFACTS</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity onPress={startRun} activeOpacity={0.85}
+              style={[s.descendBtn, !enough && s.descendBtnOff]}>
+              <Text style={s.descendTxt}>▼  DESCEND</Text>
+              <View style={s.descendCost}>
+                <Text style={s.descendCostTxt}>{L.ENTRY_ENERGY} ⚡</Text>
+              </View>
+            </TouchableOpacity>
+
+            {msg !== '' && <Text style={s.menuMsg}>{msg}</Text>}
+
+            <TouchableOpacity onPress={onExit} style={s.exitLink}>
+              <Text style={s.exitLinkTxt}>‹  BACK TO ARCADE</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
@@ -798,13 +951,35 @@ export default function LabyrinthOfAbyss({
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#05010d' },
 
-  menuWrap:  { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28 },
-  menuIcon:  { fontSize: 64, marginBottom: 10 },
-  menuTitle: { color: '#C4B5FD', fontSize: 26, fontWeight: '900', letterSpacing: 4 },
-  menuSub:   { color: '#94A3B8', fontSize: 13, textAlign: 'center', lineHeight: 20, marginTop: 12 },
-  menuStats: { flexDirection: 'row', gap: 14, marginTop: 18, flexWrap: 'wrap', justifyContent: 'center' },
-  menuStat:  { color: '#7C3AED', fontSize: 11, fontWeight: '800' },
-  menuMsg:   { color: '#f59e0b', fontSize: 12, fontWeight: '700', marginTop: 12 },
+  menuWrap:  { ...StyleSheet.absoluteFillObject, justifyContent: 'space-between',
+               paddingTop: 74, paddingBottom: 40, paddingHorizontal: 24 },
+  menuTop:   { alignItems: 'center' },
+  menuKicker:{ color: '#f472b6', fontSize: 11, fontWeight: '900', letterSpacing: 3, marginBottom: 12 },
+  menuTitle: { color: '#F5F3FF', fontSize: 46, fontWeight: '900', letterSpacing: 3, textAlign: 'center',
+               lineHeight: 47, textShadowColor: 'rgba(124,58,237,0.9)', textShadowRadius: 20,
+               textShadowOffset: { width: 0, height: 0 } },
+  menuRule:  { width: 64, height: 3, borderRadius: 2, backgroundColor: '#7C3AED', marginTop: 16, opacity: 0.9 },
+  menuTagline:{ color: '#a78bfa', fontSize: 13, fontWeight: '700', letterSpacing: 0.5, marginTop: 14,
+               textAlign: 'center', maxWidth: 300 },
+
+  menuBottom:{ alignItems: 'center' },
+  menuStats: { flexDirection: 'row', gap: 10, marginBottom: 24 },
+  statCard:  { alignItems: 'center', backgroundColor: 'rgba(18,12,36,0.72)', borderWidth: 1,
+               borderColor: 'rgba(124,58,237,0.4)', borderRadius: 15, paddingVertical: 12,
+               paddingHorizontal: 16, minWidth: 96 },
+  statIcon:  { fontSize: 17, marginBottom: 4 },
+  statVal:   { color: '#F5F3FF', fontSize: 19, fontWeight: '900' },
+  statLbl:   { color: '#8b7bb8', fontSize: 9, fontWeight: '800', letterSpacing: 1.5, marginTop: 2 },
+  menuMsg:   { color: '#f59e0b', fontSize: 12, fontWeight: '700', marginTop: 14 },
+
+  descendBtn:{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#7C3AED',
+               paddingVertical: 17, paddingHorizontal: 40, borderRadius: 22, borderWidth: 1,
+               borderColor: 'rgba(196,181,253,0.6)', shadowColor: '#a855f7', shadowRadius: 24,
+               shadowOpacity: 0.9, shadowOffset: { width: 0, height: 0 }, elevation: 12 },
+  descendBtnOff:{ opacity: 0.5 },
+  descendTxt:{ color: '#FFF', fontSize: 21, fontWeight: '900', letterSpacing: 3 },
+  descendCost:{ backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 11, paddingHorizontal: 11, paddingVertical: 4 },
+  descendCostTxt:{ color: '#FDE68A', fontSize: 14, fontWeight: '900' },
 
   startBtn: { marginTop: 26, backgroundColor: '#7C3AED', paddingVertical: 16, paddingHorizontal: 34,
               borderRadius: 18, shadowColor: '#7C3AED', shadowRadius: 16, shadowOpacity: 0.6, elevation: 8 },
