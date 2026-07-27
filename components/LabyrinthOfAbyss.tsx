@@ -11,7 +11,7 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Animated, PanResponder, Platform, StyleSheet, Text, TouchableOpacity,
+  Animated, PanResponder, Platform, ScrollView, StyleSheet, Text, TouchableOpacity,
   View, useWindowDimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -105,7 +105,13 @@ const FLOOR_CHIP = '#31265c';    // lighter stone chip that catches the fireligh
 const MOSS       = '#2f6b4a';    // faint lichen near walls
 
 // ── the whole scene, drawn imperatively each frame ───────────────────────────
-function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number) {
+function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number, lantern = false) {
+  // Abyss Lantern (SOL cosmetic) recolours the seeker's flame to spectral cyan;
+  // wall sconces stay warm so the grade keeps its warm/cool contrast.
+  const warmStops  = lantern ? ['#9fdcff00', '#8fd2ff', '#66b8ff00'] : ['#ffcf8a00', '#ffbb70', '#ff9e4d00'];
+  const haloStops  = lantern ? ['#d9f4ff00', '#c9ecff', '#bfe6ff00'] : ['#ffe8c000', '#ffdca6', '#ffd9a000'];
+  const emberColA  = lantern ? '#67e8f9' : '#ff9a3c';
+  const emberColB  = lantern ? '#c2f0ff' : '#ffcf6a';
   const p = run.player;
   const ox = ((run.gridW - 1) * CELL) / 2;
   const oz = ((run.gridH - 1) * CELL) / 2;
@@ -127,9 +133,9 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number) {
   // background
   canvas.drawColor(col('#04060f'));
 
-  // torch flicker
+  // torch flicker (base radius comes from the run — camp upgrades widen it)
   const flick = Math.sin(run.clock * 9) * 0.2 + Math.sin(run.clock * 23) * 0.1;
-  const torchCells = 5.6 + flick;                 // radius in cells
+  const torchCells = run.torchCells + flick;      // radius in cells
   const torchR = torchCells * TILE;
 
   // only draw cells near the torch (everything else is black anyway)
@@ -455,7 +461,7 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number) {
     const t2 = (run.clock * 0.35 + i * 0.37) % 1;
     const ex = camX + Math.sin(run.clock * 0.6 + i * 2.1) * TILE * (0.5 + (i % 3) * 0.5);
     const ey = camY + TILE * 0.6 - t2 * TILE * 2.4;
-    scratch.setColor(col(i % 2 ? '#ff9a3c' : '#ffcf6a'));
+    scratch.setColor(col(i % 2 ? emberColA : emberColB));
     scratch.setAlphaf((1 - t2) * 0.5);
     canvas.drawCircle(ex, ey, 1.5 + (1 - t2) * 1.2, scratch);
   }
@@ -492,7 +498,7 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number) {
   warmP.setBlendMode(BlendMode.Plus);
   warmP.setShader(Skia.Shader.MakeRadialGradient(
     { x: camX, y: camY }, TILE * 3.6,
-    [col('#ffcf8a00'), col('#ffbb70'), col('#ff9e4d00')],
+    [col(warmStops[0]), col(warmStops[1]), col(warmStops[2])],
     [0, 0.42, 1], TileMode.Clamp,
   ));
   warmP.setAlphaf(0.42);
@@ -504,7 +510,7 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number) {
   coreP.setBlendMode(BlendMode.Plus);
   coreP.setShader(Skia.Shader.MakeRadialGradient(
     { x: camX, y: camY }, TILE * 1.5,
-    [col('#ffe8c000'), col('#ffdca6'), col('#ffd9a000')],
+    [col(haloStops[0]), col(haloStops[1]), col(haloStops[2])],
     [0.28, 0.55, 1], TileMode.Clamp,
   ));
   coreP.setAlphaf(0.32);
@@ -643,6 +649,55 @@ type InputState = { jx: number; jz: number; attack: boolean; dash: boolean };
 type Phase = 'menu' | 'playing' | 'dead' | 'won';
 
 const BEST_KEY = 'sk_labyrinth_best';
+const UPGRADES_KEY = 'sk_labyrinth_upgrades_v1';
+
+// ── Seeker's Camp — permanent upgrades bought with ORB ───────────────────────
+// Same shape as App.tsx UPGRADE_DEFS (5 levels, rising cost, NOW → NEXT).
+// Effect tables live in lib/labyrinth.ts so sim and UI can never disagree.
+type CampKey = 'torch' | 'speed' | 'vigor' | 'blade' | 'ember';
+type CampLevels = Record<CampKey, number>;
+const CAMP_ZERO: CampLevels = { torch: 0, speed: 0, vigor: 0, blade: 0, ember: 0 };
+
+const CAMP_DEFS: Record<CampKey, {
+  name: string; icon: string; desc: string;
+  valueLabels: string[]; costs: number[]; color: string;
+}> = {
+  torch: {
+    name: 'ABYSS TORCH', icon: '🔦', desc: 'Torch light radius',
+    valueLabels: L.TORCH_LEVELS.map(v => v.toFixed(1)),
+    costs: [600, 1800, 4500, 11000, 26000],
+    color: '#F59E0B',
+  },
+  speed: {
+    name: 'SWIFT GREAVES', icon: '👢', desc: 'Move speed',
+    valueLabels: L.SPEED_LEVELS.map(String),
+    costs: [500, 1500, 4000, 10000, 24000],
+    color: '#22D3EE',
+  },
+  vigor: {
+    name: 'ABYSSAL VIGOR', icon: '❤️‍🔥', desc: 'Max HP',
+    valueLabels: L.MAX_HP_LEVELS.map(String),
+    costs: [700, 2000, 5000, 12000, 28000],
+    color: '#22C55E',
+  },
+  blade: {
+    name: 'RUNEBLADE', icon: '⚔️', desc: 'Sword damage',
+    valueLabels: L.SWORD_DMG_LEVELS.map(String),
+    costs: [800, 2400, 6000, 14000, 30000],
+    color: '#A855F7',
+  },
+  ember: {
+    name: 'SECOND TORCH', icon: '🕯️', desc: 'Survive a lethal hit · once per run',
+    valueLabels: L.EMBER_REVIVE_HP.map((h, i) => (i === 0 ? '—' : `${h} HP`)),
+    costs: [1200, 3000, 8000, 18000, 40000],
+    color: '#EC4899',
+  },
+};
+const CAMP_KEYS = Object.keys(CAMP_DEFS) as CampKey[];
+
+// Abyss Lantern — the camp's one premium SOL offer (cosmetic + tiny light bonus)
+const LANTERN_SOL      = 0.05;
+const LANTERN_LAMPORTS = 50_000_000;
 
 type Props = {
   energy: number;
@@ -651,10 +706,17 @@ type Props = {
   onAddScore: (n: number) => void;
   onPlaySound: (s: 'tap' | 'crit' | 'jackpot' | 'levelup' | 'dead') => void;
   onExit: () => void;
+  // Optional economy hooks for the Seeker's Camp. All backward-compatible:
+  // without orb/onSpendOrb the camp renders in a locked preview state, and
+  // without onPaySol the SOL offer shows "coming soon".
+  orb?: number;
+  onSpendOrb?: (n: number) => void;
+  onPaySol?: (lamports: number, sol: number, purpose: string) => Promise<void>;
 };
 
 export default function LabyrinthOfAbyss({
   energy, onSpendEnergy, onEarnOrb, onAddScore, onPlaySound, onExit,
+  orb, onSpendOrb, onPaySol,
 }: Props) {
   const { width: W, height: H } = useWindowDimensions();
 
@@ -665,6 +727,12 @@ export default function LabyrinthOfAbyss({
   const [msg, setMsg]             = useState('');
   const [best, setBest]           = useState(0);
   const [, setFrame]              = useState(0);
+  // Seeker's Camp
+  const [camp, setCamp]           = useState<CampLevels>(CAMP_ZERO);
+  const [lantern, setLantern]     = useState(false);
+  const [campOpen, setCampOpen]   = useState(false);
+  const [paying, setPaying]       = useState(false);
+  const [justBought, setJustBought] = useState<CampKey | null>(null);
 
   const runRef    = useRef<L.RunState | null>(null);
   const phaseRef  = useRef<Phase>('menu');
@@ -674,13 +742,65 @@ export default function LabyrinthOfAbyss({
   const hitFlash = useRef(new Animated.Value(0)).current;
   const stickPos = useRef(new Animated.ValueXY()).current;
   const menuClock = useRef(0);          // drives the animated menu backdrop
+  const buyAnim = useRef(new Animated.Value(0)).current;   // camp purchase pulse
 
   useEffect(() => {
     AsyncStorage.getItem(BEST_KEY).then(v => {
       const n = parseInt(v ?? '0', 10);
       if (Number.isFinite(n)) setBest(n);
     }).catch(() => {});
+    // camp upgrade levels + lantern ownership, clamped on load
+    AsyncStorage.getItem(UPGRADES_KEY).then(v => {
+      if (!v) return;
+      try {
+        const j = JSON.parse(v) as Partial<Record<CampKey | 'lantern', unknown>>;
+        const lv = (x: unknown) =>
+          Math.max(0, Math.min(L.UPGRADE_MAX_LEVEL, Math.floor(Number(x) || 0)));
+        setCamp({
+          torch: lv(j.torch), speed: lv(j.speed), vigor: lv(j.vigor),
+          blade: lv(j.blade), ember: lv(j.ember),
+        });
+        setLantern(j.lantern === true);
+      } catch {}
+    }).catch(() => {});
   }, []);
+
+  function persistCamp(levels: CampLevels, hasLantern: boolean) {
+    AsyncStorage.setItem(UPGRADES_KEY, JSON.stringify({ ...levels, lantern: hasLantern })).catch(() => {});
+  }
+
+  function buyCampUpgrade(key: CampKey) {
+    if (orb === undefined || !onSpendOrb) return;          // locked preview state
+    const lvl = camp[key];
+    if (lvl >= L.UPGRADE_MAX_LEVEL) return;
+    const cost = CAMP_DEFS[key].costs[lvl];
+    if (orb < cost) return;
+    onSpendOrb(cost);
+    const next = { ...camp, [key]: lvl + 1 };
+    setCamp(next);
+    persistCamp(next, lantern);
+    onPlaySound('levelup');
+    // small celebratory pulse + "LEVEL UP" flash on the bought card
+    setJustBought(key);
+    buyAnim.setValue(0);
+    Animated.timing(buyAnim, { toValue: 1, duration: 700, useNativeDriver: true })
+      .start(() => setJustBought(null));
+  }
+
+  async function buyLantern() {
+    if (!onPaySol || lantern || paying) return;
+    setPaying(true);
+    try {
+      await onPaySol(LANTERN_LAMPORTS, LANTERN_SOL, 'labyrinth_abyss_lantern');
+      setLantern(true);
+      persistCamp(camp, true);
+      onPlaySound('jackpot');
+    } catch {
+      // payment cancelled/failed — the wallet flow owns the error UI
+    } finally {
+      setPaying(false);
+    }
+  }
 
   function endRun(won: boolean) {
     const r = runRef.current;
@@ -749,9 +869,9 @@ export default function LabyrinthOfAbyss({
       return;
     }
     onSpendEnergy(L.ENTRY_ENERGY);
-    runRef.current = L.createRun();
+    runRef.current = L.createRun({ ...camp, lantern });
     inputRef.current = { jx: 0, jz: 0, attack: false, dash: false };
-    setHp(L.PLAYER_MAX_HP);
+    setHp(runRef.current.maxHp);
     setCollected(0);
     setRunOrb(0);
     setMsg('The Abyss watches. Find 15 artifacts.');
@@ -785,15 +905,20 @@ export default function LabyrinthOfAbyss({
     }),
   ).current;
 
-  const hpPct = Math.max(0, Math.min(1, hp / L.PLAYER_MAX_HP));
   const run = runRef.current;
+  const hpPct = Math.max(0, Math.min(1, hp / (run?.maxHp ?? L.PLAYER_MAX_HP)));
   const scene = (phase !== 'menu' && run)
-    ? createPicture((canvas) => drawScene(canvas, run, W, H), { x: 0, y: 0, width: W, height: H })
+    ? createPicture((canvas) => drawScene(canvas, run, W, H, lantern), { x: 0, y: 0, width: W, height: H })
     : null;
   const menuScene = phase === 'menu'
     ? createPicture((canvas) => drawMenuScene(canvas, menuClock.current, W, H), { x: 0, y: 0, width: W, height: H })
     : null;
   const enough = energy >= L.ENTRY_ENERGY;
+  const campTotal = CAMP_KEYS.reduce((n, k) => n + camp[k], 0);
+  const campLocked = orb === undefined || !onSpendOrb;
+  // camp purchase celebration interpolations
+  const buyScale   = buyAnim.interpolate({ inputRange: [0, 0.18, 1], outputRange: [1, 1.05, 1] });
+  const buyFlashOp = buyAnim.interpolate({ inputRange: [0, 0.1, 0.65, 1], outputRange: [0, 1, 1, 0] });
 
   return (
     <View style={s.root}>
@@ -831,7 +956,7 @@ export default function LabyrinthOfAbyss({
               </View>
               <View style={s.statCard}>
                 <Text style={s.statIcon}>⚔️</Text>
-                <Text style={s.statVal}>{L.ATTACK_DMG}</Text>
+                <Text style={s.statVal}>{L.SWORD_DMG_LEVELS[camp.blade]}</Text>
                 <Text style={s.statLbl}>SWORD</Text>
               </View>
               <View style={s.statCard}>
@@ -849,12 +974,149 @@ export default function LabyrinthOfAbyss({
               </View>
             </TouchableOpacity>
 
+            <TouchableOpacity onPress={() => { setCampOpen(true); onPlaySound('tap'); }}
+              activeOpacity={0.85} style={s.campBtn}>
+              <Text style={s.campBtnTxt}>⛺  SEEKER'S CAMP</Text>
+              <View style={s.campBtnBadge}>
+                <Text style={s.campBtnBadgeTxt}>
+                  {campTotal > 0 ? `LV ${campTotal}` : 'NEW'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+
             {msg !== '' && <Text style={s.menuMsg}>{msg}</Text>}
 
             <TouchableOpacity onPress={onExit} style={s.exitLink}>
               <Text style={s.exitLinkTxt}>‹  BACK TO ARCADE</Text>
             </TouchableOpacity>
           </View>
+        </View>
+      )}
+
+      {/* ═══ SEEKER'S CAMP — permanent upgrades + the SOL offer ═══ */}
+      {phase === 'menu' && campOpen && (
+        <View style={s.campWrap}>
+          <View style={s.campHead}>
+            <Text style={s.campTitle}>⛺  SEEKER'S CAMP</Text>
+            <Text style={s.campOrbChip}>
+              {campLocked ? '🔒' : `💎 ${(orb ?? 0).toLocaleString()}`}
+            </Text>
+            <TouchableOpacity onPress={() => { setCampOpen(false); onPlaySound('tap'); }} style={s.campClose}>
+              <Text style={s.campCloseTxt}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={s.campSub}>Permanent upgrades — forged once, kept through every death.</Text>
+
+          <ScrollView contentContainerStyle={s.campScroll} showsVerticalScrollIndicator={false}>
+            {CAMP_KEYS.map((key) => {
+              const def   = CAMP_DEFS[key];
+              const lvl   = camp[key];
+              const maxed = lvl >= L.UPGRADE_MAX_LEVEL;
+              const cost  = maxed ? 0 : def.costs[lvl];
+              const affordable = !campLocked && (orb ?? 0) >= cost;
+              const isJust = justBought === key;
+              return (
+                <Animated.View key={key}
+                  style={[
+                    s.campCard,
+                    // tier glow: border + shadow bloom with the upgrade level
+                    { borderColor: def.color + (maxed ? 'CC' : lvl > 0 ? '66' : '38'),
+                      shadowColor: def.color, shadowOpacity: 0.1 + lvl * 0.09 },
+                    isJust && { transform: [{ scale: buyScale }] },
+                  ]}>
+                  <View style={s.campCardTop}>
+                    <View style={[s.campIcon, { backgroundColor: def.color + '1e', borderColor: def.color + '55' }]}>
+                      <Text style={s.campIconTxt}>{def.icon}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[s.campName, { color: def.color }]}>{def.name}</Text>
+                      <Text style={s.campDesc}>{def.desc}</Text>
+                    </View>
+                    <View style={s.pipCol}>
+                      <View style={s.pipRow}>
+                        {Array.from({ length: L.UPGRADE_MAX_LEVEL }).map((_, i) => (
+                          <View key={i}
+                            style={[s.pip, i < lvl && { backgroundColor: def.color, borderColor: def.color }]} />
+                        ))}
+                      </View>
+                      <Text style={s.pipLbl}>LV {lvl}/{L.UPGRADE_MAX_LEVEL}</Text>
+                    </View>
+                  </View>
+
+                  <View style={s.campRow}>
+                    <View>
+                      <Text style={s.campValLbl}>NOW</Text>
+                      <Text style={[s.campValNum, { color: def.color }]}>{def.valueLabels[lvl]}</Text>
+                    </View>
+                    {!maxed && (
+                      <>
+                        <Text style={s.campArrow}>→</Text>
+                        <View>
+                          <Text style={s.campValLbl}>NEXT</Text>
+                          <Text style={s.campValNumNext}>{def.valueLabels[lvl + 1]}</Text>
+                        </View>
+                      </>
+                    )}
+                    <View style={{ flex: 1 }} />
+                    {maxed ? (
+                      <View style={[s.campMax, { borderColor: def.color + '66' }]}>
+                        <Text style={[s.campMaxTxt, { color: def.color }]}>✦ MAX</Text>
+                      </View>
+                    ) : campLocked ? (
+                      <View style={s.campLockBtn}>
+                        <Text style={s.campLockTxt}>🔒 LOCKED</Text>
+                      </View>
+                    ) : (
+                      <TouchableOpacity onPress={() => buyCampUpgrade(key)} disabled={!affordable}
+                        activeOpacity={0.8}
+                        style={[s.campBuyBtn, affordable ? { backgroundColor: def.color } : s.campBuyOff]}>
+                        <Text style={[s.campBuyTxt, !affordable && s.campBuyTxtOff]}>
+                          {affordable
+                            ? `${cost.toLocaleString()} ORB`
+                            : `NEED ${(cost - (orb ?? 0)).toLocaleString()}`}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  {isJust && (
+                    <Animated.View pointerEvents="none" style={[s.campLevelUp, { opacity: buyFlashOp }]}>
+                      <Text style={[s.campLevelUpTxt, { color: def.color }]}>▲ LEVEL UP</Text>
+                    </Animated.View>
+                  )}
+                </Animated.View>
+              );
+            })}
+
+            {/* Premium SOL offer — one card, calls onPaySol; stub-only by design */}
+            <View style={s.solCard}>
+              <Text style={s.solKicker}>◆ PREMIUM · PAY WITH SOL</Text>
+              <View style={s.campCardTop}>
+                <View style={s.solIcon}>
+                  <Text style={s.campIconTxt}>🏮</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.solName}>ABYSS LANTERN</Text>
+                  <Text style={s.solDesc}>
+                    Spectral cyan flame for your torch · +{L.LANTERN_TORCH_BONUS.toFixed(1)} light radius · yours forever
+                  </Text>
+                </View>
+              </View>
+              <View style={s.campRow}>
+                <View style={{ flex: 1 }} />
+                {lantern ? (
+                  <View style={s.solOwned}><Text style={s.solOwnedTxt}>✦ OWNED</Text></View>
+                ) : (
+                  <TouchableOpacity onPress={buyLantern} disabled={!onPaySol || paying}
+                    activeOpacity={0.85} style={[s.solBuyBtn, (!onPaySol || paying) && s.solBuyOff]}>
+                    <Text style={s.solBuyTxt}>
+                      {paying ? 'CONFIRMING…' : onPaySol ? `◎ ${LANTERN_SOL} SOL` : 'COMING SOON'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          </ScrollView>
         </View>
       )}
 
@@ -872,6 +1134,9 @@ export default function LabyrinthOfAbyss({
               <Text style={s.hpTxt}>{hp} HP</Text>
             </View>
             <View style={s.hudChips}>
+              {(run?.emberCharges ?? 0) > 0 && (
+                <Text style={[s.hudChip, { color: '#f9a8d4' }]}>🕯️</Text>
+              )}
               <Text style={s.hudChip}>✨ {collected}/{L.ITEM_COUNT}</Text>
               <Text style={[s.hudChip, { color: '#facc15' }]}>+{runOrb.toLocaleString()}</Text>
             </View>
@@ -980,6 +1245,74 @@ const s = StyleSheet.create({
   descendTxt:{ color: '#FFF', fontSize: 21, fontWeight: '900', letterSpacing: 3 },
   descendCost:{ backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 11, paddingHorizontal: 11, paddingVertical: 4 },
   descendCostTxt:{ color: '#FDE68A', fontSize: 14, fontWeight: '900' },
+
+  campBtn:  { marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 10,
+              backgroundColor: 'rgba(8,13,30,0.88)', borderWidth: 1.5, borderColor: 'rgba(236,72,153,0.5)',
+              paddingVertical: 12, paddingHorizontal: 26, borderRadius: 18 },
+  campBtnTxt: { color: '#f9a8d4', fontSize: 14, fontWeight: '900', letterSpacing: 2 },
+  campBtnBadge: { backgroundColor: 'rgba(236,72,153,0.18)', borderRadius: 9, paddingHorizontal: 8, paddingVertical: 3 },
+  campBtnBadgeTxt: { color: '#f472b6', fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
+
+  // ── Seeker's Camp panel ──
+  campWrap:  { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(2,4,12,0.94)', paddingTop: 54 },
+  campHead:  { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, marginBottom: 4, gap: 10 },
+  campTitle: { flex: 1, color: '#F5F3FF', fontSize: 19, fontWeight: '900', letterSpacing: 2 },
+  campOrbChip: { color: '#facc15', fontSize: 13, fontWeight: '900', backgroundColor: 'rgba(15,23,42,0.9)',
+               paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, overflow: 'hidden' },
+  campClose: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(15,23,42,0.85)',
+               alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(124,58,237,0.5)' },
+  campCloseTxt: { color: '#94A3B8', fontSize: 15, fontWeight: '800' },
+  campSub:   { color: '#8b7bb8', fontSize: 11, fontWeight: '700', letterSpacing: 0.4,
+               paddingHorizontal: 18, marginBottom: 12 },
+  campScroll:{ paddingHorizontal: 16, paddingBottom: 44, gap: 12 },
+
+  campCard:  { backgroundColor: '#080D1E', borderRadius: 18, borderWidth: 1.5, padding: 14,
+               shadowOffset: { width: 0, height: 0 }, shadowRadius: 14 },
+  campCardTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  campIcon:  { width: 44, height: 44, borderRadius: 13, borderWidth: 1,
+               alignItems: 'center', justifyContent: 'center' },
+  campIconTxt: { fontSize: 21 },
+  campName:  { fontSize: 13.5, fontWeight: '900', letterSpacing: 1 },
+  campDesc:  { color: '#8b7bb8', fontSize: 11, fontWeight: '700', marginTop: 2 },
+  pipCol:    { alignItems: 'flex-end', gap: 4 },
+  pipRow:    { flexDirection: 'row', gap: 4 },
+  pip:       { width: 9, height: 9, borderRadius: 3, backgroundColor: 'rgba(124,58,237,0.14)',
+               borderWidth: 1, borderColor: 'rgba(124,58,237,0.35)' },
+  pipLbl:    { color: '#64748B', fontSize: 8.5, fontWeight: '900', letterSpacing: 1 },
+  campRow:   { flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 8 },
+  campValLbl:{ color: '#64748B', fontSize: 8.5, fontWeight: '900', letterSpacing: 1.2 },
+  campValNum:{ fontSize: 16, fontWeight: '900' },
+  campValNumNext: { color: '#F5F3FF', fontSize: 16, fontWeight: '900' },
+  campArrow: { color: '#475569', fontSize: 15, fontWeight: '900', marginHorizontal: 2 },
+  campBuyBtn:{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 13 },
+  campBuyOff:{ backgroundColor: '#111a30' },
+  campBuyTxt:{ color: '#04060f', fontSize: 12.5, fontWeight: '900', letterSpacing: 0.4 },
+  campBuyTxtOff: { color: '#334155' },
+  campLockBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 13,
+               backgroundColor: '#0c1327', borderWidth: 1, borderColor: 'rgba(71,85,105,0.5)' },
+  campLockTxt: { color: '#475569', fontSize: 12, fontWeight: '900', letterSpacing: 1 },
+  campMax:   { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 13, borderWidth: 1.5,
+               backgroundColor: 'rgba(124,58,237,0.08)' },
+  campMaxTxt:{ fontSize: 12, fontWeight: '900', letterSpacing: 1 },
+  campLevelUp: { position: 'absolute', top: 10, right: 14 },
+  campLevelUpTxt: { fontSize: 12, fontWeight: '900', letterSpacing: 1.5 },
+
+  // ── Abyss Lantern (SOL offer) ──
+  solCard:   { backgroundColor: '#0b0618', borderRadius: 20, borderWidth: 1.5,
+               borderColor: 'rgba(236,72,153,0.65)', padding: 16, marginTop: 6,
+               shadowColor: '#EC4899', shadowOpacity: 0.5, shadowRadius: 18,
+               shadowOffset: { width: 0, height: 0 }, elevation: 8 },
+  solKicker: { color: '#f472b6', fontSize: 9, fontWeight: '900', letterSpacing: 2.5, marginBottom: 10 },
+  solIcon:   { width: 48, height: 48, borderRadius: 15, borderWidth: 1, borderColor: 'rgba(34,211,238,0.5)',
+               backgroundColor: 'rgba(34,211,238,0.10)', alignItems: 'center', justifyContent: 'center' },
+  solName:   { color: '#F5F3FF', fontSize: 16, fontWeight: '900', letterSpacing: 1 },
+  solDesc:   { color: '#c4b5fd', fontSize: 11.5, fontWeight: '700', marginTop: 3, lineHeight: 16 },
+  solBuyBtn: { backgroundColor: '#EC4899', paddingVertical: 12, paddingHorizontal: 22, borderRadius: 14 },
+  solBuyOff: { opacity: 0.55 },
+  solBuyTxt: { color: '#FFF', fontSize: 13, fontWeight: '900', letterSpacing: 1 },
+  solOwned:  { borderWidth: 1.5, borderColor: 'rgba(34,211,238,0.6)', backgroundColor: 'rgba(34,211,238,0.08)',
+               paddingVertical: 11, paddingHorizontal: 20, borderRadius: 14 },
+  solOwnedTxt: { color: '#22d3ee', fontSize: 13, fontWeight: '900', letterSpacing: 1 },
 
   startBtn: { marginTop: 26, backgroundColor: '#7C3AED', paddingVertical: 16, paddingHorizontal: 34,
               borderRadius: 18, shadowColor: '#7C3AED', shadowRadius: 16, shadowOpacity: 0.6, elevation: 8 },

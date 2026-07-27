@@ -69,6 +69,29 @@ export const PORTAL_DIST     = 3.0;
 export const WIN_BONUS_ORB   = 1000;
 export const WIN_TOURNAMENT_PTS = 60;
 
+// ── Camp upgrades (permanent meta-progression, bought with ORB) ──────────────
+// Five axes, levels 0-5 each. Index every table by level; level 0 must equal
+// the base balance constants above so a run without upgrades is byte-identical
+// to the pre-camp game.
+export const UPGRADE_MAX_LEVEL   = 5;
+export const TORCH_LEVELS        = [5.6, 6.1, 6.6, 7.1, 7.6, 8.1];      // light radius, cells
+export const SPEED_LEVELS        = [12, 13, 14, 15, 16, 17];             // units/sec
+export const MAX_HP_LEVELS       = [100, 120, 140, 160, 180, 200];
+export const SWORD_DMG_LEVELS    = [50, 60, 70, 80, 90, 100];
+export const EMBER_REVIVE_HP     = [0, 1, 20, 35, 50, 75];               // Second Torch: HP restored (0 = locked)
+export const LANTERN_TORCH_BONUS = 0.4;                                  // Abyss Lantern (SOL cosmetic) light bonus
+
+/** Permanent camp-upgrade levels (0-5 per axis) applied to a run at creation. */
+export type LabyrinthUpgrades = {
+  torch: number;      // fog-of-war light radius
+  speed: number;      // move speed
+  vigor: number;      // max HP
+  blade: number;      // sword damage
+  ember: number;      // "Second Torch" — survive one lethal hit per run
+  /** Abyss Lantern cosmetic (SOL): small extra light radius; tint is render-side. */
+  lantern?: boolean;
+};
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 export type Vec2 = { x: number; z: number };
 
@@ -137,6 +160,14 @@ export type RunState = {
   clock: number;           // run time, seconds
   kills: number;
   runOrb: number;          // ORB earned this run (already granted via callback)
+  // Effective per-run stats — the base constants after camp upgrades. The
+  // simulation and renderer read these instead of the raw constants.
+  maxHp: number;
+  moveSpeed: number;
+  attackDmg: number;
+  torchCells: number;      // light radius in cells (renderer adds flicker on top)
+  emberCharges: number;    // Second Torch: lethal-hit saves left this run
+  emberReviveHp: number;   // HP restored when the Second Torch flares
   // FX
   particles: Particle[];
   floats: FloatText[];
@@ -249,8 +280,19 @@ export function clampToBounds(pos: Vec2, gridW: number, gridH: number): Vec2 {
 }
 
 // ── Run factory ───────────────────────────────────────────────────────────────
-export function createRun(): RunState {
+export function createRun(upgrades?: Partial<LabyrinthUpgrades>): RunState {
   const { grid, gridW, gridH } = generateMaze(MAZE_W, MAZE_H);
+
+  // Clamp each axis to a valid table index; omitted axes fall back to level 0,
+  // so `createRun()` behaves exactly as before the camp existed.
+  const lv = (n: number | undefined) =>
+    Math.max(0, Math.min(UPGRADE_MAX_LEVEL, Math.floor(n ?? 0)));
+  const maxHp      = MAX_HP_LEVELS[lv(upgrades?.vigor)];
+  const moveSpeed  = SPEED_LEVELS[lv(upgrades?.speed)];
+  const attackDmg  = SWORD_DMG_LEVELS[lv(upgrades?.blade)];
+  const torchCells = TORCH_LEVELS[lv(upgrades?.torch)]
+                   + (upgrades?.lantern ? LANTERN_TORCH_BONUS : 0);
+  const emberLv    = lv(upgrades?.ember);
 
   const emptyPos = (): Vec2 => {
     for (let tries = 0; tries < 4000; tries++) {
@@ -266,7 +308,7 @@ export function createRun(): RunState {
     player: {
       pos: { x: 0, z: 0 },
       dir: { x: 0, z: -1 },
-      hp: PLAYER_MAX_HP,
+      hp: maxHp,
       attackCooldown: 0,
       isDashing: false, dashTime: 0, dashCooldown: 0,
       moving: false, stepPhase: 0,
@@ -315,6 +357,12 @@ export function createRun(): RunState {
     clock: 0,
     kills: 0,
     runOrb: 0,
+    maxHp,
+    moveSpeed,
+    attackDmg,
+    torchCells,
+    emberCharges: emberLv > 0 ? 1 : 0,
+    emberReviveHp: EMBER_REVIVE_HP[emberLv],
     particles: [],
     floats: [],
     shake: 0,
@@ -399,7 +447,7 @@ export function stepSimulation(run: RunState, input: SimInput, dt: number, ev: S
   }
   input.dash = false;
 
-  const speed = p.isDashing ? DASH_SPEED : PLAYER_SPEED;
+  const speed = p.isDashing ? DASH_SPEED : r.moveSpeed;
   if (len > 0.15 || p.isDashing) {
     p.moving = true;
     p.stepPhase += dt * (p.isDashing ? 30 : 17);   // stride cadence
@@ -463,13 +511,13 @@ export function stepSimulation(run: RunState, input: SimInput, dt: number, ev: S
         const tm = { x: m.pos.x - p.pos.x, z: m.pos.z - p.pos.z };
         const tl = Math.sqrt(tm.x * tm.x + tm.z * tm.z) || 1;
         if ((tm.x / tl) * p.dir.x + (tm.z / tl) * p.dir.z < ATTACK_ARC_COS) continue;
-        m.hp -= ATTACK_DMG;
+        m.hp -= r.attackDmg;
         m.damageFlash = 0.22;
         const kbForce = m.type === 'guardian' ? 2 : m.type === 'brute' ? 6 : KNOCKBACK_FORCE;
         m.knockback = { x: p.dir.x * kbForce, z: p.dir.z * kbForce };
         hit = true;
         r.shake = Math.max(r.shake, 3);                 // every clean hit thumps
-        addFloat(r, m.pos.x, m.pos.z, String(ATTACK_DMG), '#ffffff');
+        addFloat(r, m.pos.x, m.pos.z, String(r.attackDmg), '#ffffff');
         spawnBurst(r, m.pos.x, m.pos.z, '#fca5a5', 10, 9);
         spawnBurst(r, m.pos.x, m.pos.z, '#ffffff', 4, 12);   // bright impact flash
         if (m.hp <= 0) {
@@ -574,8 +622,33 @@ export function stepSimulation(run: RunState, input: SimInput, dt: number, ev: S
     return;
   }
 
-  // death
+  // death — unless the Second Torch flares (camp insurance, once per run):
+  // the seeker is pulled back from the brink, nearby shades are blasted away,
+  // and every monster's attack timer is pushed out for a short grace window.
   if (p.hp <= 0) {
+    if (r.emberCharges > 0) {
+      r.emberCharges -= 1;
+      p.hp = Math.max(1, r.emberReviveHp);
+      ev.setHp(p.hp);
+      r.shake = Math.max(r.shake, 12);
+      spawnBurst(r, p.pos.x, p.pos.z, '#fbbf24', 26, 13);
+      spawnBurst(r, p.pos.x, p.pos.z, '#ffffff', 10, 8);
+      addFloat(r, p.pos.x, p.pos.z, `+${Math.max(1, r.emberReviveHp)}`, '#fbbf24');
+      for (const m of r.monsters) {
+        if (m.dead) continue;
+        m.lastAttack = r.clock + 1.4;          // grace period before the next hit
+        const d = dist(m.pos, p.pos);
+        if (d < 14) {                          // flare shockwave shoves the pack back
+          const ux = (m.pos.x - p.pos.x) / (d || 1);
+          const uz = (m.pos.z - p.pos.z) / (d || 1);
+          m.knockback = { x: ux * 22, z: uz * 22 };
+        }
+      }
+      ev.setMsg('THE SECOND TORCH FLARES · DEATH DENIED');
+      ev.playSound('levelup');
+      ev.onHitFlash();
+      return;
+    }
     ev.playSound('dead');
     ev.onEnd(false);
   }

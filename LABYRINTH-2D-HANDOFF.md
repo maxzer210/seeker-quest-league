@@ -1,7 +1,69 @@
-# Handoff — Abyss Labyrinth 2D + Seeker Quest League (2026-07-13)
+# Handoff — Abyss Labyrinth 2D + Seeker Quest League (updated 2026-07-27)
 
 Read this first in the new chat. Then read `HANDOFF.md` (older, broader project
 context) and the memory note `seeker-quest-prod-state.md`.
+
+---
+
+## ⚡ 2026-07-27 UPDATE — CURRENT STATE (supersedes the sections below)
+
+Everything below in this file is historical context. Current truth:
+
+### Committed to master (all verified except the last one):
+- `040909d` batch-3b light & atmosphere (teal-&-orange grade, wall sconces, AO,
+  runic traps). Verified on emulator.
+- `af46480` bigger art + Guardian boss + punchy combat + procedural animation
+  (squash/stretch walk, breathing, blink, pounce; 3 shade variants; boss HP bar).
+  Verified on emulator AND on the user's real phone.
+- `881c3c7` cinematic menu screen (animated Skia backdrop: seeker at the brink of
+  a glowing abyss portal + premium UI). Verified on emulator AND real phone.
+  GOTCHA: Skia `<Canvas>` needs explicit `{width,height}` — absoluteFill = black.
+- **`<pending>` Seeker's Camp (shop + meta-progression)** — committed in this
+  session, see below. **NOT yet visually verified** (emulator kept wedging);
+  TS-clean, built into the APK. FIRST TASK IN NEW CHAT: verify the camp on
+  emulator or the user's phone.
+
+### Seeker's Camp (built by a delegated design agent, integrated by main session)
+- 5 permanent ORB upgrades, 5 levels each (tables in `LABYRINTH-SHOP-DESIGN.md`,
+  in Russian): 🔦 Abyss Torch (light 5.6→8.1 cells), 👢 Swift Greaves (speed
+  12→17), ❤️‍🔥 Abyssal Vigor (HP 100→200), ⚔️ Runeblade (dmg 50→100),
+  🕯️ Second Torch (survive 1 lethal hit/run, revive 1→75 HP). Total ~255k ORB.
+- `lib/labyrinth.ts`: `LabyrinthUpgrades` type + level tables; `createRun(upgrades?)`
+  optional param (zero-default = old behavior); RunState carries effective
+  maxHp/moveSpeed/attackDmg/torchCells/emberCharges; Second Torch in death check.
+- `components/LabyrinthOfAbyss.tsx`: "⛺ SEEKER'S CAMP" button under DESCEND →
+  camp overlay over the live menu backdrop (upgrade cards, level pips, NOW→NEXT,
+  buy pulse); persistence `sk_labyrinth_upgrades_v1`; Abyss Lantern SOL card
+  (0.05 SOL, purpose `labyrinth_abyss_lantern`) — recolors torch to spectral cyan.
+- `App.tsx`: wired `orb` / `onSpendOrb` / `onPaySol` (same pattern as SpaceRunner);
+  `lib/solanaMobile.ts`: added `'labyrinth_abyss_lantern'` to `SolPurpose` union
+  (purpose only lands in the free-text `status` column — no DB constraint).
+- Anti-cheat follow-ups (deliberately deferred): sync camp levels to Supabase;
+  record lantern purchase server-side like other SOL items.
+
+### Phone install
+Full multi-arch APK (with camp): `android/app/build/outputs/apk/release/app-release.apk`
+(~138 MB, arm64 phone + x86_64 emulator). User sideloads to their real phone —
+this WORKS and is how the last two batches were actually judged.
+
+### Delegation workflow (user likes it — keep using it)
+User was frustrated by slow visible progress (cause: 6-8 min builds + emulator
+ANR chaos, not the code work). Agreed fix: **delegate big design/code batches to
+a subagent** (it must NOT run builds/emulator; verify only with tsc), then the
+main session integrates, builds ONCE, verifies. First use (the camp) worked great:
+~400 lines + design doc, TS-clean first try. Next candidates for delegated
+batches: missions/"game in game", full-screen relic-reveal + death/exit screens,
+multi-floor descent + more Guardian variants, real PNG art pipeline.
+
+### Emulator survival notes (this machine)
+- BUILD FIRST (kill qemu), boot emulator AFTER on idle CPU; else SystemUI ANR hell.
+- Fresh boot: dismiss ANR (`Wait` at ~322,1332), SKIP splash (933,170), close
+  Daily-Streak popup (948,642), GAMES tab (326,2280), Labyrinth card (540,654),
+  CAMP button sits under DESCEND on the menu.
+- adb can hang entirely → `Stop-Process qemu-system-x86_64 -Force; adb kill-server`.
+- `settings put global anr_show_background 0` helps a little.
+
+---
 
 ---
 

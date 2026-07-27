@@ -268,7 +268,7 @@ export async function connectSolanaWallet(): Promise<SolanaWalletSession> {
 export type SolPurpose = 'wheel_spin' | 'energy_refill' | 'shop_upgrade' | 'pvp_entry'
   | 'instant_level' | 'rare_skin' | 'boost_pack' | 'shield_pack'
   | 'founder_silver' | 'founder_gold' | 'founder_diamond'
-  | 'runner_continue';
+  | 'runner_continue' | 'labyrinth_abyss_lantern';
 
 /**
  * Sign in the wallet, then broadcast + confirm OURSELVES.

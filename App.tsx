@@ -58,6 +58,7 @@ import {
   payForWheelSpin,
   paySolToTreasury,
   type WheelPaymentStatus,
+  type SolPurpose,
 } from './lib/solanaMobile';
 import TreasureHunt from './components/TreasureHunt';
 import Arena from './components/Arena';
@@ -4016,6 +4017,7 @@ function AppInner() {
           <View style={styles.fullscreenGame}>
             <LabyrinthOfAbyss
               energy={energy}
+              orb={orb}
               onSpendEnergy={(n) => {
                 setEnergy(prev => {
                   const next = Math.max(0, prev - n);
@@ -4031,6 +4033,20 @@ function AppInner() {
                   scheduleSyncScore(next, level, streakCount);
                   return next;
                 });
+              }}
+              onSpendOrb={(n) => {
+                setOrb(prev => {
+                  const next = Math.max(0, prev - n);
+                  scheduleSyncScore(next, level, streakCount);
+                  return next;
+                });
+              }}
+              onPaySol={async (lamports, sol, purpose) => {
+                if (!deviceIdRef.current) throw new Error('No device ID');
+                await paySolToTreasury(
+                  deviceIdRef.current, lamports, sol, purpose as SolPurpose,
+                  solStatusLabel(`${sol} SOL`),
+                );
               }}
               onAddScore={addTournamentScore}
               onPlaySound={(snd) => {
