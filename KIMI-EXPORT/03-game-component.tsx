@@ -24,7 +24,6 @@ import {
 import * as L from '../lib/labyrinth';
 import {
   SEEKER, SHADE_VARIANTS, BRUTE, GUARDIAN, GEM, GEM_GOLD, BARREL, spriteW, type Sprite,
-  FLOOR_PROPS, PROP_BANNER, PROP_CHAIN, PROP_SHROOM,
   ICON_BOLT, ICON_BOOT, ICON_CANDLE, ICON_DASH, ICON_HEART, ICON_LANTERN, ICON_LOCK,
   ICON_ORB, ICON_PORTAL, ICON_SKULL, ICON_STAR, ICON_SWORD, ICON_TENT, ICON_TORCH, ICON_TROPHY,
 } from '../lib/labyrinthSprites';
@@ -194,31 +193,6 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number, lant
     }
   }
 
-  // ── floor clutter (bones, rubble, skulls, glowing shrooms) ──
-  // Deterministic from the cell hash: an empty corridor reads as a prototype,
-  // a littered one reads as a place people died in.
-  for (let cz = cz0; cz <= cz1; cz++) {
-    for (let cx = cx0; cx <= cx1; cx++) {
-      if (run.grid[cz][cx] === 1) continue;
-      const h = hash(cx * 11 + 1, cz * 17 + 7);
-      if (h < 0.88) continue;                       // ~12% of floor cells
-      const prop = FLOOR_PROPS[Math.floor(hash(cx * 5, cz * 3) * FLOOR_PROPS.length)];
-      const jx = (hash(cx, cz * 2) - 0.5) * TILE * 0.4;
-      const jy = (hash(cx * 2, cz) - 0.5) * TILE * 0.4;
-      const px2 = csx(cx) + jx, py2 = csy(cz) + jy;
-      // shrooms cast their own cold light
-      if (prop === PROP_SHROOM) {
-        glowPaint.setColor(col('#22d3ee'));
-        glowPaint.setAlphaf(0.22 + 0.1 * Math.sin(run.clock * 2 + cx + cz));
-        canvas.drawCircle(px2, py2, TILE * 0.42, glowPaint);
-      } else {
-        scratch.setColor(col('#00000055'));
-        canvas.drawOval(Skia.XYWHRect(px2 - 9, py2 + 4, 18, 6), scratch);
-      }
-      drawSprite(canvas, prop, px2, py2, TILE * 0.42, hash(cz, cx) > 0.5);
-    }
-  }
-
   // ── walls (chunky bricks with a lit top face) ──
   for (let cz = cz0; cz <= cz1; cz++) {
     for (let cx = cx0; cx <= cx1; cx++) {
@@ -246,21 +220,6 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number, lant
       scratch.setColor(col(WALL_SEAM));
       canvas.drawRect(Skia.XYWHRect(x, y + TILE / 2 - 1, TILE + 0.6, 2), scratch);
       canvas.drawRect(Skia.XYWHRect(x + TILE / 2 - 1, y, 2, TILE / 2), scratch);
-    }
-  }
-
-  // ── wall dressing (banners and chains on the exposed wall faces) ──
-  // Same eligibility as sconces (a wall face the camera can see), different
-  // hash band, so a wall carries either a torch or cloth/iron — never both.
-  for (let cz = cz0; cz <= cz1; cz++) {
-    for (let cx = cx0; cx <= cx1; cx++) {
-      if (run.grid[cz][cx] !== 1) continue;
-      if (!(cz + 1 <= run.gridH - 1 && run.grid[cz + 1][cx] === 0)) continue;
-      const h = hash(cx * 7 + 3, cz * 13 + 5);
-      if (h < 0.52 || h >= 0.72) continue;                    // ~20% of faces
-      const isBanner = h < 0.63;
-      drawSprite(canvas, isBanner ? PROP_BANNER : PROP_CHAIN,
-        csx(cx), csy(cz) + TILE * 0.1, TILE * (isBanner ? 0.5 : 0.26), false);
     }
   }
 
