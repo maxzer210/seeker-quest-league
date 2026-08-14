@@ -37,22 +37,22 @@ export const MONSTER_ATK_CD  = 1.0;
 export const BRUTE_HP        = 150;
 export const BRUTE_SPEED     = 3;
 export const BRUTE_DMG       = 15;
-export const BRUTE_REWARD    = 400;
+export const BRUTE_REWARD    = 120;
 export const NORMAL_HP       = 60;
 export const NORMAL_SPEED    = 5.5;
 export const NORMAL_DMG      = 5;
-export const NORMAL_REWARD   = 150;
+export const NORMAL_REWARD   = 45;
 
 // The Guardian — one slow, heavily-armoured mini-boss per run. Big HP, big hurt,
 // big payout. Rendered large with its own boss HP bar.
 export const GUARDIAN_HP     = 700;
 export const GUARDIAN_SPEED  = 3.6;
 export const GUARDIAN_DMG    = 24;
-export const GUARDIAN_REWARD = 3000;
+export const GUARDIAN_REWARD = 700;
 
 export const ITEM_COUNT      = 15;
-export const TREASURE_ORB    = 200;
-export const ARTIFACT_ORB    = 500;
+export const TREASURE_ORB    = 70;
+export const ARTIFACT_ORB    = 170;
 export const ARTIFACT_CHANCE = 0.4;         // else treasure
 export const COLLECT_DIST    = 2.2;
 
@@ -107,9 +107,17 @@ export const FLOOR_TRAPS_STEP  = 3;
 export const FLOOR_BASE_KEGS   = 5;
 export const FLOOR_KEGS_STEP   = 2;
 export const GUARDIAN_EVERY    = 3;         // a Guardian bars the stairs on these floors
-export const DEPTH_ORB_STEP    = 0.3;       // multiplier: 1 + 0.3*(depth-1)
+export const DEPTH_ORB_STEP    = 0.15;      // multiplier: 1 + 0.15*(depth-1)
 export const STAIRS_DIST       = 3.0;
-export const EXTRACT_BONUS_ORB = 400;       // per floor cleared, paid on extraction
+/**
+ * Extraction pays a share of everything hauled this run — and it is the ONLY
+ * thing death takes away, since collected ORB is banked on pickup and never
+ * clawed back (these are live mainnet players; confiscating earned currency
+ * would be a nerf). That makes the stairwell a real wager: the deeper you are,
+ * the bigger the bonus riding on surviving one more floor. With a flat
+ * per-floor bonus the maths said "always descend" and the choice was fake.
+ */
+export const EXTRACT_SHARE     = 0.35;
 
 /** Level scale for a given depth. */
 export function floorPlan(depth: number) {

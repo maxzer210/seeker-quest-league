@@ -1163,7 +1163,7 @@ export default function LabyrinthOfAbyss({
   function extractRun() {
     const r = runRef.current;
     if (!r) return;
-    const bonus = Math.round(L.EXTRACT_BONUS_ORB * r.depth * r.orbMult);
+    const bonus = Math.round(r.runOrb * L.EXTRACT_SHARE);
     r.runOrb += bonus;
     onEarnOrb(bonus);
     setRunOrb(r.runOrb);
@@ -1569,9 +1569,13 @@ export default function LabyrinthOfAbyss({
           <TouchableOpacity onPress={extractRun} activeOpacity={0.85} style={s.extractBtn}>
             <Text style={s.extractTxt}>▲  LEAVE WITH THE HAUL</Text>
             <Text style={s.extractSub}>
-              +{Math.round(L.EXTRACT_BONUS_ORB * run.depth * run.orbMult).toLocaleString()} ORB bonus
+              +{Math.round(runOrb * L.EXTRACT_SHARE).toLocaleString()} ORB bonus
             </Text>
           </TouchableOpacity>
+          {/* Name the stake plainly — the bonus is what dying actually costs */}
+          <Text style={s.stairsStake}>
+            Die below and this {Math.round(runOrb * L.EXTRACT_SHARE).toLocaleString()} ORB bonus is lost.
+          </Text>
         </View>
       )}
 
@@ -1772,6 +1776,8 @@ const s = StyleSheet.create({
                   textShadowColor: 'rgba(34,211,238,0.55)', textShadowRadius: 12,
                   textShadowOffset: { width: 0, height: 0 } },
   stairsWarn:   { color: '#f472b6', fontSize: 11, fontWeight: '800', letterSpacing: 1, marginTop: 8 },
+  stairsStake:  { color: '#64748b', fontSize: 10.5, fontWeight: '700', marginTop: 10,
+                  textAlign: 'center', paddingHorizontal: 30 },
   extractBtn:   { marginTop: 14, alignItems: 'center', paddingVertical: 12, paddingHorizontal: 28,
                   borderRadius: 16, borderWidth: 1.5, borderColor: 'rgba(250,204,21,0.55)',
                   backgroundColor: 'rgba(30,20,6,0.75)' },
