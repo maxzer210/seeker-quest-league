@@ -84,3 +84,10 @@ _emu/
 _pkgs/
 build-*.log
 metro.log
+
+# original full-res art before downscaling (43 MB, regenerable)
+assets/labyrinth/_source/
+
+# scratch screenshots from emulator verification (root only)
+/_*.png
+/_*.log

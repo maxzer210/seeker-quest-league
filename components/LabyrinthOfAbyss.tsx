@@ -11,14 +11,14 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Animated, PanResponder, Platform, ScrollView, StyleSheet, Text, TouchableOpacity,
-  View, useWindowDimensions,
+  Animated, Image as RNImage, PanResponder, Platform, ScrollView, StyleSheet, Text,
+  TouchableOpacity, View, useWindowDimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  Canvas, Picture, createPicture, Skia,
-  TileMode, BlendMode, BlurStyle, PaintStyle,
+  Canvas, Picture, createPicture, Skia, useImage,
+  TileMode, BlendMode, BlurStyle, PaintStyle, FilterMode, MipmapMode,
   matchFont, type SkCanvas, type SkFont, type SkImage, type SkPaint, type SkPicture, type SkSurface,
 } from '@shopify/react-native-skia';
 import * as L from '../lib/labyrinth';
@@ -115,7 +115,13 @@ const FLOOR_CHIP = '#31265c';    // lighter stone chip that catches the fireligh
 const MOSS       = '#2f6b4a';    // faint lichen near walls
 
 // ── the whole scene, drawn imperatively each frame ───────────────────────────
-function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number, lantern = false) {
+/** Painted stone loaded from assets; null until decoded, and optional forever. */
+export type SceneTextures = { floor: SkImage | null; wall: SkImage | null };
+
+function drawScene(
+  canvas: SkCanvas, run: L.RunState, W: number, H: number,
+  lantern = false, tex?: SceneTextures,
+) {
   // Abyss Lantern (SOL cosmetic) recolours the seeker's flame to spectral cyan;
   // wall sconces stay warm so the grade keeps its warm/cool contrast.
   const warmStops  = lantern ? ['#9fdcff00', '#8fd2ff', '#66b8ff00'] : ['#ffcf8a00', '#ffbb70', '#ff9e4d00'];
@@ -155,6 +161,26 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number, lant
   const cz0 = Math.max(0, Math.floor(pcz) - vis);
   const cz1 = Math.min(run.gridH - 1, Math.ceil(pcz) + vis);
 
+  // ── painted stone shaders ──
+  // The texture is anchored to the maze, not the screen, so the floor scrolls
+  // with the world instead of swimming under the camera. One tile of art maps
+  // to exactly one cell, which keeps the seamless edges lining up.
+  const originX = camX - pcx * TILE;               // screen x of cell 0's left edge
+  const originY = camY - pcz * TILE;
+  const tileShader = (img: SkImage) => {
+    const m = Skia.Matrix();
+    m.translate(originX, originY);
+    m.scale(TILE / img.width(), TILE / img.height());
+    return img.makeShaderOptions(
+      TileMode.Repeat, TileMode.Repeat, FilterMode.Linear, MipmapMode.None, m);
+  };
+  const floorTex = tex?.floor ?? null;
+  const wallTex  = tex?.wall  ?? null;
+  const floorPaint = floorTex ? px() : null;
+  if (floorPaint && floorTex) floorPaint.setShader(tileShader(floorTex));
+  const wallPaint = wallTex ? px() : null;
+  if (wallPaint && wallTex) wallPaint.setShader(tileShader(wallTex));
+
   // ── floor (ancient stone, ambient-occluded at the walls) ──
   for (let cz = cz0; cz <= cz1; cz++) {
     for (let cx = cx0; cx <= cx1; cx++) {
@@ -162,8 +188,18 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number, lant
       const scx = csx(cx), scy = csy(cz);
       const x = scx - TILE / 2, y = scy - TILE / 2;
       const shade = FLOOR_SHADES[Math.floor(hash(cx, cz) * FLOOR_SHADES.length)];
-      scratch.setColor(col(shade));
-      canvas.drawRect(Skia.XYWHRect(x, y, TILE + 0.6, TILE + 0.6), scratch);
+      if (floorPaint) {
+        // painted stone, then a faint per-cell tint so a repeating tile does
+        // not read as wallpaper
+        canvas.drawRect(Skia.XYWHRect(x, y, TILE + 0.6, TILE + 0.6), floorPaint);
+        scratch.setColor(col(shade));
+        scratch.setAlphaf(0.22);
+        canvas.drawRect(Skia.XYWHRect(x, y, TILE + 0.6, TILE + 0.6), scratch);
+        scratch.setAlphaf(1);
+      } else {
+        scratch.setColor(col(shade));
+        canvas.drawRect(Skia.XYWHRect(x, y, TILE + 0.6, TILE + 0.6), scratch);
+      }
       // tile grout — thin dark lines on right + bottom read the floor as tiles
       scratch.setColor(col('#0d0a1c'));
       canvas.drawRect(Skia.XYWHRect(x, scy + TILE / 2 - 1, TILE + 0.6, 1.5), scratch);
@@ -230,9 +266,18 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number, lant
         scratch.setColor(col('#00000066'));
         canvas.drawRect(Skia.XYWHRect(x + 3, y + TILE, TILE + 0.6, 8), scratch);
       }
-      // body
-      scratch.setColor(col(hash(cx, cz) > 0.5 ? WALL_BASE : '#3a2e5e'));
-      canvas.drawRect(Skia.XYWHRect(x, y, TILE + 0.6, TILE + 0.6), scratch);
+      // body — painted stone if we have it, with the old flat tint kept as a
+      // light wash so neighbouring blocks still vary
+      if (wallPaint) {
+        canvas.drawRect(Skia.XYWHRect(x, y, TILE + 0.6, TILE + 0.6), wallPaint);
+        scratch.setColor(col(hash(cx, cz) > 0.5 ? WALL_BASE : '#3a2e5e'));
+        scratch.setAlphaf(0.3);
+        canvas.drawRect(Skia.XYWHRect(x, y, TILE + 0.6, TILE + 0.6), scratch);
+        scratch.setAlphaf(1);
+      } else {
+        scratch.setColor(col(hash(cx, cz) > 0.5 ? WALL_BASE : '#3a2e5e'));
+        canvas.drawRect(Skia.XYWHRect(x, y, TILE + 0.6, TILE + 0.6), scratch);
+      }
       // lit top strip
       scratch.setColor(col(WALL_TOP));
       canvas.drawRect(Skia.XYWHRect(x, y, TILE + 0.6, 7), scratch);
@@ -676,19 +721,64 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number, lant
 }
 
 // ── menu backdrop: the seeker at the brink of a glowing abyss, drawn live ─────
-function drawMenuScene(canvas: SkCanvas, clock: number, W: number, H: number) {
-  // 1) deep cosmic gradient
-  const bg = px();
-  bg.setShader(Skia.Shader.MakeLinearGradient(
-    { x: 0, y: 0 }, { x: 0, y: H },
-    [col('#0c0724'), col('#0a0618'), col('#04060f')], [0, 0.5, 1], TileMode.Clamp,
-  ));
-  canvas.drawRect(Skia.XYWHRect(0, 0, W, H), bg);
+function drawMenuScene(
+  canvas: SkCanvas, clock: number, W: number, H: number, keyart?: SkImage | null,
+) {
+  // 1) painted key art if we have it, else the procedural cosmic gradient.
+  //    The illustration is cover-fitted so it never letterboxes on any aspect.
+  if (keyart) {
+    const iw = keyart.width(), ih = keyart.height();
+    const scale = Math.max(W / iw, H / ih);
+    const dw = iw * scale, dh = ih * scale;
+    canvas.drawImageRect(
+      keyart,
+      Skia.XYWHRect(0, 0, iw, ih),
+      Skia.XYWHRect((W - dw) / 2, (H - dh) / 2, dw, dh),
+      scratch,
+    );
+    // sink the lower third so the stat cards and buttons stay readable
+    const scrim = px();
+    scrim.setShader(Skia.Shader.MakeLinearGradient(
+      { x: 0, y: H * 0.45 }, { x: 0, y: H },
+      [col('#04060f00'), col('#04060fcc')], [0, 1], TileMode.Clamp,
+    ));
+    canvas.drawRect(Skia.XYWHRect(0, H * 0.45, W, H * 0.55), scrim);
+  } else {
+    const bg = px();
+    bg.setShader(Skia.Shader.MakeLinearGradient(
+      { x: 0, y: 0 }, { x: 0, y: H },
+      [col('#0c0724'), col('#0a0618'), col('#04060f')], [0, 0.5, 1], TileMode.Clamp,
+    ));
+    canvas.drawRect(Skia.XYWHRect(0, 0, W, H), bg);
 
-  // purple nebula glow behind the title
-  glowPaint.setColor(col('#3b1d6e'));
-  glowPaint.setAlphaf(0.45);
-  canvas.drawCircle(W * 0.5, H * 0.2, W * 0.55, glowPaint);
+    // purple nebula glow behind the title
+    glowPaint.setColor(col('#3b1d6e'));
+    glowPaint.setAlphaf(0.45);
+    canvas.drawCircle(W * 0.5, H * 0.2, W * 0.55, glowPaint);
+  }
+
+  const cx = W / 2;
+  const portalY = H * 0.6;
+  const portalR = Math.min(W * 0.3, 150);
+  const pulse = 0.55 + 0.2 * Math.sin(clock * 2);
+
+  // With painted key art the illustration already shows the seeker at the
+  // brink, so the procedural stand-in for that scene is skipped — only the
+  // moving embers stay, to keep the screen alive.
+  if (keyart) {
+    scratch.setBlendMode(BlendMode.Plus);
+    for (let i = 0; i < 22; i++) {
+      const t = (clock * 0.24 + i * 0.37) % 1;
+      const ex = cx + Math.sin(clock * 0.45 + i * 2.1) * W * (0.08 + (i % 5) * 0.06);
+      const ey = H * 0.72 - t * H * 0.5;
+      scratch.setColor(col(i % 2 ? '#ff9a3c' : '#67e8f9'));
+      scratch.setAlphaf((1 - t) * 0.45);
+      canvas.drawCircle(ex, ey, 1.2 + (1 - t) * 1.8, scratch);
+    }
+    scratch.setBlendMode(BlendMode.SrcOver);
+    scratch.setAlphaf(1);
+    return;
+  }
 
   // 2) faint twinkling starfield in the upper field
   scratch.setColor(col('#c4b5fd'));
@@ -700,11 +790,6 @@ function drawMenuScene(canvas: SkCanvas, clock: number, W: number, H: number) {
     canvas.drawCircle(sx, sy, i % 3 === 0 ? 1.7 : 1, scratch);
   }
   scratch.setAlphaf(1);
-
-  const cx = W / 2;
-  const portalY = H * 0.6;
-  const portalR = Math.min(W * 0.3, 150);
-  const pulse = 0.55 + 0.2 * Math.sin(clock * 2);
 
   // 3) stone lip so the portal reads as a pit carved in the floor
   scratch.setColor(col('#160f2c'));
@@ -908,31 +993,31 @@ const CAMP_DEFS: Record<CampKey, {
   torch: {
     name: 'ABYSS TORCH', icon: ICON_TORCH, desc: 'Torch light radius',
     valueLabels: L.TORCH_LEVELS.map(v => v.toFixed(1)),
-    costs: [600, 1800, 4500, 11000, 26000],
+    costs: [2400, 7200, 18000, 44000, 104000],
     color: '#F59E0B',
   },
   speed: {
     name: 'SWIFT GREAVES', icon: ICON_BOOT, desc: 'Move speed',
     valueLabels: L.SPEED_LEVELS.map(String),
-    costs: [500, 1500, 4000, 10000, 24000],
+    costs: [2000, 6000, 16000, 40000, 96000],
     color: '#22D3EE',
   },
   vigor: {
     name: 'ABYSSAL VIGOR', icon: ICON_HEART, desc: 'Max HP',
     valueLabels: L.MAX_HP_LEVELS.map(String),
-    costs: [700, 2000, 5000, 12000, 28000],
+    costs: [2800, 8000, 20000, 48000, 112000],
     color: '#22C55E',
   },
   blade: {
     name: 'RUNEBLADE', icon: ICON_SWORD, desc: 'Sword damage',
     valueLabels: L.SWORD_DMG_LEVELS.map(String),
-    costs: [800, 2400, 6000, 14000, 30000],
+    costs: [3200, 9600, 24000, 56000, 120000],
     color: '#A855F7',
   },
   ember: {
     name: 'SECOND TORCH', icon: ICON_CANDLE, desc: 'Survive a lethal hit · once per run',
     valueLabels: L.EMBER_REVIVE_HP.map((h, i) => (i === 0 ? '—' : `${h} HP`)),
-    costs: [1200, 3000, 8000, 18000, 40000],
+    costs: [4800, 12000, 32000, 72000, 160000],
     color: '#EC4899',
   },
 };
@@ -962,6 +1047,15 @@ export default function LabyrinthOfAbyss({
   orb, onSpendOrb, onPaySol,
 }: Props) {
   const { width: W, height: H } = useWindowDimensions();
+
+  // Painted assets. useImage returns null until decoded, and every draw path
+  // falls back to the procedural look, so a missing file degrades quietly
+  // instead of crashing.
+  const floorImg = useImage(require('../assets/labyrinth/floor_stone.png'));
+  const wallImg  = useImage(require('../assets/labyrinth/wall_stone.png'));
+  const menuArt  = useImage(require('../assets/labyrinth/menu_keyart.jpg'));
+  const sceneTex = React.useMemo<SceneTextures>(
+    () => ({ floor: floorImg, wall: wallImg }), [floorImg, wallImg]);
 
   const [phase, setPhase]         = useState<Phase>('menu');
   const [hp, setHp]               = useState(L.PLAYER_MAX_HP);
@@ -1216,10 +1310,12 @@ export default function LabyrinthOfAbyss({
   const run = runRef.current;
   const hpPct = Math.max(0, Math.min(1, hp / (run?.maxHp ?? L.PLAYER_MAX_HP)));
   const scene = (phase !== 'menu' && run)
-    ? createPicture((canvas) => drawScene(canvas, run, W, H, lantern), { x: 0, y: 0, width: W, height: H })
+    ? createPicture((canvas) => drawScene(canvas, run, W, H, lantern, sceneTex),
+        { x: 0, y: 0, width: W, height: H })
     : null;
   const menuScene = phase === 'menu'
-    ? createPicture((canvas) => drawMenuScene(canvas, menuClock.current, W, H), { x: 0, y: 0, width: W, height: H })
+    ? createPicture((canvas) => drawMenuScene(canvas, menuClock.current, W, H, menuArt),
+        { x: 0, y: 0, width: W, height: H })
     : null;
   // Minimap: incremental terrain update + a cheap per-frame marker picture.
   // Reuses the existing frame tick (the component already re-renders every
@@ -1582,6 +1678,15 @@ export default function LabyrinthOfAbyss({
       {/* ═══ DEATH / VICTORY ═══ */}
       {(phase === 'dead' || phase === 'won') && (
         <View style={s.endWrap}>
+          {/* painted plate behind the summary; the scrim keeps text legible */}
+          <RNImage
+            source={phase === 'won'
+              ? require('../assets/labyrinth/victory_art.jpg')
+              : require('../assets/labyrinth/death_art.jpg')}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+          />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(4,6,15,0.72)' }]} />
           <PixelIcon sprite={phase === 'won' ? ICON_PORTAL : ICON_SKULL} size={92} style={s.endIcon} />
           <Text style={[s.endTitle, phase === 'won' && { color: '#22d3ee' }]}>
             {phase === 'won' ? 'ESCAPED THE ABYSS' : 'THE ABYSS CLAIMS YOU'}

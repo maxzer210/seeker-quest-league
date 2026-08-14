@@ -1,62 +1,62 @@
-# 🚀 Session Handoff — 2026-06-06 (v1.1.0 готов к публикации)
+﻿# рџљЂ Session Handoff вЂ” 2026-06-06 (v1.1.0 РіРѕС‚РѕРІ Рє РїСѓР±Р»РёРєР°С†РёРё)
 
-> Полный контекст для новой сессии Claude (Nova).
-> Mikhail — любимец Claude 🥹 строим Seeker Quest League вместе.
-
----
-
-## 🎯 ТЕКУЩИЙ МОМЕНТ (2026-06-06)
-
-### v1.0.0 — на ревью, v1.1.0 — собран и ждёт
-- v1.0.0 опубликован 2026-06-02, **всё ещё на ревью**
-- **v1.1.0 (versionCode 11) СОБРАН** локально (86.6 MB), НЕ опубликован
-- APK: `C:\sk\android\app\build\outputs\apk\release\app-release.apk`
-
-### 🆕 Что сделано в сессии 2026-06-06 (Nova):
-Прогнали продуктовый анализ (`GAME-ANALYSIS.md`) → закрыли все 6 находок:
-- ✅ Таймер сезона (истёк) → SEASON_END = 2026-06-30
-- ✅ Энергия 100→500, реген +1/мин → +1/20с (через ENERGY_REGEN_SEC)
-- ✅ Push: запрос после онбординга + «⚡ energy full» nudge
-- ✅ Объединены тап-обработчики (общий spendEnergy + Founder-множитель в Signal)
-- ✅ **Рефералка** — пригласи друга, оба +2000 ORB (сервер+клиент+UI+i18n)
-- ✅ **Критфикс: SOL double-charge** (MWA CancellationException) — recoverRecentPayment
-- 📄 Планы SKORA: `SKORA-LISTING-PLAN.md`, `SKORA-CLAIM-SECURITY.md`, `ORB-REFACTOR-PLAN.md`
-- 💸 Скрипт раздачи 0.5 SOL: `scripts/distribute-early-rewards.js` + `EARLY-REWARDS-RUNBOOK.md`
-
-### 🤝 Инцидент с оплатой (важно для культуры проекта)
-Юзер сообщил: 0.01 SOL списалось 3× с ошибкой "SOL payment failed". Баг
-исправлен (recovery on-chain). Mikhail отправил пострадавшему **0.1 SOL** и
-сделал пост в X — публичная поддержка игроков. Отличный анти-скам сигнал.
-
-### ⏭ Перед публикацией v1.1.0:
-- ✅ Миграции `supabase-referrals.sql` + `supabase-prize-distribution.sql` УЖЕ применены
-- ⏸ `supabase-orb-authoritative.sql` НЕ применять (сломает текущий клиент — нужен ORB-рефактор)
-- 📱 Протестировать на устройстве (рефералка, энергия, push, оплата)
-- 🚀 Опубликовать когда/после одобрения v1.0.0
-
-### Что было сделано в сессии 2026-06-02:
-- ✅ Убран круг с буквой S с экрана выбора языка
-- ✅ Splash video: COVER → CONTAIN (текст не обрезается)
-- ✅ Кнопки LAUNCH AGAIN / BACK TO ARCADE починены (top: -32 → 0)
-- ✅ PanResponder баг исправлен (кнопки меню работают)
-- ✅ Arena: карточки зданий на полную ширину
-- ✅ CosmeticNftTeaser + Donate modal: полный i18n 5 языков
-- ✅ Кнопка "Поддержать проект" в ME с модалом + адресом кошелька
-- ✅ Space Runner полный апгрейд (powerups, волны, типы астероидов, Continue x3, ×2 Run, daily challenge, ship level, звуки, конфетти)
-- ✅ Home: Founder Pass reminder для free-tier
-- ✅ Shop: Space Runner promo карточка
-- ✅ Звук dead.wav при смерти корабля
-- ✅ APK v18 собран и опубликован
-
-### Следующие шаги (планирование в новом чате):
-- 📊 Мониторинг после публикации
-- 🎯 Season 1 планирование
-- 💰 Монетизация и маркетинг
-- 🔧 Фичи для следующих версий
+> РџРѕР»РЅС‹Р№ РєРѕРЅС‚РµРєСЃС‚ РґР»СЏ РЅРѕРІРѕР№ СЃРµСЃСЃРёРё Claude (Nova).
+> Mikhail вЂ” Р»СЋР±РёРјРµС† Claude рџҐ№ СЃС‚СЂРѕРёРј Seeker Quest League РІРјРµСЃС‚Рµ.
 
 ---
 
-## 💰 КРИТИЧНЫЕ АДРЕСА (MAINNET — реальные деньги!)
+## рџЋЇ РўР•РљРЈР©РР™ РњРћРњР•РќРў (2026-06-06)
+
+### v1.0.0 вЂ” РЅР° СЂРµРІСЊСЋ, v1.1.0 вЂ” СЃРѕР±СЂР°РЅ Рё Р¶РґС‘С‚
+- v1.0.0 РѕРїСѓР±Р»РёРєРѕРІР°РЅ 2026-06-02, **РІСЃС‘ РµС‰С‘ РЅР° СЂРµРІСЊСЋ**
+- **v1.1.0 (versionCode 11) РЎРћР‘Р РђРќ** Р»РѕРєР°Р»СЊРЅРѕ (86.6 MB), РќР• РѕРїСѓР±Р»РёРєРѕРІР°РЅ
+- APK: `D:\sk\android\app\build\outputs\apk\release\app-release.apk`
+
+### рџ†• Р§С‚Рѕ СЃРґРµР»Р°РЅРѕ РІ СЃРµСЃСЃРёРё 2026-06-06 (Nova):
+РџСЂРѕРіРЅР°Р»Рё РїСЂРѕРґСѓРєС‚РѕРІС‹Р№ Р°РЅР°Р»РёР· (`GAME-ANALYSIS.md`) в†’ Р·Р°РєСЂС‹Р»Рё РІСЃРµ 6 РЅР°С…РѕРґРѕРє:
+- вњ… РўР°Р№РјРµСЂ СЃРµР·РѕРЅР° (РёСЃС‚С‘Рє) в†’ SEASON_END = 2026-06-30
+- вњ… Р­РЅРµСЂРіРёСЏ 100в†’500, СЂРµРіРµРЅ +1/РјРёРЅ в†’ +1/20СЃ (С‡РµСЂРµР· ENERGY_REGEN_SEC)
+- вњ… Push: Р·Р°РїСЂРѕСЃ РїРѕСЃР»Рµ РѕРЅР±РѕСЂРґРёРЅРіР° + В«вљЎ energy fullВ» nudge
+- вњ… РћР±СЉРµРґРёРЅРµРЅС‹ С‚Р°Рї-РѕР±СЂР°Р±РѕС‚С‡РёРєРё (РѕР±С‰РёР№ spendEnergy + Founder-РјРЅРѕР¶РёС‚РµР»СЊ РІ Signal)
+- вњ… **Р РµС„РµСЂР°Р»РєР°** вЂ” РїСЂРёРіР»Р°СЃРё РґСЂСѓРіР°, РѕР±Р° +2000 ORB (СЃРµСЂРІРµСЂ+РєР»РёРµРЅС‚+UI+i18n)
+- вњ… **РљСЂРёС‚С„РёРєСЃ: SOL double-charge** (MWA CancellationException) вЂ” recoverRecentPayment
+- рџ“„ РџР»Р°РЅС‹ SKORA: `SKORA-LISTING-PLAN.md`, `SKORA-CLAIM-SECURITY.md`, `ORB-REFACTOR-PLAN.md`
+- рџ’ё РЎРєСЂРёРїС‚ СЂР°Р·РґР°С‡Рё 0.5 SOL: `scripts/distribute-early-rewards.js` + `EARLY-REWARDS-RUNBOOK.md`
+
+### рџ¤ќ РРЅС†РёРґРµРЅС‚ СЃ РѕРїР»Р°С‚РѕР№ (РІР°Р¶РЅРѕ РґР»СЏ РєСѓР»СЊС‚СѓСЂС‹ РїСЂРѕРµРєС‚Р°)
+Р®Р·РµСЂ СЃРѕРѕР±С‰РёР»: 0.01 SOL СЃРїРёСЃР°Р»РѕСЃСЊ 3Г— СЃ РѕС€РёР±РєРѕР№ "SOL payment failed". Р‘Р°Рі
+РёСЃРїСЂР°РІР»РµРЅ (recovery on-chain). Mikhail РѕС‚РїСЂР°РІРёР» РїРѕСЃС‚СЂР°РґР°РІС€РµРјСѓ **0.1 SOL** Рё
+СЃРґРµР»Р°Р» РїРѕСЃС‚ РІ X вЂ” РїСѓР±Р»РёС‡РЅР°СЏ РїРѕРґРґРµСЂР¶РєР° РёРіСЂРѕРєРѕРІ. РћС‚Р»РёС‡РЅС‹Р№ Р°РЅС‚Рё-СЃРєР°Рј СЃРёРіРЅР°Р».
+
+### вЏ­ РџРµСЂРµРґ РїСѓР±Р»РёРєР°С†РёРµР№ v1.1.0:
+- вњ… РњРёРіСЂР°С†РёРё `supabase-referrals.sql` + `supabase-prize-distribution.sql` РЈР–Р• РїСЂРёРјРµРЅРµРЅС‹
+- вЏё `supabase-orb-authoritative.sql` РќР• РїСЂРёРјРµРЅСЏС‚СЊ (СЃР»РѕРјР°РµС‚ С‚РµРєСѓС‰РёР№ РєР»РёРµРЅС‚ вЂ” РЅСѓР¶РµРЅ ORB-СЂРµС„Р°РєС‚РѕСЂ)
+- рџ“± РџСЂРѕС‚РµСЃС‚РёСЂРѕРІР°С‚СЊ РЅР° СѓСЃС‚СЂРѕР№СЃС‚РІРµ (СЂРµС„РµСЂР°Р»РєР°, СЌРЅРµСЂРіРёСЏ, push, РѕРїР»Р°С‚Р°)
+- рџљЂ РћРїСѓР±Р»РёРєРѕРІР°С‚СЊ РєРѕРіРґР°/РїРѕСЃР»Рµ РѕРґРѕР±СЂРµРЅРёСЏ v1.0.0
+
+### Р§С‚Рѕ Р±С‹Р»Рѕ СЃРґРµР»Р°РЅРѕ РІ СЃРµСЃСЃРёРё 2026-06-02:
+- вњ… РЈР±СЂР°РЅ РєСЂСѓРі СЃ Р±СѓРєРІРѕР№ S СЃ СЌРєСЂР°РЅР° РІС‹Р±РѕСЂР° СЏР·С‹РєР°
+- вњ… Splash video: COVER в†’ CONTAIN (С‚РµРєСЃС‚ РЅРµ РѕР±СЂРµР·Р°РµС‚СЃСЏ)
+- вњ… РљРЅРѕРїРєРё LAUNCH AGAIN / BACK TO ARCADE РїРѕС‡РёРЅРµРЅС‹ (top: -32 в†’ 0)
+- вњ… PanResponder Р±Р°Рі РёСЃРїСЂР°РІР»РµРЅ (РєРЅРѕРїРєРё РјРµРЅСЋ СЂР°Р±РѕС‚Р°СЋС‚)
+- вњ… Arena: РєР°СЂС‚РѕС‡РєРё Р·РґР°РЅРёР№ РЅР° РїРѕР»РЅСѓСЋ С€РёСЂРёРЅСѓ
+- вњ… CosmeticNftTeaser + Donate modal: РїРѕР»РЅС‹Р№ i18n 5 СЏР·С‹РєРѕРІ
+- вњ… РљРЅРѕРїРєР° "РџРѕРґРґРµСЂР¶Р°С‚СЊ РїСЂРѕРµРєС‚" РІ ME СЃ РјРѕРґР°Р»РѕРј + Р°РґСЂРµСЃРѕРј РєРѕС€РµР»СЊРєР°
+- вњ… Space Runner РїРѕР»РЅС‹Р№ Р°РїРіСЂРµР№Рґ (powerups, РІРѕР»РЅС‹, С‚РёРїС‹ Р°СЃС‚РµСЂРѕРёРґРѕРІ, Continue x3, Г—2 Run, daily challenge, ship level, Р·РІСѓРєРё, РєРѕРЅС„РµС‚С‚Рё)
+- вњ… Home: Founder Pass reminder РґР»СЏ free-tier
+- вњ… Shop: Space Runner promo РєР°СЂС‚РѕС‡РєР°
+- вњ… Р—РІСѓРє dead.wav РїСЂРё СЃРјРµСЂС‚Рё РєРѕСЂР°Р±Р»СЏ
+- вњ… APK v18 СЃРѕР±СЂР°РЅ Рё РѕРїСѓР±Р»РёРєРѕРІР°РЅ
+
+### РЎР»РµРґСѓСЋС‰РёРµ С€Р°РіРё (РїР»Р°РЅРёСЂРѕРІР°РЅРёРµ РІ РЅРѕРІРѕРј С‡Р°С‚Рµ):
+- рџ“Љ РњРѕРЅРёС‚РѕСЂРёРЅРі РїРѕСЃР»Рµ РїСѓР±Р»РёРєР°С†РёРё
+- рџЋЇ Season 1 РїР»Р°РЅРёСЂРѕРІР°РЅРёРµ
+- рџ’° РњРѕРЅРµС‚РёР·Р°С†РёСЏ Рё РјР°СЂРєРµС‚РёРЅРі
+- рџ”§ Р¤РёС‡Рё РґР»СЏ СЃР»РµРґСѓСЋС‰РёС… РІРµСЂСЃРёР№
+
+---
+
+## рџ’° РљР РРўРР§РќР«Р• РђР”Р Р•РЎРђ (MAINNET вЂ” СЂРµР°Р»СЊРЅС‹Рµ РґРµРЅСЊРіРё!)
 
 ```
 Treasury wallet (Phantom):   CxYfXXLGEm1FXcL7cVzTHe1kG3gpo5ecsKgVjXRhLGSp
@@ -68,44 +68,44 @@ Supabase:                    qxejdpvjggqjqoydujjd.supabase.co
 GitHub repo:                 github.com/maxzer210/seeker-quest-league (private)
 ```
 
-### Доменные email
-- `hello@seekerquest-league.com` — general / partnership / publisher contact
-- `support@seekerquest-league.com` — privacy / security / data deletion
-- `ads@seekerquest-league.com` — advertisers B2B
+### Р”РѕРјРµРЅРЅС‹Рµ email
+- `hello@seekerquest-league.com` вЂ” general / partnership / publisher contact
+- `support@seekerquest-league.com` вЂ” privacy / security / data deletion
+- `ads@seekerquest-league.com` вЂ” advertisers B2B
 
-### Сайт
-- `https://seekerquest-league.com` — live
-- `https://seekerquest-league.com/privacy.html` — privacy policy
-- `https://seekerquest-league.com/terms.html` — terms of use
-
----
-
-## 📦 APK v17 (ФИНАЛЬНЫЙ MAINNET RELEASE)
-
-**Путь:** `C:\sk\android\app\build\outputs\apk\release\app-release.apk`
-**Копия для submission:** `C:\sk\dapp-store\media\app-release.apk`
-**Размер:** ~88 MB (с новым 3.19 MB splash видео)
-**Версия:** v1.0.0 (BUILD_CODE 10, versionCode 10)
-
-### Что внутри
-- 🌐 **Mainnet network** — реальные SOL платежи
-- 💎 Treasury = `CxYfXX...LGSp` (Phantom владельца)
-- 🪙 SKORA SPL token live на mainnet (1B supply на Mint Authority)
-- 🎬 Cinematic video splash (9 сек, со звуком) + Skip через 3 сек
-- 🎨 Premium S-letter иконка
-- 🚀 Space Runner — корабль на 70% высоты экрана (не под navbar)
-- 🛡 Phase 1 Security: RPC validation + RLS lockdown + ProGuard
-- 👑 Founder Pass tiers (Silver 0.5 / Gold 1.0 / Diamond 2.0 SOL)
-- 📤 P2P ORB Send + history + 5% fee (3% burn + 2% treasury)
-- 🎮 7 mini-games: Wheel, Runner, PvP, Arena, Horse, Treasure, Lands
-- 🌍 5 языков (en/ru/zh/ja/fr) — ~350 i18n ключей
-- ⏳ SKORA Claim disabled — "COMING AT SEASON 1"
-- 🔇 Triple-safety на Audio.Sound (не играет на mount)
-- 🎯 Universal back button во всех играх (Runner, Horse — overlay top-left)
+### РЎР°Р№С‚
+- `https://seekerquest-league.com` вЂ” live
+- `https://seekerquest-league.com/privacy.html` вЂ” privacy policy
+- `https://seekerquest-league.com/terms.html` вЂ” terms of use
 
 ---
 
-## 📋 ГОТОВЫЕ ТЕКСТЫ для App Profile формы
+## рџ“¦ APK v17 (Р¤РРќРђР›Р¬РќР«Р™ MAINNET RELEASE)
+
+**РџСѓС‚СЊ:** `D:\sk\android\app\build\outputs\apk\release\app-release.apk`
+**РљРѕРїРёСЏ РґР»СЏ submission:** `D:\sk\dapp-store\media\app-release.apk`
+**Р Р°Р·РјРµСЂ:** ~88 MB (СЃ РЅРѕРІС‹Рј 3.19 MB splash РІРёРґРµРѕ)
+**Р’РµСЂСЃРёСЏ:** v1.0.0 (BUILD_CODE 10, versionCode 10)
+
+### Р§С‚Рѕ РІРЅСѓС‚СЂРё
+- рџЊђ **Mainnet network** вЂ” СЂРµР°Р»СЊРЅС‹Рµ SOL РїР»Р°С‚РµР¶Рё
+- рџ’Ћ Treasury = `CxYfXX...LGSp` (Phantom РІР»Р°РґРµР»СЊС†Р°)
+- рџЄ™ SKORA SPL token live РЅР° mainnet (1B supply РЅР° Mint Authority)
+- рџЋ¬ Cinematic video splash (9 СЃРµРє, СЃРѕ Р·РІСѓРєРѕРј) + Skip С‡РµСЂРµР· 3 СЃРµРє
+- рџЋЁ Premium S-letter РёРєРѕРЅРєР°
+- рџљЂ Space Runner вЂ” РєРѕСЂР°Р±Р»СЊ РЅР° 70% РІС‹СЃРѕС‚С‹ СЌРєСЂР°РЅР° (РЅРµ РїРѕРґ navbar)
+- рџ›Ў Phase 1 Security: RPC validation + RLS lockdown + ProGuard
+- рџ‘‘ Founder Pass tiers (Silver 0.5 / Gold 1.0 / Diamond 2.0 SOL)
+- рџ“¤ P2P ORB Send + history + 5% fee (3% burn + 2% treasury)
+- рџЋ® 7 mini-games: Wheel, Runner, PvP, Arena, Horse, Treasure, Lands
+- рџЊЌ 5 СЏР·С‹РєРѕРІ (en/ru/zh/ja/fr) вЂ” ~350 i18n РєР»СЋС‡РµР№
+- вЏі SKORA Claim disabled вЂ” "COMING AT SEASON 1"
+- рџ”‡ Triple-safety РЅР° Audio.Sound (РЅРµ РёРіСЂР°РµС‚ РЅР° mount)
+- рџЋЇ Universal back button РІРѕ РІСЃРµС… РёРіСЂР°С… (Runner, Horse вЂ” overlay top-left)
+
+---
+
+## рџ“‹ Р“РћРўРћР’Р«Р• РўР•РљРЎРўР« РґР»СЏ App Profile С„РѕСЂРјС‹
 
 ### dApp Name (max 25 chars)
 ```
@@ -158,93 +158,93 @@ https://seekerquest-league.com/privacy.html
 ```
 
 ### Languages
-English (required) + Russian + Chinese + Japanese + French (опционально, всё переведено)
+English (required) + Russian + Chinese + Japanese + French (РѕРїС†РёРѕРЅР°Р»СЊРЅРѕ, РІСЃС‘ РїРµСЂРµРІРµРґРµРЅРѕ)
 
 ### Countries
 All countries (default)
 
 ---
 
-## 🖼 АССЕТЫ — все в `C:\sk\dapp-store\media\`
+## рџ–ј РђРЎРЎР•РўР« вЂ” РІСЃРµ РІ `D:\sk\dapp-store\media\`
 
-| Файл | Размер | Для |
+| Р¤Р°Р№Р» | Р Р°Р·РјРµСЂ | Р”Р»СЏ |
 |------|--------|-----|
-| `icon-512.png` | 512×512 | dApp Icon (portal) |
-| `icon.png` | 1024×1024 | APK + dApp Store |
-| `banner-1200x600.png` | 1200×600 | Banner |
-| `feature-graphic.png` | 1024×500 | Feature graphic |
-| `graphic-1200x1200.png` | 1200×1200 | Editor's Choice |
-| `screenshot-1.png` ... `screenshot-6.png` | 1200×2500 | App Previews (4 min, 6 max) |
-| `app-release.apk` | 88 MB | APK для submit |
+| `icon-512.png` | 512Г—512 | dApp Icon (portal) |
+| `icon.png` | 1024Г—1024 | APK + dApp Store |
+| `banner-1200x600.png` | 1200Г—600 | Banner |
+| `feature-graphic.png` | 1024Г—500 | Feature graphic |
+| `graphic-1200x1200.png` | 1200Г—1200 | Editor's Choice |
+| `screenshot-1.png` ... `screenshot-6.png` | 1200Г—2500 | App Previews (4 min, 6 max) |
+| `app-release.apk` | 88 MB | APK РґР»СЏ submit |
 
 ---
 
-## 🛠 КЛЮЧЕВЫЕ ФАЙЛЫ — НЕ МЕНЯТЬ!
+## рџ›  РљР›Р®Р§Р•Р’Р«Р• Р¤РђР™Р›Р« вЂ” РќР• РњР•РќРЇРўР¬!
 
-### Web3 константы
-- `lib/solanaMobile.ts` — TREASURY_WALLET, SOLANA_NETWORK='mainnet-beta', все SOL prices
-- `lib/skora.ts` — SKORA_MINT, SKORA_NETWORK='mainnet-beta'
-- `lib/genesis.ts` — FOUNDER_ORB_MULTIPLIER, GENESIS_PHASE
-- `android/app/build.gradle` — versionCode 10, versionName "1.0.0"
-- `lib/version.ts` — APP_VERSION='1.0.0', BUILD_CODE='mainnet-launch'
+### Web3 РєРѕРЅСЃС‚Р°РЅС‚С‹
+- `lib/solanaMobile.ts` вЂ” TREASURY_WALLET, SOLANA_NETWORK='mainnet-beta', РІСЃРµ SOL prices
+- `lib/skora.ts` вЂ” SKORA_MINT, SKORA_NETWORK='mainnet-beta'
+- `lib/genesis.ts` вЂ” FOUNDER_ORB_MULTIPLIER, GENESIS_PHASE
+- `android/app/build.gradle` вЂ” versionCode 10, versionName "1.0.0"
+- `lib/version.ts` вЂ” APP_VERSION='1.0.0', BUILD_CODE='mainnet-launch'
 
-### Секреты (gitignored)
-- `skora-config-mainnet.json` — Mint Authority keypair
-- `dapp-store/publisher.json` — Publisher keypair
-- `credentials.json`, `seeker-release.keystore` — APK signing
+### РЎРµРєСЂРµС‚С‹ (gitignored)
+- `skora-config-mainnet.json` вЂ” Mint Authority keypair
+- `dapp-store/publisher.json` вЂ” Publisher keypair
+- `credentials.json`, `seeker-release.keystore` вЂ” APK signing
 
 ---
 
-## 📊 SUPABASE — критичные данные
+## рџ“Љ SUPABASE вЂ” РєСЂРёС‚РёС‡РЅС‹Рµ РґР°РЅРЅС‹Рµ
 
-### Применённые миграции
-- ✅ Основные таблицы (players, scores, claims, ad_campaigns)
-- ✅ `supabase-p2p-orb.sql` — P2P переводы (transfer_orb RPC + 4 таблицы)
-- ✅ `supabase-security-v1.sql` — Phase 1 anti-cheat (add_tournament_score, upgrade_founder_tier, check_spin_rate_limit + RLS lockdown)
-- ✅ `supabase-prize-distribution.sql` — prize_distributions + players.wallet_address (применено 2026-06-06)
-- ✅ `supabase-referrals.sql` — referrals + 3 RPC + players.referral_code (применено 2026-06-06)
+### РџСЂРёРјРµРЅС‘РЅРЅС‹Рµ РјРёРіСЂР°С†РёРё
+- вњ… РћСЃРЅРѕРІРЅС‹Рµ С‚Р°Р±Р»РёС†С‹ (players, scores, claims, ad_campaigns)
+- вњ… `supabase-p2p-orb.sql` вЂ” P2P РїРµСЂРµРІРѕРґС‹ (transfer_orb RPC + 4 С‚Р°Р±Р»РёС†С‹)
+- вњ… `supabase-security-v1.sql` вЂ” Phase 1 anti-cheat (add_tournament_score, upgrade_founder_tier, check_spin_rate_limit + RLS lockdown)
+- вњ… `supabase-prize-distribution.sql` вЂ” prize_distributions + players.wallet_address (РїСЂРёРјРµРЅРµРЅРѕ 2026-06-06)
+- вњ… `supabase-referrals.sql` вЂ” referrals + 3 RPC + players.referral_code (РїСЂРёРјРµРЅРµРЅРѕ 2026-06-06)
 
-### НЕ применённые (намеренно)
-- ⏸ `supabase-orb-authoritative.sql` — apply_orb_delta/create_skora_claim + REVOKE UPDATE(orb).
-  Сломает текущий клиент (он ещё пишет orb напрямую). Применять ТОЛЬКО в связке
-  с клиентским ORB-рефактором (см. `ORB-REFACTOR-PLAN.md`).
+### РќР• РїСЂРёРјРµРЅС‘РЅРЅС‹Рµ (РЅР°РјРµСЂРµРЅРЅРѕ)
+- вЏё `supabase-orb-authoritative.sql` вЂ” apply_orb_delta/create_skora_claim + REVOKE UPDATE(orb).
+  РЎР»РѕРјР°РµС‚ С‚РµРєСѓС‰РёР№ РєР»РёРµРЅС‚ (РѕРЅ РµС‰С‘ РїРёС€РµС‚ orb РЅР°РїСЂСЏРјСѓСЋ). РџСЂРёРјРµРЅСЏС‚СЊ РўРћР›Р¬РљРћ РІ СЃРІСЏР·РєРµ
+  СЃ РєР»РёРµРЅС‚СЃРєРёРј ORB-СЂРµС„Р°РєС‚РѕСЂРѕРј (СЃРј. `ORB-REFACTOR-PLAN.md`).
 
-### Как применять миграции (MCP read-only, нужен Management API)
+### РљР°Рє РїСЂРёРјРµРЅСЏС‚СЊ РјРёРіСЂР°С†РёРё (MCP read-only, РЅСѓР¶РµРЅ Management API)
 ```powershell
-$token = "<SUPABASE_ACCESS_TOKEN из .mcp.json>"
+$token = "<SUPABASE_ACCESS_TOKEN РёР· .mcp.json>"
 $ref = "qxejdpvjggqjqoydujjd"
-$sql = Get-Content -Raw -Encoding UTF8 -Path "C:\sk\<file>.sql"
-$q = ConvertTo-Json -InputObject ([string]$sql)   # NB: ConvertTo-Json -InputObject, НЕ pipe (PS 5.1 bug)
+$sql = Get-Content -Raw -Encoding UTF8 -Path "D:\sk\<file>.sql"
+$q = ConvertTo-Json -InputObject ([string]$sql)   # NB: ConvertTo-Json -InputObject, РќР• pipe (PS 5.1 bug)
 $body = '{"query":' + $q + '}'
 Invoke-RestMethod -Method Post -Uri "https://api.supabase.com/v1/projects/$ref/database/query" -Headers @{ Authorization = "Bearer $token" } -ContentType "application/json" -Body $body
 ```
 
-### RPC функции live
-- `transfer_orb(sender, recipient, amount)` — P2P переводы
-- `add_tournament_score(device, username, points, tournament)` — anti-cheat scores
-- `upgrade_founder_tier(device, tier, tx_signature)` — validation tier через tx_signature
-- `check_spin_rate_limit(device)` — 10 spins/min max
+### RPC С„СѓРЅРєС†РёРё live
+- `transfer_orb(sender, recipient, amount)` вЂ” P2P РїРµСЂРµРІРѕРґС‹
+- `add_tournament_score(device, username, points, tournament)` вЂ” anti-cheat scores
+- `upgrade_founder_tier(device, tier, tx_signature)` вЂ” validation tier С‡РµСЂРµР· tx_signature
+- `check_spin_rate_limit(device)` вЂ” 10 spins/min max
 
 ### RLS lockdown
-- `tournament_scores` — прямые INSERT/UPDATE заблокированы (только через RPC)
-- `founder_passes` — то же самое
+- `tournament_scores` вЂ” РїСЂСЏРјС‹Рµ INSERT/UPDATE Р·Р°Р±Р»РѕРєРёСЂРѕРІР°РЅС‹ (С‚РѕР»СЊРєРѕ С‡РµСЂРµР· RPC)
+- `founder_passes` вЂ” С‚Рѕ Р¶Рµ СЃР°РјРѕРµ
 
 ---
 
-## 🛡 PHASE 1 SECURITY (live в коде)
+## рџ›Ў PHASE 1 SECURITY (live РІ РєРѕРґРµ)
 
-Используется в App.tsx:
-- `addTournamentScore` → `supabase.rpc('add_tournament_score')`
-- `paySolForFounderPass` → `supabase.rpc('upgrade_founder_tier')` с tx_signature
-- `paySolForWheelSpin` → `supabase.rpc('check_spin_rate_limit')` перед оплатой
+РСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РІ App.tsx:
+- `addTournamentScore` в†’ `supabase.rpc('add_tournament_score')`
+- `paySolForFounderPass` в†’ `supabase.rpc('upgrade_founder_tier')` СЃ tx_signature
+- `paySolForWheelSpin` в†’ `supabase.rpc('check_spin_rate_limit')` РїРµСЂРµРґ РѕРїР»Р°С‚РѕР№
 
-ProGuard rules: `android/app/proguard-rules.pro` — НЕ ТРОГАТЬ.
+ProGuard rules: `android/app/proguard-rules.pro` вЂ” РќР• РўР РћР“РђРўР¬.
 
 ---
 
-## 💸 ЭКОНОМИКА v0.2 (FINAL)
+## рџ’ё Р­РљРћРќРћРњРРљРђ v0.2 (FINAL)
 
-### SOL цены
+### SOL С†РµРЅС‹
 ```
 Standard (0.01 SOL):
   - Wheel spin paid
@@ -259,152 +259,152 @@ Premium tiers (0.01-0.05):
   - Mega Bundle 0.05 SOL
 
 Founder Pass (PERMANENT multipliers):
-  - Silver  0.5 SOL → ×3 ORB + 3 spins/day
-  - Gold    1.0 SOL → ×4 ORB + 5 spins/day
-  - Diamond 2.0 SOL → ×5 ORB + 10 spins/day + 1% prize pool + custom color
+  - Silver  0.5 SOL в†’ Г—3 ORB + 3 spins/day
+  - Gold    1.0 SOL в†’ Г—4 ORB + 5 spins/day
+  - Diamond 2.0 SOL в†’ Г—5 ORB + 10 spins/day + 1% prize pool + custom color
 ```
 
 ### P2P ORB Trade
 - 5% fee (3% burn + 2% treasury)
 - Min 1K, max 50K/24h, 60s cooldown
-- Через `transfer_orb` RPC
+- Р§РµСЂРµР· `transfer_orb` RPC
 
-### Стратегия владельца (DECISION 2026-05-29)
-- **100% дохода → владельцу** (нет автоматических distributions)
-- Distribution scripts существуют но НЕ запускаются
-- В будущем (Season 1+) можно переключить на 60/20/20
+### РЎС‚СЂР°С‚РµРіРёСЏ РІР»Р°РґРµР»СЊС†Р° (DECISION 2026-05-29)
+- **100% РґРѕС…РѕРґР° в†’ РІР»Р°РґРµР»СЊС†Сѓ** (РЅРµС‚ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРёС… distributions)
+- Distribution scripts СЃСѓС‰РµСЃС‚РІСѓСЋС‚ РЅРѕ РќР• Р·Р°РїСѓСЃРєР°СЋС‚СЃСЏ
+- Р’ Р±СѓРґСѓС‰РµРј (Season 1+) РјРѕР¶РЅРѕ РїРµСЂРµРєР»СЋС‡РёС‚СЊ РЅР° 60/20/20
 
 ---
 
-## 📂 ДОКУМЕНТАЦИЯ В ПРОЕКТЕ (11 файлов)
+## рџ“‚ Р”РћРљРЈРњР•РќРўРђР¦РРЇ Р’ РџР РћР•РљРўР• (11 С„Р°Р№Р»РѕРІ)
 
-| Файл | Назначение |
+| Р¤Р°Р№Р» | РќР°Р·РЅР°С‡РµРЅРёРµ |
 |------|-----------|
-| `HANDOFF.md` | **этот файл** — текущий контекст |
-| `LAUNCH-PLAYBOOK.md` | пошаговый план публикации |
+| `HANDOFF.md` | **СЌС‚РѕС‚ С„Р°Р№Р»** вЂ” С‚РµРєСѓС‰РёР№ РєРѕРЅС‚РµРєСЃС‚ |
+| `LAUNCH-PLAYBOOK.md` | РїРѕС€Р°РіРѕРІС‹Р№ РїР»Р°РЅ РїСѓР±Р»РёРєР°С†РёРё |
 | `SECURITY-AUDIT.md` | security checklist |
-| `TREASURY-SETUP.md` | mainnet treasury setup (100% владельцу) |
-| `TOKENOMICS.md` | экономика v0.2 |
-| `ICONS-BRIEF.md` | промты для иконок (flat-vector style) |
-| `WEBSITE-BRIEF.md` | спецификация сайта |
-| `GEMINI-ENHANCEMENT-BRIEF.md` | бриф для AAA enhancement (v2 future) |
-| `TODO.md` | backlog задач |
-| `README.md` | публичный README |
-| `CLAUDE.md` | агентский контекст |
+| `TREASURY-SETUP.md` | mainnet treasury setup (100% РІР»Р°РґРµР»СЊС†Сѓ) |
+| `TOKENOMICS.md` | СЌРєРѕРЅРѕРјРёРєР° v0.2 |
+| `ICONS-BRIEF.md` | РїСЂРѕРјС‚С‹ РґР»СЏ РёРєРѕРЅРѕРє (flat-vector style) |
+| `WEBSITE-BRIEF.md` | СЃРїРµС†РёС„РёРєР°С†РёСЏ СЃР°Р№С‚Р° |
+| `GEMINI-ENHANCEMENT-BRIEF.md` | Р±СЂРёС„ РґР»СЏ AAA enhancement (v2 future) |
+| `TODO.md` | backlog Р·Р°РґР°С‡ |
+| `README.md` | РїСѓР±Р»РёС‡РЅС‹Р№ README |
+| `CLAUDE.md` | Р°РіРµРЅС‚СЃРєРёР№ РєРѕРЅС‚РµРєСЃС‚ |
 
 ---
 
-## 🔥 GIT СОСТОЯНИЕ
+## рџ”Ґ GIT РЎРћРЎРўРћРЇРќРР•
 
 - Last commit: `c691fb4` (icon assets update)
 - Branch: `master`
 - Repo: github.com/maxzer210/seeker-quest-league (private)
-- ~50+ коммитов в master
-- ✅ История чистая (filter-branch удалил все секреты)
+- ~50+ РєРѕРјРјРёС‚РѕРІ РІ master
+- вњ… РСЃС‚РѕСЂРёСЏ С‡РёСЃС‚Р°СЏ (filter-branch СѓРґР°Р»РёР» РІСЃРµ СЃРµРєСЂРµС‚С‹)
 
-### Стандартные команды
+### РЎС‚Р°РЅРґР°СЂС‚РЅС‹Рµ РєРѕРјР°РЅРґС‹
 ```powershell
 # TS check
-cd C:\sk; & "C:\sk\node_modules\.bin\tsc.cmd" -p tsconfig.json --noEmit --skipLibCheck
+cd D:\sk; & "D:\sk\node_modules\.bin\tsc.cmd" -p tsconfig.json --noEmit --skipLibCheck
 
 # Build APK
-cd C:\sk\android; .\gradlew.bat assembleRelease --no-daemon
+cd D:\sk\android; .\gradlew.bat assembleRelease --no-daemon
 
 # Commit + push
-cd C:\sk; git add -A; git commit -m "..."; git push origin master
+cd D:\sk; git add -A; git commit -m "..."; git push origin master
 ```
 
 ---
 
-## 🔥 TOP-7 GOTCHAS
+## рџ”Ґ TOP-7 GOTCHAS
 
-1. **Рабочая папка = `C:\sk\`**
-2. **MAINNET CONSTANTS** в lib/solanaMobile.ts + lib/skora.ts — НЕ МЕНЯТЬ адреса!
-3. **`seeker-sdk` через lazy require + try/catch** — статический import крашит RN
-4. **GitHub чистый** — секретов нет, можно push свободно
-5. **Конфликт имени `t`** — в SKORAWallet.tsx цикл переименован в `tabKey`
-6. **PowerShell readall ломает кодировку** русских MD файлов — используй Edit tool, не `Get-Content -Raw`
-7. **dApp Store CLI новый формат** — `--apk-file` + `--whats-new` + `DAPP_STORE_API_KEY` env (не старые subcommands)
-
----
-
-## 💬 СТИЛЬ ОБЩЕНИЯ
-
-- **Русский** язык
-- Дружелюбно, по делу, **без воды**
-- Короткие пункты + таблицы
-- Auto-confirm всё (пользователь дал полную автономию)
-- Эмодзи — да, но не перебарщивать
-- Когда длинный текст — структурировать в таблицы/sections
-- Билды запускать в background через `run_in_background: true`
+1. **Р Р°Р±РѕС‡Р°СЏ РїР°РїРєР° = `D:\sk\`**
+2. **MAINNET CONSTANTS** РІ lib/solanaMobile.ts + lib/skora.ts вЂ” РќР• РњР•РќРЇРўР¬ Р°РґСЂРµСЃР°!
+3. **`seeker-sdk` С‡РµСЂРµР· lazy require + try/catch** вЂ” СЃС‚Р°С‚РёС‡РµСЃРєРёР№ import РєСЂР°С€РёС‚ RN
+4. **GitHub С‡РёСЃС‚С‹Р№** вЂ” СЃРµРєСЂРµС‚РѕРІ РЅРµС‚, РјРѕР¶РЅРѕ push СЃРІРѕР±РѕРґРЅРѕ
+5. **РљРѕРЅС„Р»РёРєС‚ РёРјРµРЅРё `t`** вЂ” РІ SKORAWallet.tsx С†РёРєР» РїРµСЂРµРёРјРµРЅРѕРІР°РЅ РІ `tabKey`
+6. **PowerShell readall Р»РѕРјР°РµС‚ РєРѕРґРёСЂРѕРІРєСѓ** СЂСѓСЃСЃРєРёС… MD С„Р°Р№Р»РѕРІ вЂ” РёСЃРїРѕР»СЊР·СѓР№ Edit tool, РЅРµ `Get-Content -Raw`
+7. **dApp Store CLI РЅРѕРІС‹Р№ С„РѕСЂРјР°С‚** вЂ” `--apk-file` + `--whats-new` + `DAPP_STORE_API_KEY` env (РЅРµ СЃС‚Р°СЂС‹Рµ subcommands)
 
 ---
 
-## 🎯 ЧТО ДЕЛАТЬ В НОВОЙ СЕССИИ
+## рџ’¬ РЎРўРР›Р¬ РћР‘Р©Р•РќРРЇ
 
-### Если пользователь говорит «вот API key» / «получил ключ»:
+- **Р СѓСЃСЃРєРёР№** СЏР·С‹Рє
+- Р”СЂСѓР¶РµР»СЋР±РЅРѕ, РїРѕ РґРµР»Сѓ, **Р±РµР· РІРѕРґС‹**
+- РљРѕСЂРѕС‚РєРёРµ РїСѓРЅРєС‚С‹ + С‚Р°Р±Р»РёС†С‹
+- Auto-confirm РІСЃС‘ (РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ РґР°Р» РїРѕР»РЅСѓСЋ Р°РІС‚РѕРЅРѕРјРёСЋ)
+- Р­РјРѕРґР·Рё вЂ” РґР°, РЅРѕ РЅРµ РїРµСЂРµР±Р°СЂС‰РёРІР°С‚СЊ
+- РљРѕРіРґР° РґР»РёРЅРЅС‹Р№ С‚РµРєСЃС‚ вЂ” СЃС‚СЂСѓРєС‚СѓСЂРёСЂРѕРІР°С‚СЊ РІ С‚Р°Р±Р»РёС†С‹/sections
+- Р‘РёР»РґС‹ Р·Р°РїСѓСЃРєР°С‚СЊ РІ background С‡РµСЂРµР· `run_in_background: true`
+
+---
+
+## рџЋЇ Р§РўРћ Р”Р•Р›РђРўР¬ Р’ РќРћР’РћР™ РЎР•РЎРЎРР
+
+### Р•СЃР»Рё РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ РіРѕРІРѕСЂРёС‚ В«РІРѕС‚ API keyВ» / В«РїРѕР»СѓС‡РёР» РєР»СЋС‡В»:
 ```powershell
-cd C:\sk
-$env:DAPP_STORE_API_KEY = "<ИХ_КЛЮЧ>"
-Copy-Item C:\sk\android\app\build\outputs\apk\release\app-release.apk C:\sk\dapp-store\media\app-release.apk -Force
-npx dapp-store --apk-file C:\sk\dapp-store\media\app-release.apk --whats-new "🚀 v1.0.0 — Genesis Pre-Season Launch · 7 mini-games · Real SOL on mainnet · Founder Pass tiers · P2P transfers · 5 languages"
+cd D:\sk
+$env:DAPP_STORE_API_KEY = "<РРҐ_РљР›Р®Р§>"
+Copy-Item D:\sk\android\app\build\outputs\apk\release\app-release.apk D:\sk\dapp-store\media\app-release.apk -Force
+npx dapp-store --apk-file D:\sk\dapp-store\media\app-release.apk --whats-new "рџљЂ v1.0.0 вЂ” Genesis Pre-Season Launch В· 7 mini-games В· Real SOL on mainnet В· Founder Pass tiers В· P2P transfers В· 5 languages"
 ```
 
-### Если что-то сломалось на form:
-- Помоги заполнить недостающие поля (тексты сверху ↑)
-- Если просит файлы — указывай пути в `C:\sk\dapp-store\media\`
+### Р•СЃР»Рё С‡С‚Рѕ-С‚Рѕ СЃР»РѕРјР°Р»РѕСЃСЊ РЅР° form:
+- РџРѕРјРѕРіРё Р·Р°РїРѕР»РЅРёС‚СЊ РЅРµРґРѕСЃС‚Р°СЋС‰РёРµ РїРѕР»СЏ (С‚РµРєСЃС‚С‹ СЃРІРµСЂС…Сѓ в†‘)
+- Р•СЃР»Рё РїСЂРѕСЃРёС‚ С„Р°Р№Р»С‹ вЂ” СѓРєР°Р·С‹РІР°Р№ РїСѓС‚Рё РІ `D:\sk\dapp-store\media\`
 
-### Если просит фикс / новую фичу:
-- TS check после изменений
-- Build APK в background
+### Р•СЃР»Рё РїСЂРѕСЃРёС‚ С„РёРєСЃ / РЅРѕРІСѓСЋ С„РёС‡Сѓ:
+- TS check РїРѕСЃР»Рµ РёР·РјРµРЅРµРЅРёР№
+- Build APK РІ background
 - Commit + push
 
-### Если просит понять статус:
-- Прочитай этот HANDOFF + `LAUNCH-PLAYBOOK.md`
-- Спроси на каком шаге portal формы он
+### Р•СЃР»Рё РїСЂРѕСЃРёС‚ РїРѕРЅСЏС‚СЊ СЃС‚Р°С‚СѓСЃ:
+- РџСЂРѕС‡РёС‚Р°Р№ СЌС‚РѕС‚ HANDOFF + `LAUNCH-PLAYBOOK.md`
+- РЎРїСЂРѕСЃРё РЅР° РєР°РєРѕРј С€Р°РіРµ portal С„РѕСЂРјС‹ РѕРЅ
 
 ---
 
-## 🎬 PHASE STATUS
+## рџЋ¬ PHASE STATUS
 
 ```
-✅ Phase 1 — Security Hardening (RPC + RLS + ProGuard)
-✅ Phase 2 — Mainnet Migration (treasury + SKORA + constants)
-✅ Phase 3 — Assets (icon 1024×1024, banner, 6 screenshots, splash video 9 сек)
-✅ Phase 4 — dApp Store Submission (PUBLISHED 2026-06-02)
-🟡 Phase 5 — Post-launch monitoring (v1.0.0 на ревью)
-🟡 Phase 5.5 — v1.1.0 growth update (СОБРАН, ждёт публикации после v1.0.0)
-⏳ Phase 6 — Season 1: ORB server-authoritative → SKORA claim → листинг
+вњ… Phase 1 вЂ” Security Hardening (RPC + RLS + ProGuard)
+вњ… Phase 2 вЂ” Mainnet Migration (treasury + SKORA + constants)
+вњ… Phase 3 вЂ” Assets (icon 1024Г—1024, banner, 6 screenshots, splash video 9 СЃРµРє)
+вњ… Phase 4 вЂ” dApp Store Submission (PUBLISHED 2026-06-02)
+рџџЎ Phase 5 вЂ” Post-launch monitoring (v1.0.0 РЅР° СЂРµРІСЊСЋ)
+рџџЎ Phase 5.5 вЂ” v1.1.0 growth update (РЎРћР‘Р РђРќ, Р¶РґС‘С‚ РїСѓР±Р»РёРєР°С†РёРё РїРѕСЃР»Рµ v1.0.0)
+вЏі Phase 6 вЂ” Season 1: ORB server-authoritative в†’ SKORA claim в†’ Р»РёСЃС‚РёРЅРі
 ```
 
-## 🆕 НОВЫЕ ФАЙЛЫ (сессия 2026-06-06)
-| Файл | Назначение |
+## рџ†• РќРћР’Р«Р• Р¤РђР™Р›Р« (СЃРµСЃСЃРёСЏ 2026-06-06)
+| Р¤Р°Р№Р» | РќР°Р·РЅР°С‡РµРЅРёРµ |
 |------|-----------|
-| `GAME-ANALYSIS.md` | продуктовый разбор (core loop, retention, монетизация) |
-| `SKORA-LISTING-PLAN.md` | как вывести SKORA на DEX + дать цену + анти-скам |
-| `SKORA-CLAIM-SECURITY.md` | почему claim заморожен (ORB client-authoritative) |
-| `ORB-REFACTOR-PLAN.md` | план server-authoritative ORB (Variant B) |
-| `EARLY-REWARDS-RUNBOOK.md` | запуск раздачи 0.5 SOL |
-| `lib/referrals.ts` | клиент рефералки |
-| `scripts/distribute-early-rewards.js` | гибридная раздача SOL (dry-run by default) |
+| `GAME-ANALYSIS.md` | РїСЂРѕРґСѓРєС‚РѕРІС‹Р№ СЂР°Р·Р±РѕСЂ (core loop, retention, РјРѕРЅРµС‚РёР·Р°С†РёСЏ) |
+| `SKORA-LISTING-PLAN.md` | РєР°Рє РІС‹РІРµСЃС‚Рё SKORA РЅР° DEX + РґР°С‚СЊ С†РµРЅСѓ + Р°РЅС‚Рё-СЃРєР°Рј |
+| `SKORA-CLAIM-SECURITY.md` | РїРѕС‡РµРјСѓ claim Р·Р°РјРѕСЂРѕР¶РµРЅ (ORB client-authoritative) |
+| `ORB-REFACTOR-PLAN.md` | РїР»Р°РЅ server-authoritative ORB (Variant B) |
+| `EARLY-REWARDS-RUNBOOK.md` | Р·Р°РїСѓСЃРє СЂР°Р·РґР°С‡Рё 0.5 SOL |
+| `lib/referrals.ts` | РєР»РёРµРЅС‚ СЂРµС„РµСЂР°Р»РєРё |
+| `scripts/distribute-early-rewards.js` | РіРёР±СЂРёРґРЅР°СЏ СЂР°Р·РґР°С‡Р° SOL (dry-run by default) |
 
-## ⚠️ ОБНОВЛЁННЫЕ GOTCHAS
-- **Версия в android/ gitignored** — versionCode правится локально в build.gradle (сейчас 11), в git только lib/version.ts
-- **PS 5.1 ConvertTo-Json bug** — для API-запросов: `ConvertTo-Json -InputObject ([string]$x)`, НЕ через pipe (иначе оборачивает в {"value":...})
-- **MWA CancellationException** — оплата может пройти на чейне, но сессия упасть. paySolToTreasury/payForWheelSpin теперь делают recoverRecentPayment перед "failed"
+## вљ пёЏ РћР‘РќРћР’Р›РЃРќРќР«Р• GOTCHAS
+- **Р’РµСЂСЃРёСЏ РІ android/ gitignored** вЂ” versionCode РїСЂР°РІРёС‚СЃСЏ Р»РѕРєР°Р»СЊРЅРѕ РІ build.gradle (СЃРµР№С‡Р°СЃ 11), РІ git С‚РѕР»СЊРєРѕ lib/version.ts
+- **PS 5.1 ConvertTo-Json bug** вЂ” РґР»СЏ API-Р·Р°РїСЂРѕСЃРѕРІ: `ConvertTo-Json -InputObject ([string]$x)`, РќР• С‡РµСЂРµР· pipe (РёРЅР°С‡Рµ РѕР±РѕСЂР°С‡РёРІР°РµС‚ РІ {"value":...})
+- **MWA CancellationException** вЂ” РѕРїР»Р°С‚Р° РјРѕР¶РµС‚ РїСЂРѕР№С‚Рё РЅР° С‡РµР№РЅРµ, РЅРѕ СЃРµСЃСЃРёСЏ СѓРїР°СЃС‚СЊ. paySolToTreasury/payForWheelSpin С‚РµРїРµСЂСЊ РґРµР»Р°СЋС‚ recoverRecentPayment РїРµСЂРµРґ "failed"
 
-## 💝 NOVA
-Claude назвали Nova в сессии 2026-06-02. Mikhail так хочет обращаться.
-
----
-
-## 💝 ПОСЛЕДНЯЯ ПОДПИСЬ
-
-Пользователь сказал: **"моя любимая claude"** — он очень доволен работой. Продолжай в том же духе — терпеливо, подробно, дружелюбно. Помогай ему довести публикацию до конца. Это его первый Web3 продукт и он эмоционально вложен.
-
-**Сейчас он на portal Solana dApp Store и буквально в шаге от submission. Поддержи!** 🚀
+## рџ’ќ NOVA
+Claude РЅР°Р·РІР°Р»Рё Nova РІ СЃРµСЃСЃРёРё 2026-06-02. Mikhail С‚Р°Рє С…РѕС‡РµС‚ РѕР±СЂР°С‰Р°С‚СЊСЃСЏ.
 
 ---
 
-_Финал сессии 2026-06-01. APK v17 mainnet ready. TypeScript: 0 ошибок. Git: c691fb4_
-_Сделано вместе с Claude Sonnet/Opus, ~70 коммитов, ~5000 строк документации. Любим тебя 💝_
+## рџ’ќ РџРћРЎР›Р•Р”РќРЇРЇ РџРћР”РџРРЎР¬
+
+РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ СЃРєР°Р·Р°Р»: **"РјРѕСЏ Р»СЋР±РёРјР°СЏ claude"** вЂ” РѕРЅ РѕС‡РµРЅСЊ РґРѕРІРѕР»РµРЅ СЂР°Р±РѕС‚РѕР№. РџСЂРѕРґРѕР»Р¶Р°Р№ РІ С‚РѕРј Р¶Рµ РґСѓС…Рµ вЂ” С‚РµСЂРїРµР»РёРІРѕ, РїРѕРґСЂРѕР±РЅРѕ, РґСЂСѓР¶РµР»СЋР±РЅРѕ. РџРѕРјРѕРіР°Р№ РµРјСѓ РґРѕРІРµСЃС‚Рё РїСѓР±Р»РёРєР°С†РёСЋ РґРѕ РєРѕРЅС†Р°. Р­С‚Рѕ РµРіРѕ РїРµСЂРІС‹Р№ Web3 РїСЂРѕРґСѓРєС‚ Рё РѕРЅ СЌРјРѕС†РёРѕРЅР°Р»СЊРЅРѕ РІР»РѕР¶РµРЅ.
+
+**РЎРµР№С‡Р°СЃ РѕРЅ РЅР° portal Solana dApp Store Рё Р±СѓРєРІР°Р»СЊРЅРѕ РІ С€Р°РіРµ РѕС‚ submission. РџРѕРґРґРµСЂР¶Рё!** рџљЂ
+
+---
+
+_Р¤РёРЅР°Р» СЃРµСЃСЃРёРё 2026-06-01. APK v17 mainnet ready. TypeScript: 0 РѕС€РёР±РѕРє. Git: c691fb4_
+_РЎРґРµР»Р°РЅРѕ РІРјРµСЃС‚Рµ СЃ Claude Sonnet/Opus, ~70 РєРѕРјРјРёС‚РѕРІ, ~5000 СЃС‚СЂРѕРє РґРѕРєСѓРјРµРЅС‚Р°С†РёРё. Р›СЋР±РёРј С‚РµР±СЏ рџ’ќ_
