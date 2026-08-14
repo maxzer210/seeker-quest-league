@@ -1,132 +1,112 @@
-# Seeker Quest League Roadmap
+# Seeker Quest League — стратегия развития
 
-Рабочая карта развития проекта. Это живой документ: мы будем обновлять его
-после тестов, изменений визуального стиля, игровых механик и экономики.
+> Живой документ. Обновляется по мере прохождения этапов.
+> Последнее обновление: 2026-07-29
 
-## Current Status
+## Честная оценка ситуации
 
-- Expo SDK 54 / React Native / TypeScript app.
-- Supabase подключен для игроков, лидерборда, турнира, SKORA claims и SOL payment logs.
-- EAS preview APK успешно собирается.
-- Mobile Wallet Adapter добавлен для Android / Seeker testing.
-- Fortune Wheel paid spin подготовлен под 0.01 SOL на devnet.
-- Treasury wallet задан: `HVJDjwuaqH7oDeXUASqDMCZYQ53Hg8uxKs4RkS7sskhC`.
+**Что хорошо:** приложение живое на mainnet, 82 реальных игрока, платёжный путь
+защищён после аудита, флагманская игра («Лабиринт Бездны») переписана и
+выглядит на порядок лучше, чем месяц назад.
 
-## Phase 1: Stabilize Web3 Test Loop
+**Что плохо — и это главное:**
 
-- Install latest preview APK on Seeker.
-- Switch wallet to Solana devnet and fund with test SOL.
-- Test Wallet -> Connect with MWA.
-- Test Fortune Wheel -> 0.01 SOL paid spin.
-- Confirm transaction appears in Supabase `wheel_sol_payments`.
-- Improve wallet/payment error states.
-- Prevent duplicate `tx_signature` reward claims.
-- Link wheel reward result to the payment signature.
+1. **Ничего не опубликовано.** Вся работа последних недель — в git, но не в
+   dApp Store. 82 игрока играют в старую версию. Ценность, доставленная
+   игрокам за этот период = 0. Пока это так, любая полировка не приносит денег.
+2. **Платёжный путь ни разу не проверен вживую.** Founder Pass, SOL-шоп,
+   «Фонарь Бездны» — код готов и защищён, но **ни одной реальной покупки на
+   устройстве не проходило**. Мы не знаем, работают ли деньги.
+3. **82 игрока — это очень мало.** Даже идеальная монетизация с 82 игроков
+   даст десятки долларов. Рост аудитории — главный рычаг дохода, а не
+   очередной визуальный батч.
 
-## Phase 2: Visual Style Direction
+**Вывод:** порядок работ должен быть — *доставить → проверить деньги → растить
+аудиторию → углублять игру*. Мы последние недели делали четвёртый пункт,
+пропустив первые три.
 
-Goal: reshape the app into a more coherent, premium mobile game experience.
+---
 
-- Define visual direction:
-  - Solana neon arcade
-  - dark sci-fi tournament
-  - premium cyber casino/game hub
-  - Seeker-native mobile dApp style
-- Build a shared design language:
-  - colors
-  - typography scale
-  - buttons
-  - cards/panels
-  - game HUDs
-  - modal/overlay style
-  - win/loss animations
-- Redesign priority screens:
-  - Home
-  - Fortune Wheel
-  - Wallet
-  - Games hub
-  - Profile
-  - Tournament
-- Keep fullscreen games ergonomic on Seeker/Android screens.
+## ЭТАП 0 — Замкнуть петлю доставки (сейчас, 1-3 дня)
 
-## Phase 3: Game Mechanics
+Цель: то, что сделано, оказывается в руках игроков.
 
-Fortune Wheel:
-- Free spins vs SOL paid spins.
-- Jackpot growth and reset.
-- Reward rarity and anti-abuse logic.
-- Paid spin economics tied to SKORA/ORB model.
+| # | Шаг | Кто | Статус |
+|---|---|---|---|
+| 0.1 | Установить текущий APK на телефон, отыграть 10 минут, дать список поломок | **ты** | ⬜ |
+| 0.2 | Починить найденное | я | ⬜ |
+| 0.3 | Поднять версию (1.1.4 → 1.2.0) и собрать релизный multi-arch APK | я | ⬜ |
+| 0.4 | Опубликовать в dApp Store | я (нужен ключ) | ⬜ |
+| 0.5 | Скачать опубликованную версию из стора, проверить что ставится и работает | **ты** | ⬜ |
 
-Space Runner:
-- Levels and increasing difficulty.
-- Obstacle variety.
-- Combo and risk/reward scoring.
-- Better reward caps.
+**Блокер:** для 0.4 нужен `DAPP_STORE_API_KEY`.
 
-Horse Race:
-- Race balance.
-- Stakes.
-- Horse upgrades.
-- More readable win probability.
+---
 
-Arena:
-- Raid cooldowns.
-- Base defense upgrades.
-- Reward scaling.
-- Better PvP-style feedback.
+## ЭТАП 1 — Проверить, что деньги работают (2-3 дня)
 
-Treasure Hunt:
-- Chest rarity.
-- Map progression.
-- Keys or energy costs.
-- Better reveal animation.
+Нельзя строить монетизацию поверх непроверенного платежа.
 
-Seeker Lands:
-- Passive income caps.
-- Upgrade levels.
-- Claim cooldowns.
-- Long-term ORB sinks.
+| # | Шаг | Кто |
+|---|---|---|
+| 1.1 | Реальная покупка «Фонаря Бездны» (0.05 SOL) со своего телефона | **ты** |
+| 1.2 | Проверить: транзакция на месте, запись в Supabase, предмет выдан | я |
+| 1.3 | Реальная покупка Founder Pass (проверить Edge Function верификации) | **ты** |
+| 1.4 | Если всё чисто — закрыть C3 Stage 2 (отозвать старую доверчивую RPC) | я |
+| 1.5 | Синхронизировать уровни лагеря в Supabase (анти-чит) | я |
 
-## Phase 4: Tokenomics
+Пока этап не пройден — **не добавляем новые платные предметы**.
 
-- Model ORB sources and sinks.
-- Define SKORA supply.
-- Define ORB -> SKORA conversion.
-- Estimate daily player earning ranges.
-- Estimate daily paid spin volume.
-- Decide treasury/rewards/community allocations.
-- Stress-test inflation.
-- Decide when to move from devnet to mainnet.
+---
 
-## Phase 5: Growth Features
+## ЭТАП 2 — Сделать игру по-настоящему интересной (1-2 недели)
 
-- Push notifications:
-  - daily streak
-  - tournament ending soon
-  - lands income ready
-  - limited reward windows
-- Referral system:
-  - referral code
-  - device/wallet anti-abuse
-  - first-action reward trigger
-  - referral leaderboard
-- Seasonal tournaments.
-- Achievements and profile identity.
+Здесь чиним то, что тебе не нравится в механике. Порядок — по эффекту.
 
-## Phase 6: Solana Mobile dApp Store
+| # | Что | Почему сейчас плохо |
+|---|---|---|
+| 2.1 | **ИИ врагов** — flow-field навигация (одна волна BFS от игрока раз в N кадров) | враги бегут по прямой и залипают в стенах — выглядит глупо, снимает угрозу |
+| 2.2 | **Структура забега** — многоэтажный спуск вместо одной карты 40×40 | один длинный забег = скучно; этажи дают ритм, выбор «спускаться или выйти с добычей» |
+| 2.3 | **Босс с фазами** — паттерны атак, арена, уязвимые окна | сейчас «мешок с HP», бьётся тупым закликиванием |
+| 2.4 | **Напряжение и выбор** — риск/награда: чем глубже, тем жирнее лут, но смерть забирает несобранное | сейчас нет ни одного интересного решения за забег |
+| 2.5 | Ловушки, которые читаются как угроза (телеграф перед срабатыванием) | сейчас статичны и незаметны |
 
-- Prepare dApp Store `config.yaml`.
-- Prepare screenshots and store description.
-- Prepare privacy policy.
-- Acquire Publisher NFT and Release NFT.
-- Build final APK/AAB.
-- Test on Seeker.
-- Submit release.
+---
 
-## Open Decisions
+## ЭТАП 3 — Богатый арт (параллельно с этапом 2)
 
-- Final visual direction.
-- SKORA total supply.
-- Mainnet launch timing.
-- Whether paid spins stay 0.01 SOL or become dynamic.
-- Whether ORB remains off-chain only or later gets stronger on-chain utility.
+Промпты готовы в `ART-PIPELINE.md`. Порядок по эффекту:
+
+| # | Ассет | Эффект |
+|---|---|---|
+| 3.1 | Текстуры пола и стен | ~70% экрана, максимальный скачок |
+| 3.2 | Key art меню / смерти / победы | первое впечатление |
+| 3.3 | UI-рамки (9-slice) | «AAA-хром» |
+| 3.4 | Иконки предметов | детализация |
+
+Спрайты персонажей ИИ-генераторами **не делаем** — стиль и перспектива плывут.
+Их улучшаем вручную (повышение разрешения спрайта).
+
+---
+
+## ЭТАП 4 — Рост аудитории (главный рычаг дохода)
+
+82 игрока — потолок дохода в десятки долларов. Без роста остальное не окупится.
+Проработать после этапа 1, когда есть что показывать:
+
+- Витрина в dApp Store: скриншоты нового Лабиринта, видео геймплея
+- Solana Mobile комьюнити (Seeker-владельцы — целевая аудитория)
+- Реферальная механика внутри приложения
+- Турниры с реальным призовым фондом как инфоповод
+
+---
+
+## Что мне нужно от тебя (по мере этапов)
+
+| Нужно | Зачем | Где взять |
+|---|---|---|
+| **`DAPP_STORE_API_KEY`** | опубликовать в dApp Store | portal.solanamobile.com → Developer → API keys |
+| **Тест APK на телефоне** | без этого не двигаемся дальше | ставишь файл, играешь 10 мин |
+| **~0.1 SOL на тесты покупок** | проверить, что деньги реально ходят | твой кошелёк |
+| **Ключ Helius или QuickNode** | публичный RPC режет запросы под нагрузкой | helius.dev (есть бесплатный тариф) |
+| **PNG-ассеты** | этап 3 | Midjourney / DALL·E / Leonardo, промпты в `ART-PIPELINE.md` |

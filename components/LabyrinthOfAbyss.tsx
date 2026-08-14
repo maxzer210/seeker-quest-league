@@ -306,12 +306,28 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number, lant
     const dx = t.pos.x - p.pos.x, dz = t.pos.z - p.pos.z;
     if (dx * dx + dz * dz > (torchR / TILE * CELL) ** 2) continue;
     const tx = wsx(t.pos.x), ty = wsy(t.pos.z);
-    const pulse = 0.45 + 0.35 * Math.sin(run.clock * 3.5 + t.id);
-    const R = TILE * 0.34;
+    // An armed rune screams: fast strobe, hot white core, and a growing ring
+    // that shows exactly how far the blast will reach. Dormant ones idle.
+    const armed = t.arming > 0;
+    const k = armed ? 1 - t.arming / L.TRAP_TELEGRAPH : 0;   // 0 → 1 over the tell
+    const pulse = armed
+      ? 0.55 + 0.45 * Math.sin(run.clock * 26)
+      : 0.45 + 0.35 * Math.sin(run.clock * 3.5 + t.id);
+    const R = TILE * 0.34 * (armed ? 1 + k * 0.35 : 1);
+    if (armed) {
+      // blast footprint — the area to be out of
+      scratch.setStyle(PaintStyle.Stroke);
+      scratch.setStrokeWidth(2);
+      scratch.setColor(col('#fca5a5'));
+      scratch.setAlphaf(0.25 + 0.4 * k);
+      canvas.drawCircle(tx, ty, (L.TRAP_BLAST / CELL) * TILE * k, scratch);
+      scratch.setStyle(PaintStyle.Fill);
+      scratch.setAlphaf(1);
+    }
     // menacing bloom underneath
-    glowPaint.setColor(col('#ef4444'));
-    glowPaint.setAlphaf(0.16 + 0.28 * pulse);
-    canvas.drawCircle(tx, ty, R * 1.5, glowPaint);
+    glowPaint.setColor(col(armed ? '#ff3b30' : '#ef4444'));
+    glowPaint.setAlphaf((armed ? 0.3 : 0.16) + 0.28 * pulse);
+    canvas.drawCircle(tx, ty, R * (armed ? 2.1 : 1.5), glowPaint);
     // sigil strokes
     scratch.setStyle(PaintStyle.Stroke);
     scratch.setStrokeWidth(2.2);
@@ -379,23 +395,72 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number, lant
     scratch.setAlphaf(1);
   }
 
-  // ── portal ──
-  if (run.portalActive) {
-    const dx = run.portalPos.x - p.pos.x, dz = run.portalPos.z - p.pos.z;
-    if (dx * dx + dz * dz <= (torchR / TILE * CELL * 1.4) ** 2) {
-      const qx = wsx(run.portalPos.x), qy = wsy(run.portalPos.z);
-      glowPaint.setColor(col('#22d3ee'));
-      glowPaint.setAlphaf(0.75);
-      canvas.drawCircle(qx, qy, TILE * 0.9, glowPaint);
+  // ── shockwaves (Guardian slams, sprung runes) ──
+  scratch.setStyle(PaintStyle.Stroke);
+  for (const w of run.shockwaves) {
+    const k = 1 - w.life / w.max;                 // 0 → 1 as it expands
+    const rad = (w.radius / CELL) * TILE * k;
+    scratch.setStrokeWidth(7 * (1 - k) + 1.5);
+    scratch.setColor(col('#a5f3fc'));
+    scratch.setAlphaf((1 - k) * 0.85);
+    canvas.drawCircle(wsx(w.x), wsy(w.z), rad, scratch);
+    scratch.setColor(col('#ffffff'));
+    scratch.setAlphaf((1 - k) * 0.5);
+    canvas.drawCircle(wsx(w.x), wsy(w.z), rad * 0.82, scratch);
+  }
+  scratch.setStyle(PaintStyle.Fill);
+  scratch.setAlphaf(1);
+
+  // ── stairs down — the goal of every floor ──
+  // Visible from further away than loot (1.6× torch) so a floor is navigable,
+  // and colour-coded: cyan when open, angry pink while a Guardian seals it.
+  {
+    const dx = run.stairsPos.x - p.pos.x, dz = run.stairsPos.z - p.pos.z;
+    if (dx * dx + dz * dz <= (torchR / TILE * CELL * 1.6) ** 2) {
+      const qx = wsx(run.stairsPos.x), qy = wsy(run.stairsPos.z);
+      const locked = run.stairsLocked;
+      const tint = locked ? '#f472b6' : '#22d3ee';
+      const beat = 0.6 + 0.25 * Math.sin(run.clock * (locked ? 6 : 3));
+
+      // the pit itself
+      glowPaint.setColor(col(tint));
+      glowPaint.setAlphaf(0.55 * beat);
+      canvas.drawCircle(qx, qy, TILE * 0.95, glowPaint);
+      scratch.setColor(col('#0a0714'));
+      canvas.drawOval(Skia.XYWHRect(qx - TILE * 0.6, qy - TILE * 0.34, TILE * 1.2, TILE * 0.68), scratch);
+
+      // descending steps, drawn as narrowing bars sinking into the dark
+      for (let st = 0; st < 4; st++) {
+        const w = TILE * (0.92 - st * 0.17);
+        const yy = qy - TILE * 0.22 + st * TILE * 0.14;
+        scratch.setColor(col(st % 2 ? '#3a2e5e' : '#4a3a7a'));
+        scratch.setAlphaf(1 - st * 0.18);
+        canvas.drawRect(Skia.XYWHRect(qx - w / 2, yy, w, TILE * 0.1), scratch);
+      }
+      scratch.setAlphaf(1);
+
+      // rim rings
       scratch.setStyle(PaintStyle.Stroke);
       for (let ring = 0; ring < 3; ring++) {
-        scratch.setStrokeWidth(4 - ring);
-        scratch.setColor(col(ring % 2 ? '#67e8f9' : '#22d3ee'));
-        scratch.setAlphaf(0.9 - ring * 0.2);
-        canvas.drawCircle(qx, qy, TILE * (0.4 + ring * 0.18) + Math.sin(run.clock * 3) * 3, scratch);
+        scratch.setStrokeWidth(3.5 - ring);
+        scratch.setColor(col(ring % 2 ? (locked ? '#fbcfe8' : '#67e8f9') : tint));
+        scratch.setAlphaf((0.85 - ring * 0.22) * beat);
+        canvas.drawCircle(qx, qy, TILE * (0.55 + ring * 0.2) + Math.sin(run.clock * 3 + ring) * 3, scratch);
       }
       scratch.setStyle(PaintStyle.Fill);
       scratch.setAlphaf(1);
+
+      // sealed: crossed bars over the mouth
+      if (locked) {
+        scratch.setStyle(PaintStyle.Stroke);
+        scratch.setStrokeWidth(4);
+        scratch.setColor(col('#f472b6'));
+        scratch.setAlphaf(0.85);
+        canvas.drawLine(qx - TILE * 0.42, qy - TILE * 0.24, qx + TILE * 0.42, qy + TILE * 0.24, scratch);
+        canvas.drawLine(qx + TILE * 0.42, qy - TILE * 0.24, qx - TILE * 0.42, qy + TILE * 0.24, scratch);
+        scratch.setStyle(PaintStyle.Fill);
+        scratch.setAlphaf(1);
+      }
     }
   }
 
@@ -414,11 +479,33 @@ function drawScene(canvas: SkCanvas, run: L.RunState, W: number, H: number, lant
     scratch.setColor(col('#00000055'));
     const sw = isGuardian ? 62 : isBrute ? 40 : 26;
     canvas.drawOval(Skia.XYWHRect(mx - sw / 2, wsy(m.pos.z) + (isGuardian ? 24 : 14), sw, isGuardian ? 13 : 9), scratch);
-    // the Guardian's core throbs with light
+    // the Guardian's core throbs with light — hotter and faster each phase
     if (isGuardian) {
-      glowPaint.setColor(col('#22d3ee'));
-      glowPaint.setAlphaf(0.38 + 0.16 * Math.sin(run.clock * 4));
-      canvas.drawCircle(mx, my, TILE * 0.75, glowPaint);
+      const beat = 4 + m.phase * 2;
+      glowPaint.setColor(col(m.phase === 3 ? '#f472b6' : '#22d3ee'));
+      glowPaint.setAlphaf(0.38 + 0.16 * Math.sin(run.clock * beat));
+      canvas.drawCircle(mx, my, TILE * (0.75 + m.phase * 0.08), glowPaint);
+
+      // slam wind-up: a filling ring showing the blast area, so the dash is fair
+      if (m.slamAt > 0) {
+        const left = Math.max(0, m.slamAt - run.clock);
+        const k = 1 - left / L.GUARD_SLAM_TELL;           // 0 → 1 as it charges
+        const rad = (L.GUARD_SLAM_R / CELL) * TILE;
+        scratch.setStyle(PaintStyle.Stroke);
+        scratch.setStrokeWidth(2.5);
+        scratch.setColor(col('#f472b6'));
+        scratch.setAlphaf(0.35 + 0.4 * k);
+        canvas.drawCircle(mx, wsy(m.pos.z), rad, scratch);
+        scratch.setStrokeWidth(6);
+        scratch.setColor(col('#fbcfe8'));
+        scratch.setAlphaf(0.5 + 0.5 * Math.sin(run.clock * 30));
+        canvas.drawCircle(mx, wsy(m.pos.z), rad * k, scratch);
+        scratch.setStyle(PaintStyle.Fill);
+        scratch.setAlphaf(1);
+        glowPaint.setColor(col('#f472b6'));
+        glowPaint.setAlphaf(0.5 * k);
+        canvas.drawCircle(mx, my, TILE * 1.3, glowPaint);
+      }
     }
     const sprite = isGuardian ? GUARDIAN : isBrute ? BRUTE : SHADE_VARIANTS[m.variant % SHADE_VARIANTS.length];
     const size = isGuardian ? TILE * 2.15 : isBrute ? TILE * 1.25 : TILE * 0.85;
@@ -769,13 +856,15 @@ function drawMinimap(canvas: SkCanvas, run: L.RunState, cache: MinimapCache) {
     scratch.setColor(col('#7f1d1d'));
     canvas.drawCircle(cxs(c.cx), cxs(c.cz), 1.1, scratch);
   }
-  // portal beacon — pulsing cyan ring once the way out is open
-  if (run.portalActive) {
-    const c = L.worldToCell(run.portalPos.x, run.portalPos.z, run.gridW, run.gridH);
+  // stairs beacon — always shown, so a floor is navigable instead of a hunt.
+  // Cyan when open, pink while a Guardian seals it.
+  {
+    const c = L.worldToCell(run.stairsPos.x, run.stairsPos.z, run.gridW, run.gridH);
     const bx = cxs(c.cx), by = cxs(c.cz);
     const t = (run.clock * 0.9) % 1;
-    scratch.setColor(col('#22d3ee'));
-    canvas.drawCircle(bx, by, 2.1, scratch);
+    const tint = run.stairsLocked ? '#f472b6' : '#22d3ee';
+    scratch.setColor(col(tint));
+    canvas.drawCircle(bx, by, 2.4, scratch);
     scratch.setStyle(PaintStyle.Stroke);
     scratch.setStrokeWidth(1.2);
     scratch.setAlphaf(1 - t);
@@ -799,9 +888,10 @@ function drawMinimap(canvas: SkCanvas, run: L.RunState, cache: MinimapCache) {
 
 // ── input / phase ─────────────────────────────────────────────────────────────
 type InputState = { jx: number; jz: number; attack: boolean; dash: boolean };
-type Phase = 'menu' | 'playing' | 'dead' | 'won';
+type Phase = 'menu' | 'playing' | 'stairs' | 'dead' | 'won';
 
 const BEST_KEY = 'sk_labyrinth_best';
+const DEPTH_KEY = 'sk_labyrinth_depth';      // deepest floor ever reached
 const UPGRADES_KEY = 'sk_labyrinth_upgrades_v1';
 
 // ── Seeker's Camp — permanent upgrades bought with ORB ───────────────────────
@@ -879,6 +969,7 @@ export default function LabyrinthOfAbyss({
   const [runOrb, setRunOrb]       = useState(0);
   const [msg, setMsg]             = useState('');
   const [best, setBest]           = useState(0);
+  const [bestDepth, setBestDepth] = useState(1);
   const [, setFrame]              = useState(0);
   // Seeker's Camp
   const [camp, setCamp]           = useState<CampLevels>(CAMP_ZERO);
@@ -904,6 +995,10 @@ export default function LabyrinthOfAbyss({
     AsyncStorage.getItem(BEST_KEY).then(v => {
       const n = parseInt(v ?? '0', 10);
       if (Number.isFinite(n)) setBest(n);
+    }).catch(() => {});
+    AsyncStorage.getItem(DEPTH_KEY).then(v => {
+      const n = parseInt(v ?? '1', 10);
+      if (Number.isFinite(n) && n > 0) setBestDepth(n);
     }).catch(() => {});
     // camp upgrade levels + lantern ownership, clamped on load
     AsyncStorage.getItem(UPGRADES_KEY).then(v => {
@@ -963,11 +1058,17 @@ export default function LabyrinthOfAbyss({
     phaseRef.current = won ? 'won' : 'dead';
     setPhase(won ? 'won' : 'dead');
     if (r) {
-      const pts = Math.max(1, Math.floor(r.runOrb / 10)) + (won ? L.WIN_TOURNAMENT_PTS : 0);
+      // Tournament score rewards depth, not just grinding the first floor.
+      const pts = Math.max(1, Math.floor(r.runOrb / 10))
+                + r.depth * 10 + (won ? L.WIN_TOURNAMENT_PTS : 0);
       onAddScore(pts);
       if (r.runOrb > best) {
         setBest(r.runOrb);
         AsyncStorage.setItem(BEST_KEY, String(r.runOrb)).catch(() => {});
+      }
+      if (r.depth > bestDepth) {
+        setBestDepth(r.depth);
+        AsyncStorage.setItem(DEPTH_KEY, String(r.depth)).catch(() => {});
       }
     }
   }
@@ -981,6 +1082,9 @@ export default function LabyrinthOfAbyss({
       Animated.timing(hitFlash, { toValue: 0, duration: 320, useNativeDriver: true }).start();
     },
     onEnd: endRun,
+    // Reaching the stairs pauses the descent: the loop only runs in 'playing',
+    // so switching phase freezes the floor while the choice is on screen.
+    onStairs: () => { phaseRef.current = 'stairs'; setPhase('stairs'); },
   };
 
   // ── game loop ──
@@ -1043,6 +1147,30 @@ export default function LabyrinthOfAbyss({
     return () => loop.stop();
   }, [campOpen, solShimmer]);
 
+  /** Take the stairs — deeper floor, richer multiplier, same seeker. */
+  function descendDeeper() {
+    const r = runRef.current;
+    if (!r) return;
+    L.descendFloor(r);
+    setCollected(0);
+    setMsg(`Floor ${r.depth} · ×${r.orbMult.toFixed(1)} ORB`);
+    phaseRef.current = 'playing';
+    setPhase('playing');
+    onPlaySound('levelup');
+  }
+
+  /** Walk away with the haul — pays a bonus scaled by how deep you got. */
+  function extractRun() {
+    const r = runRef.current;
+    if (!r) return;
+    const bonus = Math.round(L.EXTRACT_BONUS_ORB * r.depth * r.orbMult);
+    r.runOrb += bonus;
+    onEarnOrb(bonus);
+    setRunOrb(r.runOrb);
+    onPlaySound('jackpot');
+    endRun(true);
+  }
+
   function startRun() {
     if (energy < L.ENTRY_ENERGY) {
       setMsg(`Need ${L.ENTRY_ENERGY} energy to descend`);
@@ -1054,7 +1182,7 @@ export default function LabyrinthOfAbyss({
     setHp(runRef.current.maxHp);
     setCollected(0);
     setRunOrb(0);
-    setMsg('The Abyss watches. Find 15 artifacts.');
+    setMsg('Floor 1 · find the stairs, take what you can carry');
     phaseRef.current = 'playing';
     setPhase('playing');
     onPlaySound('levelup');
@@ -1137,7 +1265,10 @@ export default function LabyrinthOfAbyss({
             <Text style={s.menuKicker}>· GENESIS PRE-SEASON ·</Text>
             <Text style={s.menuTitle}>ABYSS{'\n'}LABYRINTH</Text>
             <View style={s.menuRule} />
-            <Text style={s.menuTagline}>The dark calls the brave.  Descend, and it remembers.</Text>
+            <Text style={s.menuTagline}>
+              Descend floor by floor. Every stair asks the same question —{'\n'}
+              take the haul and live, or go deeper for more.
+            </Text>
           </View>
 
           <View style={s.menuBottom} pointerEvents="box-none">
@@ -1153,9 +1284,9 @@ export default function LabyrinthOfAbyss({
                 <Text style={s.statLbl}>SWORD</Text>
               </View>
               <View style={s.statCard}>
-                <PixelIcon sprite={ICON_STAR} size={26} style={s.statIcon} />
-                <Text style={s.statVal}>{L.ITEM_COUNT}</Text>
-                <Text style={s.statLbl}>ARTIFACTS</Text>
+                <PixelIcon sprite={ICON_PORTAL} size={26} style={s.statIcon} />
+                <Text style={s.statVal}>{bestDepth}</Text>
+                <Text style={s.statLbl}>DEEPEST</Text>
               </View>
             </View>
 
@@ -1338,8 +1469,12 @@ export default function LabyrinthOfAbyss({
                 </View>
               )}
               <View style={s.hudChipBox}>
+                <PixelIcon sprite={ICON_PORTAL} size={14} />
+                <Text style={s.hudChip}>F{run?.depth ?? 1}</Text>
+              </View>
+              <View style={s.hudChipBox}>
                 <PixelIcon sprite={ICON_STAR} size={14} />
-                <Text style={s.hudChip}>{collected}/{L.ITEM_COUNT}</Text>
+                <Text style={s.hudChip}>{collected}/{run?.items.length ?? 0}</Text>
               </View>
               <View style={[s.hudChipBox, { borderColor: 'rgba(250,204,21,0.45)' }]}>
                 <PixelIcon sprite={ICON_ORB} size={14} />
@@ -1362,6 +1497,7 @@ export default function LabyrinthOfAbyss({
                 <View style={s.bossNameRow}>
                   <PixelIcon sprite={ICON_SWORD} size={14} />
                   <Text style={s.bossName}>THE GUARDIAN</Text>
+                  <Text style={s.bossPhase}>{'◆'.repeat(g.phase)}</Text>
                   <PixelIcon sprite={ICON_SWORD} size={14} />
                 </View>
                 <View style={s.bossTrack}>
@@ -1392,6 +1528,53 @@ export default function LabyrinthOfAbyss({
         </>
       )}
 
+      {/* ═══ STAIRS — the descent's decision ═══ */}
+      {phase === 'stairs' && run && (
+        <View style={s.endWrap}>
+          <PixelIcon sprite={ICON_PORTAL} size={78} style={s.endIcon} />
+          <Text style={s.stairsKicker}>· THE STAIRS DESCEND ·</Text>
+          <Text style={s.stairsTitle}>FLOOR {run.depth} CLEARED</Text>
+          <OrnamentRule color="#22d3ee" />
+
+          <View style={s.endStats}>
+            <View style={s.endRow}>
+              <PixelIcon sprite={ICON_ORB} size={16} />
+              <Text style={s.endLbl}>CARRIED OUT</Text>
+              <Text style={[s.endVal, { color: '#facc15' }]}>{runOrb.toLocaleString()}</Text>
+            </View>
+            <View style={s.endRow}>
+              <PixelIcon sprite={ICON_SWORD} size={16} />
+              <Text style={s.endLbl}>KILLS</Text>
+              <Text style={s.endVal}>{run.kills}</Text>
+            </View>
+            <View style={s.endRow}>
+              <PixelIcon sprite={ICON_STAR} size={16} />
+              <Text style={s.endLbl}>NEXT FLOOR PAYS</Text>
+              <Text style={[s.endVal, { color: '#22d3ee' }]}>
+                ×{(run.orbMult + L.DEPTH_ORB_STEP).toFixed(1)}
+              </Text>
+            </View>
+          </View>
+
+          <TouchableOpacity onPress={descendDeeper} activeOpacity={0.85} style={s.descendBtn}>
+            <Text style={s.descendTxt}>▼  GO DEEPER</Text>
+            <View style={s.descendCost}>
+              <Text style={s.descendCostTxt}>FLOOR {run.depth + 1}</Text>
+            </View>
+          </TouchableOpacity>
+          {(run.depth + 1) % L.GUARDIAN_EVERY === 0 && (
+            <Text style={s.stairsWarn}>A Guardian waits on the next floor</Text>
+          )}
+
+          <TouchableOpacity onPress={extractRun} activeOpacity={0.85} style={s.extractBtn}>
+            <Text style={s.extractTxt}>▲  LEAVE WITH THE HAUL</Text>
+            <Text style={s.extractSub}>
+              +{Math.round(L.EXTRACT_BONUS_ORB * run.depth * run.orbMult).toLocaleString()} ORB bonus
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* ═══ DEATH / VICTORY ═══ */}
       {(phase === 'dead' || phase === 'won') && (
         <View style={s.endWrap}>
@@ -1404,7 +1587,7 @@ export default function LabyrinthOfAbyss({
             <View style={s.endRow}>
               <PixelIcon sprite={ICON_STAR} size={16} />
               <Text style={s.endLbl}>ARTIFACTS</Text>
-              <Text style={s.endVal}>{collected}/{L.ITEM_COUNT}</Text>
+              <Text style={s.endVal}>{collected}/{run?.items.length ?? 0}</Text>
             </View>
             <View style={s.endRow}>
               <PixelIcon sprite={ICON_SWORD} size={16} />
@@ -1564,6 +1747,7 @@ const s = StyleSheet.create({
   bossWrap:  { position: 'absolute', top: 92, left: 44, right: 44, alignItems: 'center' },
   bossNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
   bossName:  { color: '#f472b6', fontSize: 11, fontWeight: '900', letterSpacing: 2 },
+  bossPhase: { color: '#fbcfe8', fontSize: 9, fontWeight: '900', letterSpacing: 1 },
   bossTrack: { height: 9, width: '100%', backgroundColor: 'rgba(15,23,42,0.85)', borderRadius: 5,
                overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(244,114,182,0.55)' },
   bossFill:  { height: '100%', backgroundColor: '#ec4899', borderRadius: 5 },
@@ -1583,6 +1767,16 @@ const s = StyleSheet.create({
   endWrap:  { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center',
               backgroundColor: 'rgba(5,1,13,0.82)', padding: 28 },
   endIcon:  { marginBottom: 10 },
+  stairsKicker: { color: '#67e8f9', fontSize: 10, fontWeight: '900', letterSpacing: 3, marginBottom: 4 },
+  stairsTitle:  { color: '#F5F3FF', fontSize: 22, fontWeight: '900', letterSpacing: 3, textAlign: 'center',
+                  textShadowColor: 'rgba(34,211,238,0.55)', textShadowRadius: 12,
+                  textShadowOffset: { width: 0, height: 0 } },
+  stairsWarn:   { color: '#f472b6', fontSize: 11, fontWeight: '800', letterSpacing: 1, marginTop: 8 },
+  extractBtn:   { marginTop: 14, alignItems: 'center', paddingVertical: 12, paddingHorizontal: 28,
+                  borderRadius: 16, borderWidth: 1.5, borderColor: 'rgba(250,204,21,0.55)',
+                  backgroundColor: 'rgba(30,20,6,0.75)' },
+  extractTxt:   { color: '#FDE68A', fontSize: 14, fontWeight: '900', letterSpacing: 2 },
+  extractSub:   { color: '#a1854a', fontSize: 11, fontWeight: '700', marginTop: 3 },
   endTitle: { color: '#ef4444', fontSize: 20, fontWeight: '900', letterSpacing: 3, textAlign: 'center',
               textShadowColor: 'rgba(0,0,0,0.9)', textShadowRadius: 8, textShadowOffset: { width: 0, height: 2 } },
   endStats: { marginTop: 18, gap: 2, alignSelf: 'stretch', paddingHorizontal: 22,

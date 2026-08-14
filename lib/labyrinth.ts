@@ -57,8 +57,28 @@ export const ARTIFACT_CHANCE = 0.4;         // else treasure
 export const COLLECT_DIST    = 2.2;
 
 export const TRAP_COUNT      = 45;
-export const TRAP_DMG        = 10;
+export const TRAP_DMG        = 14;          // hurts more, but you can now dodge it
 export const TRAP_DIST       = 2.0;
+export const TRAP_ARM_DIST   = 5.5;         // proximity that wakes a rune
+export const TRAP_TELEGRAPH  = 0.55;        // s of warning before it fires — the dodge window
+export const TRAP_BLAST      = 3.4;         // radius it actually strikes
+
+// ── Pathfinding ──────────────────────────────────────────────────────────────
+// A bounded BFS flow field around the player. Monsters walk down the gradient
+// instead of charging the straight line, so they round corners and stop
+// grinding against walls. Recomputed a few times a second, not per frame.
+export const FLOW_RADIUS     = 16;          // cells of BFS around the player
+export const FLOW_INTERVAL   = 0.22;        // s between rebuilds
+export const FLOW_UNREACHED  = 0xffff;
+
+// ── Guardian fight ───────────────────────────────────────────────────────────
+export const GUARD_PHASE2_HP = 0.6;         // fraction of max HP entering phase 2
+export const GUARD_PHASE3_HP = 0.3;
+export const GUARD_SLAM_CD   = 3.4;         // s between shockwave slams
+export const GUARD_SLAM_TELL = 0.9;         // wind-up the player can dash out of
+export const GUARD_SLAM_R    = 13;          // shockwave radius
+export const GUARD_SLAM_DMG  = 32;
+export const GUARD_SUMMON_CD = 7.0;         // phase 2+: calls shades to its side
 
 export const BARREL_COUNT    = 30;
 export const BARREL_BLAST_R  = 15;
@@ -68,6 +88,42 @@ export const BARREL_PLAYER_DMG  = 30;
 export const PORTAL_DIST     = 3.0;
 export const WIN_BONUS_ORB   = 1000;
 export const WIN_TOURNAMENT_PTS = 60;
+
+// ── Descent (multi-floor run) ────────────────────────────────────────────────
+// One entry fee buys a whole descent. Each floor is a fresh, slightly larger
+// and nastier maze; the stairs offer the roguelike decision — bank what you
+// have, or go deeper for a fatter multiplier. ORB is granted on pickup and is
+// never taken away: the risk is the earnings you forfeit by dying, not a loss.
+export const FLOOR_BASE_CELLS  = 13;        // logical cells on floor 1
+export const FLOOR_CELLS_STEP  = 2;         // +cells per floor
+export const FLOOR_MAX_CELLS   = 30;
+export const FLOOR_BASE_MOBS   = 12;
+export const FLOOR_MOBS_STEP   = 4;
+export const FLOOR_MAX_MOBS    = 60;
+export const FLOOR_BASE_ITEMS  = 3;
+export const FLOOR_MAX_ITEMS   = 7;
+export const FLOOR_BASE_TRAPS  = 8;
+export const FLOOR_TRAPS_STEP  = 3;
+export const FLOOR_BASE_KEGS   = 5;
+export const FLOOR_KEGS_STEP   = 2;
+export const GUARDIAN_EVERY    = 3;         // a Guardian bars the stairs on these floors
+export const DEPTH_ORB_STEP    = 0.3;       // multiplier: 1 + 0.3*(depth-1)
+export const STAIRS_DIST       = 3.0;
+export const EXTRACT_BONUS_ORB = 400;       // per floor cleared, paid on extraction
+
+/** Level scale for a given depth. */
+export function floorPlan(depth: number) {
+  const d = Math.max(1, Math.floor(depth));
+  return {
+    cells:   Math.min(FLOOR_MAX_CELLS, FLOOR_BASE_CELLS + (d - 1) * FLOOR_CELLS_STEP),
+    mobs:    Math.min(FLOOR_MAX_MOBS,  FLOOR_BASE_MOBS  + (d - 1) * FLOOR_MOBS_STEP),
+    items:   Math.min(FLOOR_MAX_ITEMS, FLOOR_BASE_ITEMS + Math.floor((d - 1) / 2)),
+    traps:   FLOOR_BASE_TRAPS + (d - 1) * FLOOR_TRAPS_STEP,
+    kegs:    FLOOR_BASE_KEGS  + (d - 1) * FLOOR_KEGS_STEP,
+    guardian: d % GUARDIAN_EVERY === 0,
+    orbMult: 1 + DEPTH_ORB_STEP * (d - 1),
+  };
+}
 
 // ── Camp upgrades (permanent meta-progression, bought with ORB) ──────────────
 // Five axes, levels 0-5 each. Index every table by level; level 0 must equal
@@ -109,6 +165,11 @@ export type Monster = {
   lastAttack: number;      // run-clock seconds
   damageFlash: number;     // seconds remaining of white flash
   knockback: Vec2;         // decaying velocity
+  // Guardian-only fight state (ignored by regular monsters)
+  phase: number;           // 1 → 3, escalates as its HP drops
+  slamAt: number;          // run-clock time the next slam lands (0 = not winding up)
+  lastSlam: number;
+  lastSummon: number;
 };
 
 /** ORB payout / contact damage for a monster type. */
@@ -129,8 +190,16 @@ export type LootItem = {
   collected: boolean;
 };
 
-export type Trap   = { id: number; pos: Vec2; triggered: boolean };
+/**
+ * Rune trap. Dormant until the player steps inside `TRAP_ARM_DIST`, then it
+ * telegraphs for `TRAP_TELEGRAPH` seconds before striking — the window that
+ * makes DASH worth pressing. `triggered` marks a spent rune.
+ */
+export type Trap   = { id: number; pos: Vec2; triggered: boolean; arming: number };
 export type Barrel = { id: number; pos: Vec2; exploded: boolean };
+
+/** An expanding ring left by a Guardian slam — purely visual, damage is instant. */
+export type Shockwave = { x: number; z: number; life: number; max: number; radius: number };
 
 // Transient FX for juice (spark bursts, floating damage/reward numbers)
 export type Particle = { x: number; z: number; vx: number; vz: number; life: number; max: number; color: string; size: number };
@@ -157,6 +226,11 @@ export type RunState = {
   barrels: Barrel[];
   portalActive: boolean;
   portalPos: Vec2;
+  // ── descent ──
+  depth: number;           // current floor, 1-based
+  orbMult: number;         // reward multiplier for this floor
+  stairsPos: Vec2;
+  stairsLocked: boolean;   // true on Guardian floors until the boss falls
   clock: number;           // run time, seconds
   kills: number;
   runOrb: number;          // ORB earned this run (already granted via callback)
@@ -169,6 +243,10 @@ export type RunState = {
   emberCharges: number;    // Second Torch: lethal-hit saves left this run
   emberReviveHp: number;   // HP restored when the Second Torch flares
   explored: number[][];    // fog-of-war memory (1 = seen) — feeds the minimap
+  // Pathfinding: BFS distance-to-player per cell, rebuilt every FLOW_INTERVAL
+  flow: Uint16Array;
+  flowAt: number;          // run-clock time of the last rebuild
+  shockwaves: Shockwave[]; // expanding rings from Guardian slams (render + FX)
   // FX
   particles: Particle[];
   floats: FloatText[];
@@ -315,10 +393,76 @@ export function clampToBounds(pos: Vec2, gridW: number, gridH: number): Vec2 {
   };
 }
 
+// ── Flow field (cheap pathfinding) ───────────────────────────────────────────
+/**
+ * Breadth-first flood from the player's cell, bounded to FLOW_RADIUS, writing
+ * step-distance into `run.flow`. Monsters then simply step to the neighbouring
+ * cell with a lower value, which routes them around corners and through
+ * doorways. Cost is ~a thousand cell visits a few times a second — far cheaper
+ * than per-monster A*, and good enough because everything chases one target.
+ */
+export function rebuildFlowField(run: RunState) {
+  const { gridW, gridH, grid, flow } = run;
+  flow.fill(FLOW_UNREACHED);
+  const { cx, cz } = worldToCell(run.player.pos.x, run.player.pos.z, gridW, gridH);
+  if (cx < 0 || cz < 0 || cx >= gridW || cz >= gridH) return;
+
+  // Ring buffer sized for the bounded area; BFS never revisits a cell.
+  const span = FLOW_RADIUS * 2 + 1;
+  const queue = new Int32Array(span * span * 2);
+  let head = 0, tail = 0;
+  flow[cz * gridW + cx] = 0;
+  queue[tail++] = cz * gridW + cx;
+
+  while (head < tail) {
+    const idx = queue[head++];
+    const d = flow[idx];
+    if (d >= FLOW_RADIUS) continue;
+    const y = (idx / gridW) | 0, x = idx - y * gridW;
+    // 4-way: diagonal squeezing through wall corners looks like clipping
+    for (let k = 0; k < 4; k++) {
+      const nx = x + (k === 0 ? 1 : k === 1 ? -1 : 0);
+      const ny = y + (k === 2 ? 1 : k === 3 ? -1 : 0);
+      if (nx <= 0 || ny <= 0 || nx >= gridW - 1 || ny >= gridH - 1) continue;
+      if (grid[ny][nx] === 1) continue;
+      const nidx = ny * gridW + nx;
+      if (flow[nidx] !== FLOW_UNREACHED) continue;
+      flow[nidx] = d + 1;
+      if (tail < queue.length) queue[tail++] = nidx;
+    }
+  }
+}
+
+/**
+ * Direction a monster should walk to close on the player, following the flow
+ * field. Returns null when the player is unreachable or already adjacent, in
+ * which case the caller falls back to steering straight at them.
+ */
+function flowStep(run: RunState, pos: Vec2): Vec2 | null {
+  const { gridW, gridH, flow } = run;
+  const { cx, cz } = worldToCell(pos.x, pos.z, gridW, gridH);
+  if (cx <= 0 || cz <= 0 || cx >= gridW - 1 || cz >= gridH - 1) return null;
+  const here = flow[cz * gridW + cx];
+  if (here === FLOW_UNREACHED || here === 0) return null;
+
+  let bestD = here, bx = cx, bz = cz;
+  for (let k = 0; k < 4; k++) {
+    const nx = cx + (k === 0 ? 1 : k === 1 ? -1 : 0);
+    const nz = cz + (k === 2 ? 1 : k === 3 ? -1 : 0);
+    const v = flow[nz * gridW + nx];
+    if (v < bestD) { bestD = v; bx = nx; bz = nz; }
+  }
+  if (bx === cx && bz === cz) return null;
+
+  // Steer at the centre of the winning cell so bodies stay off the walls.
+  const target = cellToWorld(bx, bz, gridW, gridH);
+  const dx = target.x - pos.x, dz = target.z - pos.z;
+  const len = Math.sqrt(dx * dx + dz * dz) || 1;
+  return { x: dx / len, z: dz / len };
+}
+
 // ── Run factory ───────────────────────────────────────────────────────────────
 export function createRun(upgrades?: Partial<LabyrinthUpgrades>): RunState {
-  const { grid, gridW, gridH } = generateMaze(MAZE_W, MAZE_H);
-
   // Clamp each axis to a valid table index; omitted axes fall back to level 0,
   // so `createRun()` behaves exactly as before the camp existed.
   const lv = (n: number | undefined) =>
@@ -330,17 +474,10 @@ export function createRun(upgrades?: Partial<LabyrinthUpgrades>): RunState {
                    + (upgrades?.lantern ? LANTERN_TORCH_BONUS : 0);
   const emberLv    = lv(upgrades?.ember);
 
-  const emptyPos = (): Vec2 => {
-    for (let tries = 0; tries < 4000; tries++) {
-      const cx = Math.floor(Math.random() * (gridW - 2)) + 1;
-      const cz = Math.floor(Math.random() * (gridH - 2)) + 1;
-      if (grid[cz][cx] === 0) return cellToWorld(cx, cz, gridW, gridH);
-    }
-    return { x: 0, z: 0 };
-  };
+  const level = buildLevel(1);
 
   return {
-    grid, gridW, gridH,
+    ...level,
     player: {
       pos: { x: 0, z: 0 },
       dir: { x: 0, z: -1 },
@@ -349,47 +486,6 @@ export function createRun(upgrades?: Partial<LabyrinthUpgrades>): RunState {
       isDashing: false, dashTime: 0, dashCooldown: 0,
       moving: false, stepPhase: 0,
     },
-    monsters: [
-      ...Array.from({ length: MONSTER_COUNT }, (_, i): Monster => {
-        const isBrute = Math.random() < BRUTE_CHANCE;
-        const hp = isBrute ? BRUTE_HP : NORMAL_HP;
-        return {
-          id: i,
-          pos: emptyPos(),
-          hp, maxHp: hp,
-          type: isBrute ? 'brute' : 'normal',
-          variant: Math.floor(Math.random() * 3),
-          speed: isBrute ? BRUTE_SPEED : NORMAL_SPEED,
-          dead: false, lastAttack: 0, damageFlash: 0,
-          knockback: { x: 0, z: 0 },
-        };
-      }),
-      // The Guardian mini-boss — spawned far from the centre so the descent
-      // builds toward the encounter.
-      {
-        id: MONSTER_COUNT,
-        pos: emptyPos(),
-        hp: GUARDIAN_HP, maxHp: GUARDIAN_HP,
-        type: 'guardian', variant: 0,
-        speed: GUARDIAN_SPEED,
-        dead: false, lastAttack: 0, damageFlash: 0,
-        knockback: { x: 0, z: 0 },
-      },
-    ],
-    items: Array.from({ length: ITEM_COUNT }, (_, i) => ({
-      id: i,
-      pos: emptyPos(),
-      type: Math.random() > ARTIFACT_CHANCE ? 'treasure' as const : 'artifact' as const,
-      collected: false,
-    })),
-    traps: Array.from({ length: TRAP_COUNT }, (_, i) => ({
-      id: i, pos: emptyPos(), triggered: false,
-    })),
-    barrels: Array.from({ length: BARREL_COUNT }, (_, i) => ({
-      id: i, pos: emptyPos(), exploded: false,
-    })),
-    portalActive: false,
-    portalPos: { x: 0, z: 0 },
     clock: 0,
     kills: 0,
     runOrb: 0,
@@ -399,12 +495,117 @@ export function createRun(upgrades?: Partial<LabyrinthUpgrades>): RunState {
     torchCells,
     emberCharges: emberLv > 0 ? 1 : 0,
     emberReviveHp: EMBER_REVIVE_HP[emberLv],
-    explored: Array.from({ length: gridH }, () => Array(gridW).fill(0)),
+    shockwaves: [],
     particles: [],
     floats: [],
     shake: 0,
     swordSwing: 0,
   };
+}
+
+/** Everything that is regenerated per floor (the run's persistent stats are not). */
+type LevelParts = Pick<RunState,
+  'grid' | 'gridW' | 'gridH' | 'monsters' | 'items' | 'traps' | 'barrels' |
+  'portalActive' | 'portalPos' | 'depth' | 'orbMult' | 'stairsPos' | 'stairsLocked' |
+  'explored' | 'flow' | 'flowAt'>;
+
+/** Generate one floor of the descent, scaled by depth. */
+function buildLevel(depth: number): LevelParts {
+  const plan = floorPlan(depth);
+  const { grid, gridW, gridH } = generateMaze(plan.cells, plan.cells);
+
+  const emptyPos = (): Vec2 => {
+    for (let tries = 0; tries < 4000; tries++) {
+      const cx = Math.floor(Math.random() * (gridW - 2)) + 1;
+      const cz = Math.floor(Math.random() * (gridH - 2)) + 1;
+      if (grid[cz][cx] === 0) return cellToWorld(cx, cz, gridW, gridH);
+    }
+    return { x: 0, z: 0 };
+  };
+  /** A spot far from the centre — used for the stairs so a floor is a journey. */
+  const farPos = (): Vec2 => {
+    let best = emptyPos(), bestD = 0;
+    for (let i = 0; i < 40; i++) {
+      const c = emptyPos();
+      const d = c.x * c.x + c.z * c.z;
+      if (d > bestD) { bestD = d; best = c; }
+    }
+    return best;
+  };
+
+  const monsters: Monster[] = Array.from({ length: plan.mobs }, (_, i): Monster => {
+    const isBrute = Math.random() < BRUTE_CHANCE;
+    const hp = isBrute ? BRUTE_HP : NORMAL_HP;
+    return {
+      id: i,
+      pos: emptyPos(),
+      hp, maxHp: hp,
+      type: isBrute ? 'brute' : 'normal',
+      variant: Math.floor(Math.random() * 3),
+      speed: isBrute ? BRUTE_SPEED : NORMAL_SPEED,
+      dead: false, lastAttack: 0, damageFlash: 0,
+      knockback: { x: 0, z: 0 },
+      phase: 1, slamAt: 0, lastSlam: 0, lastSummon: 0,
+    };
+  });
+
+  // Every GUARDIAN_EVERY floors a Guardian holds the stairs. Its HP scales so
+  // the fight stays meaningful as the seeker's blade improves.
+  if (plan.guardian) {
+    const hp = Math.round(GUARDIAN_HP * (1 + 0.35 * (depth / GUARDIAN_EVERY - 1)));
+    monsters.push({
+      id: 9000,
+      pos: emptyPos(),
+      hp, maxHp: hp,
+      type: 'guardian', variant: 0,
+      speed: GUARDIAN_SPEED,
+      dead: false, lastAttack: 0, damageFlash: 0,
+      knockback: { x: 0, z: 0 },
+      phase: 1, slamAt: 0, lastSlam: 0, lastSummon: 0,
+    });
+  }
+
+  return {
+    grid, gridW, gridH,
+    monsters,
+    items: Array.from({ length: plan.items }, (_, i) => ({
+      id: i,
+      pos: emptyPos(),
+      type: Math.random() > ARTIFACT_CHANCE ? 'treasure' as const : 'artifact' as const,
+      collected: false,
+    })),
+    traps: Array.from({ length: plan.traps }, (_, i) => ({
+      id: i, pos: emptyPos(), triggered: false, arming: 0,
+    })),
+    barrels: Array.from({ length: plan.kegs }, (_, i) => ({
+      id: i, pos: emptyPos(), exploded: false,
+    })),
+    portalActive: false,
+    portalPos: { x: 0, z: 0 },
+    depth,
+    orbMult: plan.orbMult,
+    stairsPos: farPos(),
+    stairsLocked: plan.guardian,
+    explored: Array.from({ length: gridH }, () => Array(gridW).fill(0)),
+    flow: new Uint16Array(gridW * gridH).fill(FLOW_UNREACHED),
+    flowAt: -1,
+  };
+}
+
+/**
+ * Take the stairs down. The seeker keeps HP, ORB, kills and camp upgrades;
+ * everything about the place is rebuilt one step deeper and nastier.
+ */
+export function descendFloor(run: RunState) {
+  const level = buildLevel(run.depth + 1);
+  Object.assign(run, level);
+  run.player.pos = { x: 0, z: 0 };
+  run.player.isDashing = false;
+  run.player.dashTime = 0;
+  run.shockwaves.length = 0;
+  run.particles.length = 0;
+  run.floats.length = 0;
+  run.shake = 0;
 }
 
 // ── FX helpers ────────────────────────────────────────────────────────────────
@@ -434,6 +635,8 @@ export type SimEvents = {
   setMsg: (m: string) => void;
   onHitFlash: () => void;
   onEnd: (won: boolean) => void;
+  /** Player reached the unlocked stairs — the UI offers DESCEND or EXTRACT. */
+  onStairs: () => void;
   playSound: (s: 'tap' | 'crit' | 'jackpot' | 'levelup' | 'dead') => void;
   earnOrb: (n: number) => void;
 };
@@ -547,7 +750,7 @@ export function stepSimulation(run: RunState, input: SimInput, dt: number, ev: S
           m.knockback = { x: (kb.x / kl) * 20, z: (kb.z / kl) * 20 };
           if (m.hp <= 0 && !m.dead) {
             m.dead = true; r.kills += 1;
-            const reward = rewardFor(m.type);
+            const reward = Math.round(rewardFor(m.type) * r.orbMult);
             r.runOrb += reward; ev.earnOrb(reward); ev.setRunOrb(r.runOrb);
             addFloat(r, m.pos.x, m.pos.z, `+${reward}`, '#facc15');
             spawnBurst(r, m.pos.x, m.pos.z, '#ef4444', 12, 8);
@@ -578,14 +781,15 @@ export function stepSimulation(run: RunState, input: SimInput, dt: number, ev: S
         spawnBurst(r, m.pos.x, m.pos.z, '#ffffff', 4, 12);   // bright impact flash
         if (m.hp <= 0) {
           m.dead = true; r.kills += 1;
-          const reward = rewardFor(m.type);
+          const reward = Math.round(rewardFor(m.type) * r.orbMult);
           r.runOrb += reward; ev.earnOrb(reward); ev.setRunOrb(r.runOrb);
           addFloat(r, m.pos.x, m.pos.z - 0.6, `+${reward}`, '#facc15');
           if (m.type === 'guardian') {
             r.shake = Math.max(r.shake, 16);
             spawnBurst(r, m.pos.x, m.pos.z, '#22d3ee', 44, 16);
             spawnBurst(r, m.pos.x, m.pos.z, '#ffffff', 18, 10);
-            ev.setMsg('THE GUARDIAN FALLS · +3000 ORB');
+            r.stairsLocked = false;              // the way down is clear
+            ev.setMsg(`THE GUARDIAN FALLS · +${reward} ORB · the stairs unseal`);
             ev.playSound('jackpot');
           } else {
             r.shake = Math.max(r.shake, 8);
@@ -596,6 +800,19 @@ export function stepSimulation(run: RunState, input: SimInput, dt: number, ev: S
       }
       ev.playSound(hit ? 'crit' : 'tap');
     }
+  }
+
+  // ── pathfinding refresh ──
+  if (r.clock - r.flowAt >= FLOW_INTERVAL) {
+    r.flowAt = r.clock;
+    rebuildFlowField(r);
+  }
+
+  // ── shockwave rings (visual decay) ──
+  for (let i = r.shockwaves.length - 1; i >= 0; i--) {
+    const w = r.shockwaves[i];
+    w.life -= dt;
+    if (w.life <= 0) r.shockwaves.splice(i, 1);
   }
 
   // monsters
@@ -610,13 +827,74 @@ export function stepSimulation(run: RunState, input: SimInput, dt: number, ev: S
       if (Math.abs(m.knockback.x) + Math.abs(m.knockback.z) < 0.1) m.knockback = { x: 0, z: 0 };
     }
     const d = dist(m.pos, p.pos);
-    if (d < MONSTER_AGGRO && d > MONSTER_HIT_DIST * 0.8) {
-      const ux = (p.pos.x - m.pos.x) / d;
-      const uz = (p.pos.z - m.pos.z) / d;
-      let next = { x: m.pos.x + ux * m.speed * dt, z: m.pos.z + uz * m.speed * dt };
+
+    // ── Guardian: escalating phases with telegraphed slams ──
+    if (m.type === 'guardian') {
+      const frac = m.hp / m.maxHp;
+      const wantPhase = frac <= GUARD_PHASE3_HP ? 3 : frac <= GUARD_PHASE2_HP ? 2 : 1;
+      if (wantPhase > m.phase) {
+        m.phase = wantPhase;
+        r.shake = Math.max(r.shake, 10);
+        spawnBurst(r, m.pos.x, m.pos.z, '#f472b6', 26, 12);
+        ev.setMsg(wantPhase === 3 ? 'THE GUARDIAN ENRAGES' : 'THE GUARDIAN AWAKENS FULLY');
+        ev.playSound('crit');
+      }
+
+      // wind-up → land: the tell is the whole point, it must be dodgeable
+      if (m.slamAt > 0) {
+        if (r.clock >= m.slamAt) {
+          m.slamAt = 0;
+          m.lastSlam = r.clock;
+          r.shake = Math.max(r.shake, 14);
+          r.shockwaves.push({ x: m.pos.x, z: m.pos.z, life: 0.45, max: 0.45, radius: GUARD_SLAM_R });
+          spawnBurst(r, m.pos.x, m.pos.z, '#22d3ee', 30, 18);
+          ev.playSound('crit');
+          if (!p.isDashing && dist(p.pos, m.pos) <= GUARD_SLAM_R) {
+            p.hp -= GUARD_SLAM_DMG;
+            ev.setHp(Math.max(0, p.hp));
+            addFloat(r, p.pos.x, p.pos.z, `-${GUARD_SLAM_DMG}`, '#ef4444');
+            ev.onHitFlash();
+          }
+        }
+      } else if (d < GUARD_SLAM_R * 1.1 && r.clock - m.lastSlam > GUARD_SLAM_CD / m.phase) {
+        m.slamAt = r.clock + GUARD_SLAM_TELL;      // start the tell
+        ev.setMsg('The Guardian raises its fists — DASH!');
+      }
+
+      // phase 2+: call reinforcements from the dark. Capped — an uncapped
+      // summon would pile up hundreds of shades over a long fight and tank fps.
+      const aliveCount = r.monsters.reduce((n, x) => n + (x.dead ? 0 : 1), 0);
+      if (m.phase >= 2 && aliveCount < MONSTER_COUNT + 12
+          && r.clock - m.lastSummon > GUARD_SUMMON_CD && d < MONSTER_AGGRO) {
+        m.lastSummon = r.clock;
+        for (let s = 0; s < (m.phase === 3 ? 3 : 2); s++) {
+          const a = Math.random() * Math.PI * 2;
+          const sp = { x: m.pos.x + Math.cos(a) * 6, z: m.pos.z + Math.sin(a) * 6 };
+          r.monsters.push({
+            id: 1000 + r.monsters.length,
+            pos: resolveWallCollision(r.grid, r.gridW, r.gridH, sp, 1.0),
+            hp: NORMAL_HP, maxHp: NORMAL_HP,
+            type: 'normal', variant: Math.floor(Math.random() * 3),
+            speed: NORMAL_SPEED, dead: false, lastAttack: 0, damageFlash: 0,
+            knockback: { x: 0, z: 0 }, phase: 1, slamAt: 0, lastSlam: 0, lastSummon: 0,
+          });
+          spawnBurst(r, sp.x, sp.z, '#a855f7', 10, 8);
+        }
+        ev.setMsg('The Guardian calls the shades');
+      }
+    }
+
+    // ── movement: follow the flow field, fall back to straight steering ──
+    // A winding-up Guardian roots itself so the tell reads clearly.
+    const rooted = m.type === 'guardian' && m.slamAt > 0;
+    if (!rooted && d < MONSTER_AGGRO && d > MONSTER_HIT_DIST * 0.8) {
+      const speed = m.type === 'guardian' && m.phase === 3 ? m.speed * 1.5 : m.speed;
+      const step = flowStep(r, m.pos) ?? { x: (p.pos.x - m.pos.x) / d, z: (p.pos.z - m.pos.z) / d };
+      let next = { x: m.pos.x + step.x * speed * dt, z: m.pos.z + step.z * speed * dt };
       next = resolveWallCollision(r.grid, r.gridW, r.gridH, next, 1.0);
       m.pos = next;
     }
+
     if (d <= MONSTER_HIT_DIST && r.clock - m.lastAttack > MONSTER_ATK_CD) {
       m.lastAttack = r.clock;
       if (!p.isDashing) {
@@ -632,50 +910,59 @@ export function stepSimulation(run: RunState, input: SimInput, dt: number, ev: S
     }
   }
 
-  // traps
-  if (!p.isDashing) {
-    for (const t of r.traps) {
-      if (t.triggered || dist(t.pos, p.pos) > TRAP_DIST) continue;
-      t.triggered = true;
+  // ── rune traps: arm on approach, telegraph, then strike ──
+  // The old version hit the instant you touched it, which read as unavoidable
+  // chip damage. Now the rune flares first and you get a window to leave.
+  for (const t of r.traps) {
+    if (t.triggered) continue;
+    const d = dist(t.pos, p.pos);
+    if (t.arming === 0) {
+      if (d <= TRAP_ARM_DIST) {
+        t.arming = TRAP_TELEGRAPH;
+        spawnBurst(r, t.pos.x, t.pos.z, '#f87171', 6, 4);
+      }
+      continue;
+    }
+    t.arming -= dt;
+    if (t.arming > 0) continue;
+
+    // it fires whether or not you are still standing there
+    t.triggered = true;
+    r.shockwaves.push({ x: t.pos.x, z: t.pos.z, life: 0.3, max: 0.3, radius: TRAP_BLAST });
+    spawnBurst(r, t.pos.x, t.pos.z, '#ef4444', 18, 12);
+    if (!p.isDashing && dist(t.pos, p.pos) <= TRAP_BLAST) {
       p.hp -= TRAP_DMG;
       ev.setHp(Math.max(0, p.hp));
-      r.shake = Math.max(r.shake, 4);
+      r.shake = Math.max(r.shake, 6);
       addFloat(r, p.pos.x, p.pos.z, `-${TRAP_DMG}`, '#f43f5e');
       ev.onHitFlash();
-      ev.setMsg('Trap sprung · -10 HP');
+      ev.setMsg(`Rune sprung · -${TRAP_DMG} HP`);
     }
   }
 
-  // loot
+  // loot — relics are pure reward now; the stairs, not the item count, gate
+  // progress. Deeper floors pay the depth multiplier on everything.
   for (const it of r.items) {
     if (it.collected || dist(it.pos, p.pos) > COLLECT_DIST) continue;
     it.collected = true;
-    const orb = it.type === 'artifact' ? ARTIFACT_ORB : TREASURE_ORB;
+    const orb = Math.round((it.type === 'artifact' ? ARTIFACT_ORB : TREASURE_ORB) * r.orbMult);
     r.runOrb += orb; ev.earnOrb(orb); ev.setRunOrb(r.runOrb);
     const col = it.type === 'artifact' ? '#22d3ee' : '#facc15';
     addFloat(r, it.pos.x, it.pos.z, `+${orb}`, col);
     spawnBurst(r, it.pos.x, it.pos.z, col, 16, 8);
-    const left = r.items.filter(x => !x.collected).length;
-    if (left === 0) {
-      r.portalActive = true;
-      let pp = { x: p.pos.x, z: p.pos.z + 10 };
-      pp = resolveWallCollision(r.grid, r.gridW, r.gridH, pp, 2);
-      r.portalPos = clampToBounds(pp, r.gridW, r.gridH);
-      ev.setMsg('All artifacts found · reach the portal!');
-      ev.playSound('levelup');
-    } else {
-      ev.playSound('tap');
-    }
-    ev.setCollected(ITEM_COUNT - left);
+    ev.playSound('tap');
+    ev.setCollected(r.items.reduce((n, x) => n + (x.collected ? 1 : 0), 0));
   }
 
-  // portal / win
-  if (r.portalActive && dist(r.portalPos, p.pos) < PORTAL_DIST) {
-    r.runOrb += WIN_BONUS_ORB;
-    ev.earnOrb(WIN_BONUS_ORB); ev.setRunOrb(r.runOrb);
-    ev.playSound('jackpot');
-    ev.onEnd(true);
-    return;
+  // stairs — the descent's decision point. Locked while a Guardian lives.
+  if (dist(r.stairsPos, p.pos) < STAIRS_DIST) {
+    if (r.stairsLocked) {
+      ev.setMsg('The Guardian seals the stairs');
+    } else {
+      ev.playSound('levelup');
+      ev.onStairs();
+      return;
+    }
   }
 
   // death — unless the Second Torch flares (camp insurance, once per run):
