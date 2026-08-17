@@ -441,6 +441,26 @@ function drawScene(
   }
 
   // ── shockwaves (Guardian slams, sprung runes) ──
+  // Spikes first, so the ring reads as the blast they threw off.
+  for (const w of run.shockwaves) {
+    const k = 1 - w.life / w.max;
+    const ox2 = wsx(w.x), oy2 = wsy(w.z);
+    const spikeLen = (w.radius / CELL) * TILE * 0.5 * Math.min(1, k * 2.4);
+    for (let sp = 0; sp < 8; sp++) {
+      const a = (sp / 8) * Math.PI * 2 + w.x * 0.3;
+      const tipX = ox2 + Math.cos(a) * spikeLen;
+      const tipY = oy2 + Math.sin(a) * spikeLen * 0.75;
+      const path = Skia.Path.Make();
+      path.moveTo(ox2 + Math.cos(a + 0.22) * 7, oy2 + Math.sin(a + 0.22) * 7);
+      path.lineTo(tipX, tipY);
+      path.lineTo(ox2 + Math.cos(a - 0.22) * 7, oy2 + Math.sin(a - 0.22) * 7);
+      path.close();
+      scratch.setColor(col(sp % 2 ? '#e2e8f0' : '#cbd5e1'));
+      scratch.setAlphaf((1 - k) * 0.95);
+      canvas.drawPath(path, scratch);
+    }
+    scratch.setAlphaf(1);
+  }
   scratch.setStyle(PaintStyle.Stroke);
   for (const w of run.shockwaves) {
     const k = 1 - w.life / w.max;                 // 0 → 1 as it expands
@@ -563,8 +583,29 @@ function drawScene(
     if (m.damageFlash > 0) { asx *= 1.14; asy *= 0.86; }
     const chasing = dx * dx + dz * dz < L.MONSTER_AGGRO * L.MONSTER_AGGRO;
     const lean = chasing && !isGuardian ? (m.pos.x < p.pos.x ? -0.06 : 0.06) : 0;
-    drawSpriteA(canvas, sprite, mx, my, size, m.pos.x < p.pos.x,
-      m.damageFlash > 0 ? '#ffffff' : undefined, asx, asy, lean, false);
+
+    // ── attack tell ──
+    // A winding-up monster rears back and flashes a ring at its strike range,
+    // so the incoming hit is something you can see and step out of.
+    let tint = m.damageFlash > 0 ? '#ffffff' : undefined;
+    if (m.windup > 0) {
+      const full = m.type === 'brute' ? L.BRUTE_WINDUP : L.MONSTER_WINDUP;
+      const k = 1 - m.windup / full;                    // 0 → 1 as it charges
+      asy += k * 0.26; asx -= k * 0.12;                 // rear back
+      if (Math.sin(run.clock * 34) > 0) tint = '#ffd0d0';
+      const reach = (L.MONSTER_HIT_DIST * 1.35 / CELL) * TILE;
+      scratch.setStyle(PaintStyle.Stroke);
+      scratch.setStrokeWidth(2);
+      scratch.setColor(col('#ef4444'));
+      scratch.setAlphaf(0.3 + 0.45 * k);
+      canvas.drawCircle(mx, wsy(m.pos.z), reach, scratch);
+      scratch.setStrokeWidth(5);
+      scratch.setAlphaf(0.65);
+      canvas.drawCircle(mx, wsy(m.pos.z), reach * k, scratch);
+      scratch.setStyle(PaintStyle.Fill);
+      scratch.setAlphaf(1);
+    }
+    drawSpriteA(canvas, sprite, mx, my, size, m.pos.x < p.pos.x, tint, asx, asy, lean, false);
   }
 
   // ── player + sword ──
@@ -1069,6 +1110,7 @@ export default function LabyrinthOfAbyss({
   const [camp, setCamp]           = useState<CampLevels>(CAMP_ZERO);
   const [lantern, setLantern]     = useState(false);
   const [campOpen, setCampOpen]   = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
   const [paying, setPaying]       = useState(false);
   const [justBought, setJustBought] = useState<CampKey | null>(null);
 
@@ -1408,10 +1450,58 @@ export default function LabyrinthOfAbyss({
 
             {msg !== '' && <Text style={s.menuMsg}>{msg}</Text>}
 
-            <TouchableOpacity onPress={onExit} style={s.exitLink}>
-              <Text style={s.exitLinkTxt}>‹  BACK TO ARCADE</Text>
+            <View style={s.menuLinks}>
+              <TouchableOpacity onPress={() => { setRulesOpen(true); onPlaySound('tap'); }} style={s.exitLink}>
+                <Text style={s.rulesLinkTxt}>? HOW TO PLAY</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={onExit} style={s.exitLink}>
+                <Text style={s.exitLinkTxt}>‹  BACK TO ARCADE</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* ═══ HOW TO PLAY — the rules, which the game never explained ═══ */}
+      {phase === 'menu' && rulesOpen && (
+        <View style={s.campWrap}>
+          <View style={s.campHead}>
+            <PixelIcon sprite={ICON_TORCH} size={22} />
+            <Text style={s.campTitle}>HOW TO PLAY</Text>
+            <TouchableOpacity onPress={() => { setRulesOpen(false); onPlaySound('tap'); }} style={s.campClose}>
+              <Text style={s.campCloseTxt}>✕</Text>
             </TouchableOpacity>
           </View>
+          <ScrollView contentContainerStyle={s.campScroll} showsVerticalScrollIndicator={false}>
+            {([
+              { icon: ICON_TORCH,  t: 'THE DESCENT',
+                d: `Each floor is a dark maze. Your torch lights only what is near — the minimap remembers where you have been. Find the stairwell to go deeper.` },
+              { icon: ICON_SWORD,  t: 'FIGHT',
+                d: `STRIKE hits everything in a cone in front of you. Chain hits without missing to build a COMBO — up to +${Math.round(L.COMBO_MAX * L.COMBO_STEP * 100)}% damage. A miss resets it.` },
+              { icon: ICON_DASH,   t: 'DASH THROUGH DANGER',
+                d: `DASH is a short burst with invulnerability. Enemies rear back before they swing and rune traps flare before they fire — that flash is your window to dash out.` },
+              { icon: ICON_STAR,   t: 'LOOT',
+                d: `Relics and treasure are pure profit and are yours the moment you touch them — death never takes ORB you already earned.` },
+              { icon: ICON_PORTAL, t: 'THE CHOICE AT THE STAIRS',
+                d: `At every stairwell: go DEEPER for a bigger reward multiplier, or EXTRACT to bank the run and collect a bonus worth ${Math.round(L.EXTRACT_SHARE * 100)}% of your haul. Die, and you lose only that bonus.` },
+              { icon: ICON_SKULL,  t: 'THE GUARDIAN',
+                d: `Every ${L.GUARDIAN_EVERY} floors a Guardian seals the stairs. It has three phases, calls shades to its side, and telegraphs a shockwave slam — dash out of the ring.` },
+              { icon: ICON_TENT,   t: 'THE CAMP',
+                d: `Spend ORB at the camp on permanent upgrades. They survive every death, so a bad run still moves you forward.` },
+            ] as const).map((r) => (
+              <View key={r.t} style={s.ruleCard}>
+                <View style={s.ruleHead}>
+                  <PixelIcon sprite={r.icon} size={22} />
+                  <Text style={s.ruleTitle}>{r.t}</Text>
+                </View>
+                <Text style={s.ruleBody}>{r.d}</Text>
+              </View>
+            ))}
+          </ScrollView>
+          <TouchableOpacity onPress={() => { setRulesOpen(false); onPlaySound('tap'); }}
+            activeOpacity={0.85} style={s.rulesDone}>
+            <Text style={s.rulesDoneTxt}>GOT IT</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -1686,7 +1776,14 @@ export default function LabyrinthOfAbyss({
             style={StyleSheet.absoluteFill}
             resizeMode="cover"
           />
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(4,6,15,0.72)' }]} />
+          {/* Graded scrim: dark where the text sits, clear across the middle so
+              the painting is actually visible instead of a black rectangle. */}
+          <LinearGradient
+            colors={['rgba(4,6,15,0.92)', 'rgba(4,6,15,0.28)', 'rgba(4,6,15,0.92)']}
+            locations={[0, 0.4, 0.9]}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
           <PixelIcon sprite={phase === 'won' ? ICON_PORTAL : ICON_SKULL} size={92} style={s.endIcon} />
           <Text style={[s.endTitle, phase === 'won' && { color: '#22d3ee' }]}>
             {phase === 'won' ? 'ESCAPED THE ABYSS' : 'THE ABYSS CLAIMS YOU'}
@@ -1716,8 +1813,10 @@ export default function LabyrinthOfAbyss({
               </View>
             )}
           </View>
-          <TouchableOpacity onPress={startRun} activeOpacity={0.85} style={s.descendBtn}>
-            <Text style={s.descendTxt}>▼  DESCEND AGAIN</Text>
+          {/* Own button style: the menu's is sized for the shorter "DESCEND"
+              and overflowed the screen once "AGAIN" was appended. */}
+          <TouchableOpacity onPress={startRun} activeOpacity={0.85} style={s.endBtn}>
+            <Text style={s.endBtnTxt}>▼  DESCEND AGAIN</Text>
             <View style={s.descendCost}>
               <Text style={s.descendCostTxt}>{L.ENTRY_ENERGY}</Text>
               <PixelIcon sprite={ICON_BOLT} size={14} />
@@ -1835,6 +1934,16 @@ const s = StyleSheet.create({
                paddingVertical: 11, paddingHorizontal: 20, borderRadius: 14 },
   solOwnedTxt: { color: '#22d3ee', fontSize: 13, fontWeight: '900', letterSpacing: 1 },
 
+  menuLinks: { flexDirection: 'row', alignItems: 'center', gap: 18 },
+  rulesLinkTxt: { color: '#8b7bb8', fontSize: 12, fontWeight: '800', letterSpacing: 1.5 },
+  ruleCard: { backgroundColor: 'rgba(8,13,30,0.9)', borderRadius: 16, borderWidth: 1,
+              borderColor: 'rgba(124,58,237,0.34)', padding: 14, marginBottom: 10 },
+  ruleHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 7 },
+  ruleTitle: { color: '#F5F3FF', fontSize: 13, fontWeight: '900', letterSpacing: 1.6 },
+  ruleBody: { color: '#a99fc4', fontSize: 12.5, lineHeight: 19 },
+  rulesDone: { margin: 18, backgroundColor: '#7C3AED', paddingVertical: 15, borderRadius: 20,
+               alignItems: 'center', borderWidth: 1, borderColor: 'rgba(196,181,253,0.55)' },
+  rulesDoneTxt: { color: '#FFF', fontSize: 15, fontWeight: '900', letterSpacing: 2 },
   exitLink: { marginTop: 18, padding: 8 },
   exitLinkTxt: { color: '#475569', fontSize: 12, fontWeight: '800', letterSpacing: 2 },
 
@@ -1874,7 +1983,13 @@ const s = StyleSheet.create({
   btnCol:  { position: 'absolute', right: 18, bottom: 46, gap: 14, alignItems: 'center' },
 
   endWrap:  { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center',
-              backgroundColor: 'rgba(5,1,13,0.82)', padding: 28 },
+              backgroundColor: '#04060f', paddingHorizontal: 22, paddingVertical: 28 },
+  endBtn:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+              alignSelf: 'stretch', marginTop: 22, backgroundColor: '#7C3AED',
+              paddingVertical: 15, borderRadius: 20, borderWidth: 1,
+              borderColor: 'rgba(196,181,253,0.55)', shadowColor: '#7C3AED',
+              shadowRadius: 18, shadowOpacity: 0.75, elevation: 10 },
+  endBtnTxt:{ color: '#FFF', fontSize: 16, fontWeight: '900', letterSpacing: 1.5 },
   endIcon:  { marginBottom: 10 },
   stairsKicker: { color: '#67e8f9', fontSize: 10, fontWeight: '900', letterSpacing: 3, marginBottom: 4 },
   stairsTitle:  { color: '#F5F3FF', fontSize: 22, fontWeight: '900', letterSpacing: 3, textAlign: 'center',

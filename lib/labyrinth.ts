@@ -34,6 +34,20 @@ export const BRUTE_CHANCE    = 0.25;
 export const MONSTER_AGGRO   = 30;          // starts chasing
 export const MONSTER_HIT_DIST= 2.5;
 export const MONSTER_ATK_CD  = 1.0;
+// Enemies wind up before they strike. Without a tell, contact damage lands on
+// an invisible timer and the fight reads as mush; with one, backing off or
+// dashing through is a real decision.
+export const MONSTER_WINDUP  = 0.42;
+export const BRUTE_WINDUP    = 0.62;        // heavier, slower, more readable
+// Hitstop: freeze the world for a few frames on impact so a blow lands with
+// weight. The single cheapest upgrade to how combat feels.
+export const HITSTOP_HIT     = 0.05;
+export const HITSTOP_KILL    = 0.11;
+// Landing blows in quick succession builds a damage combo — rewards pressing
+// the attack instead of trading one safe swing at a time.
+export const COMBO_WINDOW    = 2.2;
+export const COMBO_STEP      = 0.12;        // +12% damage per stack
+export const COMBO_MAX       = 5;
 export const BRUTE_HP        = 150;
 export const BRUTE_SPEED     = 3;
 export const BRUTE_DMG       = 15;
@@ -59,7 +73,9 @@ export const COLLECT_DIST    = 2.2;
 export const TRAP_COUNT      = 45;
 export const TRAP_DMG        = 14;          // hurts more, but you can now dodge it
 export const TRAP_DIST       = 2.0;
-export const TRAP_ARM_DIST   = 5.5;         // proximity that wakes a rune
+// Wake distance has to be well outside the blast, or the rune lights up under
+// your feet and the tell may as well not exist.
+export const TRAP_ARM_DIST   = 13;          // proximity that wakes a rune
 export const TRAP_TELEGRAPH  = 0.55;        // s of warning before it fires — the dodge window
 export const TRAP_BLAST      = 3.4;         // radius it actually strikes
 
@@ -97,9 +113,9 @@ export const WIN_TOURNAMENT_PTS = 60;
 export const FLOOR_BASE_CELLS  = 13;        // logical cells on floor 1
 export const FLOOR_CELLS_STEP  = 2;         // +cells per floor
 export const FLOOR_MAX_CELLS   = 30;
-export const FLOOR_BASE_MOBS   = 12;
-export const FLOOR_MOBS_STEP   = 4;
-export const FLOOR_MAX_MOBS    = 60;
+export const FLOOR_BASE_MOBS   = 22;        // a sparse floor reads as unfinished
+export const FLOOR_MOBS_STEP   = 6;
+export const FLOOR_MAX_MOBS    = 70;
 export const FLOOR_BASE_ITEMS  = 3;
 export const FLOOR_MAX_ITEMS   = 7;
 export const FLOOR_BASE_TRAPS  = 8;
@@ -173,6 +189,7 @@ export type Monster = {
   lastAttack: number;      // run-clock seconds
   damageFlash: number;     // seconds remaining of white flash
   knockback: Vec2;         // decaying velocity
+  windup: number;          // seconds left of the attack tell (0 = not winding up)
   // Guardian-only fight state (ignored by regular monsters)
   phase: number;           // 1 → 3, escalates as its HP drops
   slamAt: number;          // run-clock time the next slam lands (0 = not winding up)
@@ -254,6 +271,9 @@ export type RunState = {
   // Pathfinding: BFS distance-to-player per cell, rebuilt every FLOW_INTERVAL
   flow: Uint16Array;
   flowAt: number;          // run-clock time of the last rebuild
+  hitstop: number;         // seconds the world stays frozen after an impact
+  combo: number;           // consecutive hits landed inside COMBO_WINDOW
+  comboAt: number;         // run-clock time of the last landed hit
   shockwaves: Shockwave[]; // expanding rings from Guardian slams (render + FX)
   // FX
   particles: Particle[];
@@ -504,6 +524,9 @@ export function createRun(upgrades?: Partial<LabyrinthUpgrades>): RunState {
     emberCharges: emberLv > 0 ? 1 : 0,
     emberReviveHp: EMBER_REVIVE_HP[emberLv],
     shockwaves: [],
+    hitstop: 0,
+    combo: 0,
+    comboAt: -99,
     particles: [],
     floats: [],
     shake: 0,
@@ -553,7 +576,7 @@ function buildLevel(depth: number): LevelParts {
       speed: isBrute ? BRUTE_SPEED : NORMAL_SPEED,
       dead: false, lastAttack: 0, damageFlash: 0,
       knockback: { x: 0, z: 0 },
-      phase: 1, slamAt: 0, lastSlam: 0, lastSummon: 0,
+      windup: 0, phase: 1, slamAt: 0, lastSlam: 0, lastSummon: 0,
     };
   });
 
@@ -569,7 +592,7 @@ function buildLevel(depth: number): LevelParts {
       speed: GUARDIAN_SPEED,
       dead: false, lastAttack: 0, damageFlash: 0,
       knockback: { x: 0, z: 0 },
-      phase: 1, slamAt: 0, lastSlam: 0, lastSummon: 0,
+      windup: 0, phase: 1, slamAt: 0, lastSlam: 0, lastSummon: 0,
     });
   }
 
@@ -657,7 +680,18 @@ export type SimEvents = {
 export function stepSimulation(run: RunState, input: SimInput, dt: number, ev: SimEvents) {
   const r = run;
   const p = r.player;
+
+  // Hitstop: hold the whole world still for a few frames after an impact. The
+  // renderer keeps drawing, so a blow reads as a jolt rather than a number
+  // quietly changing. Nothing else in the frame runs while it is active.
+  if (r.hitstop > 0) {
+    r.hitstop = Math.max(0, r.hitstop - dt);
+    return;
+  }
+
   r.clock += dt;
+  // the combo lapses if you stop pressing the attack
+  if (r.combo > 0 && r.clock - r.comboAt > COMBO_WINDOW) r.combo = 0;
 
   // decay FX
   if (r.shake > 0) r.shake = Math.max(0, r.shake - dt * 22);
@@ -778,17 +812,20 @@ export function stepSimulation(run: RunState, input: SimInput, dt: number, ev: S
         const tm = { x: m.pos.x - p.pos.x, z: m.pos.z - p.pos.z };
         const tl = Math.sqrt(tm.x * tm.x + tm.z * tm.z) || 1;
         if ((tm.x / tl) * p.dir.x + (tm.z / tl) * p.dir.z < ATTACK_ARC_COS) continue;
-        m.hp -= r.attackDmg;
+        // combo scales the blow; it only builds while you keep connecting
+        const dmg = Math.round(r.attackDmg * (1 + r.combo * COMBO_STEP));
+        m.hp -= dmg;
         m.damageFlash = 0.22;
         const kbForce = m.type === 'guardian' ? 2 : m.type === 'brute' ? 6 : KNOCKBACK_FORCE;
         m.knockback = { x: p.dir.x * kbForce, z: p.dir.z * kbForce };
         hit = true;
         r.shake = Math.max(r.shake, 3);                 // every clean hit thumps
-        addFloat(r, m.pos.x, m.pos.z, String(r.attackDmg), '#ffffff');
+        addFloat(r, m.pos.x, m.pos.z, String(dmg), r.combo > 0 ? '#fde047' : '#ffffff');
         spawnBurst(r, m.pos.x, m.pos.z, '#fca5a5', 10, 9);
         spawnBurst(r, m.pos.x, m.pos.z, '#ffffff', 4, 12);   // bright impact flash
         if (m.hp <= 0) {
           m.dead = true; r.kills += 1;
+          r.hitstop = Math.max(r.hitstop, HITSTOP_KILL);   // kills hit harder
           const reward = Math.round(rewardFor(m.type) * r.orbMult);
           r.runOrb += reward; ev.earnOrb(reward); ev.setRunOrb(r.runOrb);
           addFloat(r, m.pos.x, m.pos.z - 0.6, `+${reward}`, '#facc15');
@@ -805,6 +842,15 @@ export function stepSimulation(run: RunState, input: SimInput, dt: number, ev: S
             ev.setMsg(`${monsterName(m.type)} slain · +${reward} ORB`);
           }
         }
+      }
+      if (hit) {
+        // land the blow: freeze briefly, then bank the combo
+        r.hitstop = Math.max(r.hitstop, HITSTOP_HIT);
+        r.combo = Math.min(COMBO_MAX, r.combo + 1);
+        r.comboAt = r.clock;
+        if (r.combo >= 2) ev.setMsg(`COMBO ×${r.combo} · +${Math.round(r.combo * COMBO_STEP * 100)}% damage`);
+      } else {
+        r.combo = 0;                                  // a whiff drops the chain
       }
       ev.playSound(hit ? 'crit' : 'tap');
     }
@@ -884,7 +930,7 @@ export function stepSimulation(run: RunState, input: SimInput, dt: number, ev: S
             hp: NORMAL_HP, maxHp: NORMAL_HP,
             type: 'normal', variant: Math.floor(Math.random() * 3),
             speed: NORMAL_SPEED, dead: false, lastAttack: 0, damageFlash: 0,
-            knockback: { x: 0, z: 0 }, phase: 1, slamAt: 0, lastSlam: 0, lastSummon: 0,
+            knockback: { x: 0, z: 0 }, windup: 0, phase: 1, slamAt: 0, lastSlam: 0, lastSummon: 0,
           });
           spawnBurst(r, sp.x, sp.z, '#a855f7', 10, 8);
         }
@@ -893,8 +939,9 @@ export function stepSimulation(run: RunState, input: SimInput, dt: number, ev: S
     }
 
     // ── movement: follow the flow field, fall back to straight steering ──
-    // A winding-up Guardian roots itself so the tell reads clearly.
-    const rooted = m.type === 'guardian' && m.slamAt > 0;
+    // Anything mid-swing roots itself so the tell stays readable and the
+    // player can actually walk out of the strike.
+    const rooted = m.windup > 0 || (m.type === 'guardian' && m.slamAt > 0);
     if (!rooted && d < MONSTER_AGGRO && d > MONSTER_HIT_DIST * 0.8) {
       const speed = m.type === 'guardian' && m.phase === 3 ? m.speed * 1.5 : m.speed;
       const step = flowStep(r, m.pos) ?? { x: (p.pos.x - m.pos.x) / d, z: (p.pos.z - m.pos.z) / d };
@@ -903,13 +950,38 @@ export function stepSimulation(run: RunState, input: SimInput, dt: number, ev: S
       m.pos = next;
     }
 
-    if (d <= MONSTER_HIT_DIST && r.clock - m.lastAttack > MONSTER_ATK_CD) {
+    // ── attack: wind up in view, then strike ──
+    // The Guardian keeps its own slam telegraph and skips this one.
+    if (m.type !== 'guardian') {
+      if (m.windup > 0) {
+        m.windup -= dt;
+        if (m.windup <= 0) {
+          m.lastAttack = r.clock;
+          // the blow lands where the monster is now — step out and it whiffs
+          if (!p.isDashing && dist(m.pos, p.pos) <= MONSTER_HIT_DIST * 1.35) {
+            const dmg = dmgFor(m.type);
+            p.hp -= dmg;
+            ev.setHp(Math.max(0, p.hp));
+            r.shake = Math.max(r.shake, 5);
+            r.hitstop = Math.max(r.hitstop, HITSTOP_HIT);
+            addFloat(r, p.pos.x, p.pos.z, `-${dmg}`, '#ef4444');
+            spawnBurst(r, p.pos.x, p.pos.z, '#ef4444', 8, 7);
+            ev.onHitFlash();
+            ev.playSound('dead');
+          } else {
+            spawnBurst(r, m.pos.x, m.pos.z, '#94a3b8', 5, 5);   // missed
+          }
+        }
+      } else if (d <= MONSTER_HIT_DIST && r.clock - m.lastAttack > MONSTER_ATK_CD) {
+        m.windup = m.type === 'brute' ? BRUTE_WINDUP : MONSTER_WINDUP;
+      }
+    } else if (d <= MONSTER_HIT_DIST && r.clock - m.lastAttack > MONSTER_ATK_CD) {
       m.lastAttack = r.clock;
       if (!p.isDashing) {
         const dmg = dmgFor(m.type);
         p.hp -= dmg;
         ev.setHp(Math.max(0, p.hp));
-        r.shake = Math.max(r.shake, m.type === 'guardian' ? 9 : 4);
+        r.shake = Math.max(r.shake, 9);
         addFloat(r, p.pos.x, p.pos.z, `-${dmg}`, '#ef4444');
         spawnBurst(r, p.pos.x, p.pos.z, '#ef4444', 6, 6);
         ev.onHitFlash();
