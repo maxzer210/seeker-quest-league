@@ -56,7 +56,12 @@ release:
   catalog:
     en-US:
       name: "Seeker Quest League"
-      short_description: "Daily SOL tournaments built for Seeker phones"
+      # The store truncates this around 28 characters in list view, so the
+      # point has to land in the opening words. "Roguelike dungeon crawler"
+      # survives the cut as a complete thought; the old line cut to
+      # "Tap-to-earn arcade. Earn OR..." — and tap-to-earn is the exact thing
+      # the one substantive review complained of being bored by.
+      short_description: "Roguelike dungeon crawler. Win real SOL daily."
       long_description: |
         Seeker Quest League is the first daily-routine arcade game built
         natively for the Solana Mobile Seeker phone.
