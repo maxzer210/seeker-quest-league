@@ -114,6 +114,77 @@ export type WheelPaymentStatus =
   | 'saving_payment'
   | 'confirmed';
 
+/**
+ * A zero-data system account has to keep this much behind to stay rent-exempt.
+ * Solana rejects any transfer that would drop the payer under it — and it
+ * reports that rejection as a bare "Transaction simulation failed" with every
+ * single instruction logged as `success`, which is impossible for a player to
+ * act on. We check for it ourselves so the message can say what to do.
+ */
+export const RENT_EXEMPT_RESERVE = 890_880;
+
+/** Signature fee plus room for whatever priority fee the wallet tacks on. */
+export const FEE_ALLOWANCE = 15_000;
+
+/** Total a wallet must hold to complete a payment of `lamports`. */
+export function requiredLamports(lamports: number): number {
+  return lamports + FEE_ALLOWANCE + RENT_EXEMPT_RESERVE;
+}
+
+const fmtSol = (lamports: number) => (lamports / LAMPORTS_PER_SOL).toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
+
+export class InsufficientSolError extends Error {
+  name = 'InsufficientSolError';
+  constructor(public balance: number, public needed: number, public price: number) {
+    super(
+      `Not enough SOL. This costs ${fmtSol(price)} SOL, and your wallet needs about ` +
+      `${fmtSol(needed)} SOL to cover it plus the network fee and the small balance ` +
+      `Solana requires every account to keep. You have ${fmtSol(balance)} SOL — ` +
+      `top up by roughly ${fmtSol(Math.max(0, needed - balance))} SOL and try again.`,
+    );
+  }
+}
+
+/**
+ * Turn a raw wallet/RPC failure into something a player can read. Without this
+ * the app puts a simulation log dump in an Alert box, which reads as a crash.
+ */
+export function describeSolanaError(error: unknown): string {
+  const e = error as { message?: string; name?: string };
+  const raw = e?.message ?? '';
+  const low = raw.toLowerCase();
+
+  if (error instanceof InsufficientSolError) return raw;
+  if (low.includes('insufficient lamports') || low.includes('insufficient funds')) {
+    return 'Not enough SOL in your wallet to cover this purchase and the network fee.';
+  }
+  if (low.includes('insufficient funds for rent') || low.includes('rent')) {
+    return 'Not enough SOL. Solana makes every wallet keep a small balance in reserve, ' +
+           'so you need a little more than the purchase price. Top up and try again.';
+  }
+  if (low.includes('blockhash not found') || low.includes('block height exceeded')) {
+    return 'The payment took too long to approve and expired. Please try again.';
+  }
+  if (low.includes('cancel') || low.includes('declin') || low.includes('reject')) {
+    return 'Payment cancelled in the wallet.';
+  }
+  if (low.includes('already been processed')) {
+    return 'This payment already went through.';
+  }
+  if (low.includes('network') || low.includes('timeout') || low.includes('fetch')) {
+    return 'Could not reach the Solana network. Check your connection and try again.';
+  }
+  if (low.includes('no wallet') || low.includes('not found') && low.includes('wallet')) {
+    return 'No Solana wallet app found. Install Phantom, Solflare or Backpack first.';
+  }
+  // Simulation dumps are enormous; never show one to a player.
+  if (low.includes('simulation failed')) {
+    return 'The network rejected this payment. This is usually not enough SOL to cover ' +
+           'the price plus the network fee — check your balance and try again.';
+  }
+  return raw.length > 160 ? 'The payment could not be completed. Please try again.' : (raw || 'Unknown wallet error');
+}
+
 export class SolanaPaymentError extends Error {
   code?: string;
   details?: string;
@@ -121,11 +192,12 @@ export class SolanaPaymentError extends Error {
   constructor(error: unknown) {
     const e = error as { message?: string; code?: string; name?: string; stack?: string };
     const code = e?.code ?? e?.name;
-    const message = e?.message ?? 'Unknown wallet error';
-    super(code ? `${code}: ${message}` : message);
+    // The player-facing text is the message; the raw error is kept in `details`
+    // so logs and debugging lose nothing.
+    super(describeSolanaError(error));
     this.name = 'SolanaPaymentError';
     this.code = code;
-    this.details = e?.stack;
+    this.details = e?.stack ?? e?.message;
   }
 }
 
@@ -320,6 +392,22 @@ async function signAndBroadcast(
       walletUriBase: authorization.wallet_uri_base,
     };
   });
+
+  // Can the payer actually cover this? Checked here, outside the MWA session,
+  // because a network call inside the session is what used to cancel it. It
+  // costs one RPC round-trip and turns the most common failure — a wallet a
+  // few thousand lamports short — from an unreadable simulation dump into a
+  // sentence that says how much to top up. Signing is free, so failing at this
+  // point costs the player nothing but a tap.
+  try {
+    const balance = await connection.getBalance(new PublicKey(signed.address), 'confirmed');
+    const needed = requiredLamports(lamports);
+    if (balance < needed) throw new InsufficientSolError(balance, needed, lamports);
+  } catch (e) {
+    if (e instanceof InsufficientSolError) throw e;
+    // A balance lookup that fails on its own is not a reason to block a payment
+    // that might well succeed — fall through and let the network decide.
+  }
 
   // Broadcast + confirm on our own connection, outside the wallet session.
   const signature = await connection.sendRawTransaction(signed.signedTx.serialize(), {
