@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Abyss Labyrinth — pure game logic (no React, no three.js).
  *
  * Ported 1:1 from the AI-Studio web prototype (TreasureHunt.tsx 3D maze):
@@ -172,10 +172,280 @@ export type LabyrinthUpgrades = {
   lantern?: boolean;
 };
 
+// ═══════════════════════════════════════════════════════════════════════════
+// GEAR — weapons and armour
+// ═══════════════════════════════════════════════════════════════════════════
+// A camp upgrade that reads "+10 damage" changes a number, not a decision, so
+// nobody wants to buy it. Gear here changes HOW the fight goes: reach, rhythm,
+// crowd control, whether you brawl or kite. Every piece is a trade, never a
+// strict upgrade, so the choice survives after everything is unlocked.
+
+export type WeaponId = 'runeblade' | 'cleaver' | 'fangs' | 'lance' | 'brand';
+
+export type WeaponDef = {
+  id: WeaponId;
+  name: string;
+  tagline: string;          // the playstyle in a few words
+  dmg: number;
+  cooldown: number;         // seconds between swings
+  range: number;
+  arcDeg: number;           // full width of the strike cone
+  knockback: number;
+  pierce?: boolean;         // hits every enemy in the cone, never stops at one
+  burn?: number;            // damage per second applied on hit
+  lifesteal?: number;       // HP returned per connect
+  cost: number;             // ORB; 0 = owned from the start
+  tier: 0 | 1 | 2 | 3 | 4;  // drives the rarity colour in the UI
+};
+
+export const WEAPONS: Record<WeaponId, WeaponDef> = {
+  runeblade: {
+    id: 'runeblade', name: 'RUNEBLADE', tagline: 'Balanced · the blade you start with',
+    dmg: 50, cooldown: 0.4, range: 7, arcDeg: 120, knockback: 10,
+    cost: 0, tier: 0,
+  },
+  fangs: {
+    id: 'fangs', name: 'TWIN FANGS', tagline: 'Blistering speed · builds combo fast',
+    dmg: 26, cooldown: 0.17, range: 5.5, arcDeg: 80, knockback: 4,
+    lifesteal: 1, cost: 26000, tier: 1,
+  },
+  cleaver: {
+    id: 'cleaver', name: 'ABYSS CLEAVER', tagline: 'Slow and brutal · clears crowds',
+    dmg: 118, cooldown: 0.78, range: 8, arcDeg: 200, knockback: 26,
+    cost: 42000, tier: 2,
+  },
+  lance: {
+    id: 'lance', name: 'VOID LANCE', tagline: 'Long reach · skewers a whole line',
+    dmg: 64, cooldown: 0.52, range: 13, arcDeg: 42, knockback: 8,
+    pierce: true, cost: 68000, tier: 3,
+  },
+  brand: {
+    id: 'brand', name: 'EMBER BRAND', tagline: 'Sets the Abyss alight · burns over time',
+    dmg: 44, cooldown: 0.44, range: 7.5, arcDeg: 130, knockback: 9,
+    burn: 26, cost: 96000, tier: 4,
+  },
+};
+
+export type ArmorId = 'garb' | 'plate' | 'shadowweave' | 'aegis';
+
+export type ArmorDef = {
+  id: ArmorId;
+  name: string;
+  tagline: string;
+  hpBonus: number;          // flat max HP
+  speedMult: number;
+  damageTaken: number;      // 1 = normal, 0.75 = takes a quarter less
+  dashCdMult: number;
+  cost: number;
+  tier: 0 | 1 | 2 | 3 | 4;
+};
+
+export const ARMORS: Record<ArmorId, ArmorDef> = {
+  garb: {
+    id: 'garb', name: "SEEKER'S GARB", tagline: 'Plain cloth · nothing gained, nothing lost',
+    hpBonus: 0, speedMult: 1, damageTaken: 1, dashCdMult: 1, cost: 0, tier: 0,
+  },
+  shadowweave: {
+    id: 'shadowweave', name: 'SHADOWWEAVE', tagline: 'Fast and frail · dash almost at will',
+    hpBonus: -25, speedMult: 1.22, damageTaken: 1.15, dashCdMult: 0.55, cost: 30000, tier: 1,
+  },
+  plate: {
+    id: 'plate', name: 'IRONSCALE PLATE', tagline: 'Heavy shell · slow but hard to kill',
+    hpBonus: 70, speedMult: 0.86, damageTaken: 0.78, dashCdMult: 1.25, cost: 48000, tier: 2,
+  },
+  aegis: {
+    id: 'aegis', name: "WARDEN'S AEGIS", tagline: 'Runed guard · turns aside the worst blows',
+    hpBonus: 30, speedMult: 0.95, damageTaken: 0.6, dashCdMult: 1.1, cost: 88000, tier: 4,
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RELICS — the in-run build
+// ═══════════════════════════════════════════════════════════════════════════
+// Shrines offer three, you take one, and they stack for the rest of the run.
+// This is the reason to start another run: the gear is the same but the build
+// never is. Effects are plain numbers so the simulation stays readable.
+
+export type RelicId =
+  | 'vampire' | 'glasscannon' | 'chain' | 'emberdash' | 'greed'
+  | 'secondwind' | 'crit' | 'bulwark' | 'longreach' | 'swiftblade'
+  | 'thorns' | 'hoard';
+
+export type RelicDef = {
+  id: RelicId;
+  name: string;
+  desc: string;
+  tier: 1 | 2 | 3;
+};
+
+export const RELICS: Record<RelicId, RelicDef> = {
+  vampire:     { id: 'vampire',     name: 'VAMPIRIC EDGE',  desc: 'Killing blows return 8 HP',                tier: 2 },
+  glasscannon: { id: 'glasscannon', name: 'GLASS CANNON',   desc: '+55% damage dealt, +35% damage taken',     tier: 3 },
+  chain:       { id: 'chain',       name: 'CHAIN LIGHTNING',desc: 'Hits arc to one more nearby enemy',        tier: 3 },
+  emberdash:   { id: 'emberdash',   name: 'EMBER TRAIL',    desc: 'Dashing scorches what you pass through',   tier: 2 },
+  greed:       { id: 'greed',       name: 'GREED',          desc: '+35% ORB from everything',                 tier: 2 },
+  secondwind:  { id: 'secondwind',  name: 'SECOND WIND',    desc: 'A kill clears your dash cooldown',         tier: 2 },
+  crit:        { id: 'crit',        name: "ASSASSIN'S MARK",desc: '20% of hits strike for triple damage',     tier: 3 },
+  bulwark:     { id: 'bulwark',     name: 'BULWARK',        desc: '-22% damage taken',                        tier: 2 },
+  longreach:   { id: 'longreach',   name: 'LONG REACH',     desc: '+40% weapon reach and arc',                tier: 1 },
+  swiftblade:  { id: 'swiftblade',  name: 'SWIFT BLADE',    desc: '-25% time between swings',                 tier: 2 },
+  thorns:      { id: 'thorns',      name: 'THORNS',         desc: 'Attackers take 30 damage back',            tier: 1 },
+  hoard:       { id: 'hoard',       name: "MISER'S HOARD",  desc: '+18 max HP for every relic you hold',      tier: 1 },
+};
+
+export const RELIC_IDS = Object.keys(RELICS) as RelicId[];
+export const SHRINE_DIST = 3.0;
+export const SHRINE_CHOICES = 3;
+
+/** Everything the relics add up to, recomputed whenever one is taken. */
+export type RunMods = {
+  dmgMult: number;
+  takenMult: number;
+  orbMult: number;
+  lifestealKill: number;
+  chain: number;
+  emberDash: boolean;
+  dashOnKill: boolean;
+  critChance: number;
+  reachMult: number;
+  swingMult: number;
+  thorns: number;
+  hpBonus: number;
+};
+
+export function computeMods(relics: RelicId[]): RunMods {
+  const m: RunMods = {
+    dmgMult: 1, takenMult: 1, orbMult: 1, lifestealKill: 0, chain: 0,
+    emberDash: false, dashOnKill: false, critChance: 0, reachMult: 1,
+    swingMult: 1, thorns: 0, hpBonus: 0,
+  };
+  for (const id of relics) {
+    switch (id) {
+      case 'vampire':     m.lifestealKill += 8; break;
+      case 'glasscannon': m.dmgMult *= 1.55; m.takenMult *= 1.35; break;
+      case 'chain':       m.chain += 1; break;
+      case 'emberdash':   m.emberDash = true; break;
+      case 'greed':       m.orbMult *= 1.35; break;
+      case 'secondwind':  m.dashOnKill = true; break;
+      case 'crit':        m.critChance += 0.2; break;
+      case 'bulwark':     m.takenMult *= 0.78; break;
+      case 'longreach':   m.reachMult *= 1.4; break;
+      case 'swiftblade':  m.swingMult *= 0.75; break;
+      case 'thorns':      m.thorns += 30; break;
+      case 'hoard':       break;   // resolved below, needs the final count
+    }
+  }
+  const hoards = relics.filter(r => r === 'hoard').length;
+  if (hoards) m.hpBonus += 18 * relics.length * hoards;
+  return m;
+}
+
+/** The gear a seeker walks in with. */
+export type Loadout = { weapon: WeaponId; armor: ArmorId };
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ABYSS PACTS — the signature mechanic
+// ═══════════════════════════════════════════════════════════════════════════
+// The menu has always promised "descend, and it remembers". This makes that
+// literal: power can be borrowed mid-fight at any moment, and every loan puts
+// a Collector on the floor that walks toward you for the rest of the run and
+// follows you down the stairs. The cost is not a stat, it is a pursuer — so
+// greed turns into a chase instead of a number.
+
+export type PactId = 'blood' | 'fury' | 'sight' | 'ghost';
+
+export type PactDef = { id: PactId; name: string; desc: string };
+
+export const PACTS: Record<PactId, PactDef> = {
+  blood: { id: 'blood', name: 'PACT OF BLOOD',  desc: 'Healed to full, here and now' },
+  fury:  { id: 'fury',  name: 'PACT OF FURY',   desc: 'Double damage for 30 seconds' },
+  sight: { id: 'sight', name: 'PACT OF SIGHT',  desc: 'The whole floor laid bare' },
+  ghost: { id: 'ghost', name: 'PACT OF GHOSTS', desc: 'Rise once from your own death' },
+};
+export const PACT_IDS = Object.keys(PACTS) as PactId[];
+
+export const PACT_COOLDOWN    = 12;     // s between pacts, so it is not spammed
+export const PACT_OFFER       = 3;      // choices shown
+export const FURY_TIME        = 30;
+export const FURY_MULT        = 2;
+
+export const COLLECTOR_HP      = 900;   // effectively unkillable; hits stagger
+export const COLLECTOR_SPEED   = 4.4;   // base, before debt and depth scaling
+export const COLLECTOR_SPEED_PER_DEBT = 0.5;
+export const COLLECTOR_SPEED_PER_FLOOR = 0.22;
+export const COLLECTOR_DMG     = 26;
+export const COLLECTOR_ORB_TOLL= 0.12;  // share of run ORB taken on contact
+export const COLLECTOR_STAGGER = 1.6;   // s of stun a solid hit buys you
+export const COLLECTOR_ATK_CD  = 1.8;
+/**
+ * Collectors get their own pathfinding, because the shared one cannot serve
+ * them: `flow` is deliberately bounded to FLOW_RADIUS cells so ordinary
+ * monsters cost nothing, and a Collector spawns at the far edge of the floor —
+ * far outside it. On the bounded field it would fall back to straight-line
+ * steering, press into the first wall and never arrive, which would quietly
+ * void the one promise the mechanic makes: it always knows the way. So this
+ * field floods the whole grid, and it only runs while a debt is outstanding.
+ */
+export const COLLECTOR_FLOW_INTERVAL = 0.5;
+
+/** ORB demanded to settle the debt at a stairwell. */
+export function settleCost(debt: number, depth: number): number {
+  return Math.round(debt * (900 + 260 * depth));
+}
+/** Share of the haul the Abyss keeps if you extract still owing. */
+export function unpaidPenalty(debt: number): number {
+  return Math.min(0.75, debt * 0.15);
+}
+/** Ceiling on everything the Abyss can seize — extraction never pays negative. */
+export const TOLL_CAP = 0.9;
+
+/**
+ * What a Collector actually seizes is the extraction bonus, never ORB already
+ * banked. Picked-up ORB is granted the moment it is touched and is never
+ * clawed back (see the descent notes above — these are live players and the
+ * currency is real to them). So the debt bites where death already bites: the
+ * payout riding on surviving, which keeps the wager honest and the rule intact.
+ */
+export function tollShare(run: RunState): number {
+  return Math.min(TOLL_CAP, run.toll + unpaidPenalty(run.debt));
+}
+/** ORB actually handed over on extraction, after the Abyss takes its share. */
+export function extractBonus(run: RunState): number {
+  return Math.round(run.runOrb * EXTRACT_SHARE * (1 - tollShare(run)));
+}
+
+/** How fast the Collectors walk right now — debt and depth both wind them up. */
+export function collectorSpeed(run: RunState): number {
+  return COLLECTOR_SPEED
+       + COLLECTOR_SPEED_PER_DEBT  * Math.max(0, run.debt - 1)
+       + COLLECTOR_SPEED_PER_FLOOR * (run.depth - 1);
+}
+
+/**
+ * The three pacts put on the table. Offers that would do nothing are dropped —
+ * a full-health seeker is not tempted by healing, and a floor already laid bare
+ * has nothing left to reveal — so the choice is never padded with a dud.
+ */
+export function rollPactOffer(run: RunState): PactId[] {
+  const useful = PACT_IDS.filter(id => {
+    if (id === 'ghost' && run.ghost) return false;
+    if (id === 'sight' && run.sighted) return false;
+    if (id === 'blood' && run.player.hp >= run.maxHp) return false;
+    if (id === 'fury'  && run.clock < run.furyUntil) return false;
+    return true;
+  });
+  const pool = useful.length ? useful.slice() : PACT_IDS.slice();
+  const out: PactId[] = [];
+  for (let i = 0; i < PACT_OFFER && pool.length; i++) {
+    out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+  }
+  return out;
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 export type Vec2 = { x: number; z: number };
 
-export type MonsterType = 'brute' | 'normal' | 'guardian';
+export type MonsterType = 'brute' | 'normal' | 'guardian' | 'collector';
 
 export type Monster = {
   id: number;
@@ -190,6 +460,9 @@ export type Monster = {
   damageFlash: number;     // seconds remaining of white flash
   knockback: Vec2;         // decaying velocity
   windup: number;          // seconds left of the attack tell (0 = not winding up)
+  burn: number;            // seconds of burning left (Ember Brand / Ember Trail)
+  burnDps: number;         // damage per second while burning
+  stagger: number;         // Collector only: seconds it stays rooted after a hit
   // Guardian-only fight state (ignored by regular monsters)
   phase: number;           // 1 → 3, escalates as its HP drops
   slamAt: number;          // run-clock time the next slam lands (0 = not winding up)
@@ -199,12 +472,15 @@ export type Monster = {
 
 /** ORB payout / contact damage for a monster type. */
 export function rewardFor(t: MonsterType): number {
+  if (t === 'collector') return 0;          // it cannot die, so it never pays
   return t === 'guardian' ? GUARDIAN_REWARD : t === 'brute' ? BRUTE_REWARD : NORMAL_REWARD;
 }
 export function dmgFor(t: MonsterType): number {
+  if (t === 'collector') return COLLECTOR_DMG;
   return t === 'guardian' ? GUARDIAN_DMG : t === 'brute' ? BRUTE_DMG : NORMAL_DMG;
 }
 export function monsterName(t: MonsterType): string {
+  if (t === 'collector') return 'The Collector';
   return t === 'guardian' ? 'The Guardian' : t === 'brute' ? 'Brute' : 'Shade';
 }
 
@@ -222,6 +498,9 @@ export type LootItem = {
  */
 export type Trap   = { id: number; pos: Vec2; triggered: boolean; arming: number };
 export type Barrel = { id: number; pos: Vec2; exploded: boolean };
+
+/** A relic shrine: walk into it and it offers three, you keep one. */
+export type Shrine = { id: number; pos: Vec2; taken: boolean; offer: RelicId[] };
 
 /** An expanding ring left by a Guardian slam — purely visual, damage is instant. */
 export type Shockwave = { x: number; z: number; life: number; max: number; radius: number };
@@ -271,10 +550,27 @@ export type RunState = {
   // Pathfinding: BFS distance-to-player per cell, rebuilt every FLOW_INTERVAL
   flow: Uint16Array;
   flowAt: number;          // run-clock time of the last rebuild
+  // Second, unbounded field — Collectors only, and only while you owe
+  cflow: Uint16Array;
+  cflowAt: number;
   hitstop: number;         // seconds the world stays frozen after an impact
   combo: number;           // consecutive hits landed inside COMBO_WINDOW
   comboAt: number;         // run-clock time of the last landed hit
   shockwaves: Shockwave[]; // expanding rings from Guardian slams (render + FX)
+  // ── gear and build ──
+  weapon: WeaponDef;
+  armor: ArmorDef;
+  relics: RelicId[];
+  mods: RunMods;
+  shrines: Shrine[];       // relic offers standing on this floor
+  // ── the debt owed to the Abyss ──
+  debt: number;            // pacts struck and not yet settled
+  pactsStruck: number;     // total this run, for the summary — settling never lowers it
+  pactCd: number;          // seconds until another pact may be struck
+  furyUntil: number;       // run-clock time a Fury pact expires
+  ghost: boolean;          // a Ghost pact is holding one death in reserve
+  sighted: boolean;        // a Sight pact has revealed this floor
+  toll: number;            // share of the extraction bonus already seized on contact
   // FX
   particles: Particle[];
   floats: FloatText[];
@@ -462,22 +758,56 @@ export function rebuildFlowField(run: RunState) {
 }
 
 /**
+ * The Collectors' field: the same flood, unbounded, over the whole floor. No
+ * radius cap, so there is nowhere on the map a Collector cannot path from.
+ * Rebuilt on its own slower cadence and only while a debt stands, so a run
+ * with no pacts pays nothing for it.
+ */
+export function rebuildCollectorFlow(run: RunState) {
+  const { gridW, gridH, grid, cflow } = run;
+  cflow.fill(FLOW_UNREACHED);
+  const { cx, cz } = worldToCell(run.player.pos.x, run.player.pos.z, gridW, gridH);
+  if (cx < 0 || cz < 0 || cx >= gridW || cz >= gridH) return;
+
+  const queue = new Int32Array(gridW * gridH);
+  let head = 0, tail = 0;
+  cflow[cz * gridW + cx] = 0;
+  queue[tail++] = cz * gridW + cx;
+
+  while (head < tail) {
+    const idx = queue[head++];
+    const d = cflow[idx];
+    const y = (idx / gridW) | 0, x = idx - y * gridW;
+    for (let k = 0; k < 4; k++) {
+      const nx = x + (k === 0 ? 1 : k === 1 ? -1 : 0);
+      const ny = y + (k === 2 ? 1 : k === 3 ? -1 : 0);
+      if (nx <= 0 || ny <= 0 || nx >= gridW - 1 || ny >= gridH - 1) continue;
+      if (grid[ny][nx] === 1) continue;
+      const nidx = ny * gridW + nx;
+      if (cflow[nidx] !== FLOW_UNREACHED) continue;
+      cflow[nidx] = d + 1;
+      if (tail < queue.length) queue[tail++] = nidx;
+    }
+  }
+}
+
+/**
  * Direction a monster should walk to close on the player, following the flow
  * field. Returns null when the player is unreachable or already adjacent, in
  * which case the caller falls back to steering straight at them.
  */
-function flowStep(run: RunState, pos: Vec2): Vec2 | null {
-  const { gridW, gridH, flow } = run;
+function flowStep(run: RunState, pos: Vec2, field: Uint16Array = run.flow): Vec2 | null {
+  const { gridW, gridH } = run;
   const { cx, cz } = worldToCell(pos.x, pos.z, gridW, gridH);
   if (cx <= 0 || cz <= 0 || cx >= gridW - 1 || cz >= gridH - 1) return null;
-  const here = flow[cz * gridW + cx];
+  const here = field[cz * gridW + cx];
   if (here === FLOW_UNREACHED || here === 0) return null;
 
   let bestD = here, bx = cx, bz = cz;
   for (let k = 0; k < 4; k++) {
     const nx = cx + (k === 0 ? 1 : k === 1 ? -1 : 0);
     const nz = cz + (k === 2 ? 1 : k === 3 ? -1 : 0);
-    const v = flow[nz * gridW + nx];
+    const v = field[nz * gridW + nx];
     if (v < bestD) { bestD = v; bx = nx; bz = nz; }
   }
   if (bx === cx && bz === cz) return null;
@@ -490,14 +820,24 @@ function flowStep(run: RunState, pos: Vec2): Vec2 | null {
 }
 
 // ── Run factory ───────────────────────────────────────────────────────────────
-export function createRun(upgrades?: Partial<LabyrinthUpgrades>): RunState {
+export function createRun(
+  upgrades?: Partial<LabyrinthUpgrades>,
+  loadout?: Partial<Loadout>,
+): RunState {
   // Clamp each axis to a valid table index; omitted axes fall back to level 0,
   // so `createRun()` behaves exactly as before the camp existed.
   const lv = (n: number | undefined) =>
     Math.max(0, Math.min(UPGRADE_MAX_LEVEL, Math.floor(n ?? 0)));
-  const maxHp      = MAX_HP_LEVELS[lv(upgrades?.vigor)];
-  const moveSpeed  = SPEED_LEVELS[lv(upgrades?.speed)];
-  const attackDmg  = SWORD_DMG_LEVELS[lv(upgrades?.blade)];
+  // Gear layers on top of the camp: the camp raises your floor, the weapon and
+  // armour decide how the fight actually plays.
+  const weapon = WEAPONS[loadout?.weapon ?? 'runeblade'] ?? WEAPONS.runeblade;
+  const armor  = ARMORS[loadout?.armor ?? 'garb'] ?? ARMORS.garb;
+  const maxHp      = Math.max(30, MAX_HP_LEVELS[lv(upgrades?.vigor)] + armor.hpBonus);
+  const moveSpeed  = SPEED_LEVELS[lv(upgrades?.speed)] * armor.speedMult;
+  // The camp's blade levels now read as a bonus on top of the weapon, so a
+  // maxed camp still matters whichever weapon you carry.
+  const attackDmg  = Math.round(
+    weapon.dmg * (1 + (SWORD_DMG_LEVELS[lv(upgrades?.blade)] - SWORD_DMG_LEVELS[0]) / 100));
   const torchCells = TORCH_LEVELS[lv(upgrades?.torch)]
                    + (upgrades?.lantern ? LANTERN_TORCH_BONUS : 0);
   const emberLv    = lv(upgrades?.ember);
@@ -506,6 +846,16 @@ export function createRun(upgrades?: Partial<LabyrinthUpgrades>): RunState {
 
   return {
     ...level,
+    weapon, armor,
+    relics: [],
+    mods: computeMods([]),
+    debt: 0,
+    pactsStruck: 0,
+    pactCd: 0,
+    furyUntil: -99,
+    ghost: false,
+    sighted: false,
+    toll: 0,
     player: {
       pos: { x: 0, z: 0 },
       dir: { x: 0, z: -1 },
@@ -538,7 +888,17 @@ export function createRun(upgrades?: Partial<LabyrinthUpgrades>): RunState {
 type LevelParts = Pick<RunState,
   'grid' | 'gridW' | 'gridH' | 'monsters' | 'items' | 'traps' | 'barrels' |
   'portalActive' | 'portalPos' | 'depth' | 'orbMult' | 'stairsPos' | 'stairsLocked' |
-  'explored' | 'flow' | 'flowAt'>;
+  'explored' | 'flow' | 'flowAt' | 'cflow' | 'cflowAt' | 'shrines'>;
+
+/** Pick `n` distinct relics the seeker does not already carry. */
+export function rollRelics(held: RelicId[], n: number): RelicId[] {
+  const pool = RELIC_IDS.filter(id => !held.includes(id));
+  const out: RelicId[] = [];
+  for (let i = 0; i < n && pool.length; i++) {
+    out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+  }
+  return out;
+}
 
 /** Generate one floor of the descent, scaled by depth. */
 function buildLevel(depth: number): LevelParts {
@@ -576,7 +936,7 @@ function buildLevel(depth: number): LevelParts {
       speed: isBrute ? BRUTE_SPEED : NORMAL_SPEED,
       dead: false, lastAttack: 0, damageFlash: 0,
       knockback: { x: 0, z: 0 },
-      windup: 0, phase: 1, slamAt: 0, lastSlam: 0, lastSummon: 0,
+      windup: 0, burn: 0, burnDps: 0, stagger: 0, phase: 1, slamAt: 0, lastSlam: 0, lastSummon: 0,
     };
   });
 
@@ -592,7 +952,7 @@ function buildLevel(depth: number): LevelParts {
       speed: GUARDIAN_SPEED,
       dead: false, lastAttack: 0, damageFlash: 0,
       knockback: { x: 0, z: 0 },
-      windup: 0, phase: 1, slamAt: 0, lastSlam: 0, lastSummon: 0,
+      windup: 0, burn: 0, burnDps: 0, stagger: 0, phase: 1, slamAt: 0, lastSlam: 0, lastSummon: 0,
     });
   }
 
@@ -611,6 +971,9 @@ function buildLevel(depth: number): LevelParts {
     barrels: Array.from({ length: plan.kegs }, (_, i) => ({
       id: i, pos: emptyPos(), exploded: false,
     })),
+    // One shrine per floor; the offer is rolled when the floor is built and
+    // filtered against what the seeker already holds at pickup time.
+    shrines: [{ id: depth, pos: emptyPos(), taken: false, offer: [] }],
     portalActive: false,
     portalPos: { x: 0, z: 0 },
     depth,
@@ -620,14 +983,117 @@ function buildLevel(depth: number): LevelParts {
     explored: Array.from({ length: gridH }, () => Array(gridW).fill(0)),
     flow: new Uint16Array(gridW * gridH).fill(FLOW_UNREACHED),
     flowAt: -1,
+    cflow: new Uint16Array(gridW * gridH).fill(FLOW_UNREACHED),
+    cflowAt: -1,
   };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Pacts — striking them, and the Collectors they put on your heels
+// ═══════════════════════════════════════════════════════════════════════════
+
+let collectorSeq = 5000;
+
+/** The empty cell furthest from the seeker — where a Collector steps in. */
+function farthestFrom(run: RunState, from: Vec2): Vec2 {
+  let best: Vec2 | null = null;
+  let bestD = -1;
+  for (let cz = 1; cz < run.gridH - 1; cz++) {
+    for (let cx = 1; cx < run.gridW - 1; cx++) {
+      if (run.grid[cz][cx] === 1) continue;
+      const w = cellToWorld(cx, cz, run.gridW, run.gridH);
+      const d = (w.x - from.x) ** 2 + (w.z - from.z) ** 2;
+      if (d > bestD) { bestD = d; best = w; }
+    }
+  }
+  return best ?? { x: 0, z: 0 };
+}
+
+/** Put one Collector on the current floor, at the far edge, already walking. */
+export function spawnCollector(run: RunState) {
+  run.monsters.push({
+    id: collectorSeq++,
+    pos: farthestFrom(run, run.player.pos),
+    hp: COLLECTOR_HP, maxHp: COLLECTOR_HP,
+    type: 'collector', variant: 0,
+    speed: COLLECTOR_SPEED,
+    dead: false, lastAttack: 0, damageFlash: 0,
+    knockback: { x: 0, z: 0 },
+    windup: 0, burn: 0, burnDps: 0, stagger: 0,
+    phase: 1, slamAt: 0, lastSlam: 0, lastSummon: 0,
+  });
+}
+
+export function collectorCount(run: RunState): number {
+  return run.monsters.reduce((n, m) => n + (m.type === 'collector' && !m.dead ? 1 : 0), 0);
+}
+
+/**
+ * Borrow power from the Abyss. The effect lands instantly and for free — the
+ * price is a Collector that starts walking toward you from across the floor
+ * and does not stop for the rest of the run.
+ */
+export function strikePact(run: RunState, id: PactId, ev: SimEvents) {
+  const p = run.player;
+  run.debt += 1;
+  run.pactsStruck += 1;
+  run.pactCd = PACT_COOLDOWN;
+
+  switch (id) {
+    case 'blood':
+      p.hp = run.maxHp;
+      ev.setHp(p.hp);
+      addFloat(run, p.pos.x, p.pos.z, 'WHOLE AGAIN', '#f87171');
+      spawnBurst(run, p.pos.x, p.pos.z, '#ef4444', 26, 11);
+      break;
+    case 'fury':
+      run.furyUntil = run.clock + FURY_TIME;
+      addFloat(run, p.pos.x, p.pos.z, `×${FURY_MULT} DAMAGE`, '#fb923c');
+      spawnBurst(run, p.pos.x, p.pos.z, '#fb923c', 26, 13);
+      break;
+    case 'sight':
+      run.sighted = true;
+      for (let z = 0; z < run.gridH; z++) run.explored[z].fill(1);
+      addFloat(run, p.pos.x, p.pos.z, 'THE FLOOR LAID BARE', '#22d3ee');
+      spawnBurst(run, p.pos.x, p.pos.z, '#22d3ee', 22, 10);
+      break;
+    case 'ghost':
+      run.ghost = true;
+      addFloat(run, p.pos.x, p.pos.z, 'ONE DEATH HELD', '#a78bfa');
+      spawnBurst(run, p.pos.x, p.pos.z, '#a78bfa', 26, 11);
+      break;
+  }
+
+  spawnCollector(run);
+  // Path it now rather than on the next scheduled rebuild — the first half
+  // second of a Collector's walk is the one the player is watching.
+  rebuildCollectorFlow(run);
+  run.cflowAt = run.clock;
+  run.shake = Math.max(run.shake, 11);
+  ev.setMsg(`${PACTS[id].name} · THE ABYSS SENDS A COLLECTOR`);
+  ev.playSound('crit');
+}
+
+/**
+ * Pay the debt off at a stairwell. Returns false when the purse is short, so
+ * the UI can keep the button honest instead of half-charging the player.
+ */
+export function settleDebt(run: RunState, purse: number): boolean {
+  const cost = settleCost(run.debt, run.depth);
+  if (run.debt <= 0 || purse < cost) return false;
+  run.debt = 0;
+  // Collectors are the debt made flesh — clearing the ledger dismisses them.
+  for (const m of run.monsters) if (m.type === 'collector') m.dead = true;
+  return true;
 }
 
 /**
  * Take the stairs down. The seeker keeps HP, ORB, kills and camp upgrades;
- * everything about the place is rebuilt one step deeper and nastier.
+ * everything about the place is rebuilt one step deeper and nastier — and
+ * every unsettled debt walks in behind you, one Collector per pact.
  */
 export function descendFloor(run: RunState) {
+  const debt = run.debt;
   const level = buildLevel(run.depth + 1);
   Object.assign(run, level);
   run.player.pos = { x: 0, z: 0 };
@@ -637,6 +1103,9 @@ export function descendFloor(run: RunState) {
   run.particles.length = 0;
   run.floats.length = 0;
   run.shake = 0;
+  run.sighted = false;             // a new floor is dark again
+  for (let i = 0; i < debt; i++) spawnCollector(run);
+  if (debt > 0) { rebuildCollectorFlow(run); run.cflowAt = run.clock; }
 }
 
 // ── FX helpers ────────────────────────────────────────────────────────────────
@@ -714,6 +1183,15 @@ export function stepSimulation(run: RunState, input: SimInput, dt: number, ev: S
   if (p.attackCooldown > 0) p.attackCooldown -= dt;
   if (p.dashCooldown  > 0) p.dashCooldown  -= dt;
   if (p.dashTime > 0) { p.dashTime -= dt; if (p.dashTime <= 0) p.isDashing = false; }
+  if (r.pactCd > 0) {
+    r.pactCd = Math.max(0, r.pactCd - dt);
+    if (r.pactCd === 0) ev.setMsg('The Abyss will bargain again');
+  }
+  // Fury lapsing is worth announcing — the damage number silently halving
+  // otherwise reads as the game cheating you.
+  if (r.furyUntil > 0 && r.clock >= r.furyUntil && r.clock - dt < r.furyUntil) {
+    ev.setMsg('THE FURY FADES');
+  }
 
   // movement
   let dx = input.jx, dz = input.jz;
@@ -785,11 +1263,13 @@ export function stepSimulation(run: RunState, input: SimInput, dt: number, ev: S
         spawnBurst(r, b.pos.x, b.pos.z, '#f97316', 22, 12);
         for (const m of r.monsters) {
           if (m.dead || dist(m.pos, b.pos) > BARREL_BLAST_R) continue;
-          m.hp -= BARREL_MONSTER_DMG;
           m.damageFlash = 0.5;
           const kb = { x: m.pos.x - b.pos.x, z: m.pos.z - b.pos.z };
           const kl = Math.sqrt(kb.x * kb.x + kb.z * kb.z) || 1;
           m.knockback = { x: (kb.x / kl) * 20, z: (kb.z / kl) * 20 };
+          // A keg buys time against a Collector, never a kill
+          if (m.type === 'collector') { m.stagger = Math.max(m.stagger, COLLECTOR_STAGGER); continue; }
+          m.hp -= BARREL_MONSTER_DMG;
           if (m.hp <= 0 && !m.dead) {
             m.dead = true; r.kills += 1;
             const reward = Math.round(rewardFor(m.type) * r.orbMult);
@@ -812,8 +1292,25 @@ export function stepSimulation(run: RunState, input: SimInput, dt: number, ev: S
         const tm = { x: m.pos.x - p.pos.x, z: m.pos.z - p.pos.z };
         const tl = Math.sqrt(tm.x * tm.x + tm.z * tm.z) || 1;
         if ((tm.x / tl) * p.dir.x + (tm.z / tl) * p.dir.z < ATTACK_ARC_COS) continue;
-        // combo scales the blow; it only builds while you keep connecting
-        const dmg = Math.round(r.attackDmg * (1 + r.combo * COMBO_STEP));
+
+        // A Collector cannot be killed, only bought off in seconds. The blade
+        // roots it where it stands — that stagger IS the reward for turning
+        // and swinging, and it is the only way to open a gap.
+        if (m.type === 'collector') {
+          m.stagger = COLLECTOR_STAGGER;
+          m.damageFlash = 0.3;
+          m.knockback = { x: p.dir.x * 8, z: p.dir.z * 8 };
+          hit = true;
+          r.shake = Math.max(r.shake, 5);
+          addFloat(r, m.pos.x, m.pos.z, 'STAGGERED', '#c4b5fd');
+          spawnBurst(r, m.pos.x, m.pos.z, '#a78bfa', 14, 10);
+          continue;
+        }
+
+        // combo scales the blow; it only builds while you keep connecting,
+        // and a Fury pact doubles whatever it works out to
+        const fury = r.clock < r.furyUntil ? FURY_MULT : 1;
+        const dmg = Math.round(r.attackDmg * (1 + r.combo * COMBO_STEP) * fury);
         m.hp -= dmg;
         m.damageFlash = 0.22;
         const kbForce = m.type === 'guardian' ? 2 : m.type === 'brute' ? 6 : KNOCKBACK_FORCE;
@@ -861,6 +1358,11 @@ export function stepSimulation(run: RunState, input: SimInput, dt: number, ev: S
     r.flowAt = r.clock;
     rebuildFlowField(r);
   }
+  // The Collectors' whole-floor field — only while something is owed
+  if (r.debt > 0 && r.clock - r.cflowAt >= COLLECTOR_FLOW_INTERVAL) {
+    r.cflowAt = r.clock;
+    rebuildCollectorFlow(r);
+  }
 
   // ── shockwave rings (visual decay) ──
   for (let i = r.shockwaves.length - 1; i >= 0; i--) {
@@ -881,6 +1383,51 @@ export function stepSimulation(run: RunState, input: SimInput, dt: number, ev: S
       if (Math.abs(m.knockback.x) + Math.abs(m.knockback.z) < 0.1) m.knockback = { x: 0, z: 0 };
     }
     const d = dist(m.pos, p.pos);
+
+    // ── Collector: the debt, walking ──
+    // No aggro range, no losing the trail, no death. It simply comes, and it
+    // gets faster the more you owe and the deeper you are. The only levers are
+    // the blade (buys seconds) and the stairwell (buys it off).
+    if (m.type === 'collector') {
+      if (m.stagger > 0) {
+        m.stagger -= dt;
+        // it strains against the stun, so the reprieve reads as temporary
+        if (Math.random() < 0.35) spawnBurst(r, m.pos.x, m.pos.z, '#7c3aed', 1, 3);
+      } else if (d > MONSTER_HIT_DIST * 0.8) {
+        const spd = collectorSpeed(r);
+        // its own unbounded field first; the bounded one is a fine shortcut
+        // once it is close, and the straight line is only ever a last resort
+        const step = flowStep(r, m.pos, r.cflow)
+                  ?? flowStep(r, m.pos)
+                  ?? { x: (p.pos.x - m.pos.x) / (d || 1), z: (p.pos.z - m.pos.z) / (d || 1) };
+        const next = resolveWallCollision(
+          r.grid, r.gridW, r.gridH,
+          { x: m.pos.x + step.x * spd * dt, z: m.pos.z + step.z * spd * dt }, 1.0);
+        m.pos = next;
+      }
+      // a slow violet drip so you can feel it closing even at the torch's edge
+      if (Math.random() < dt * 6) spawnBurst(r, m.pos.x, m.pos.z, '#6d28d9', 1, 2);
+
+      if (d <= MONSTER_HIT_DIST && r.clock - m.lastAttack > COLLECTOR_ATK_CD && !p.isDashing) {
+        m.lastAttack = r.clock;
+        p.hp -= COLLECTOR_DMG;
+        ev.setHp(Math.max(0, p.hp));
+        r.shake = Math.max(r.shake, 12);
+        r.hitstop = Math.max(r.hitstop, HITSTOP_KILL);
+        addFloat(r, p.pos.x, p.pos.z, `-${COLLECTOR_DMG}`, '#a78bfa');
+        spawnBurst(r, p.pos.x, p.pos.z, '#7c3aed', 18, 10);
+        ev.onHitFlash();
+        ev.playSound('dead');
+        // It takes its cut of what the run would have paid out — the banked
+        // ORB in the purse is never touched.
+        if (r.toll < TOLL_CAP) {
+          r.toll = Math.min(TOLL_CAP, r.toll + COLLECTOR_ORB_TOLL);
+          addFloat(r, p.pos.x, p.pos.z - 1.2, 'THE ABYSS TAKES ITS CUT', '#c4b5fd');
+          ev.setMsg(`THE COLLECTOR TOUCHES YOU · ${Math.round(tollShare(r) * 100)}% of the bonus lost`);
+        }
+      }
+      continue;
+    }
 
     // ── Guardian: escalating phases with telegraphed slams ──
     if (m.type === 'guardian') {
@@ -930,7 +1477,8 @@ export function stepSimulation(run: RunState, input: SimInput, dt: number, ev: S
             hp: NORMAL_HP, maxHp: NORMAL_HP,
             type: 'normal', variant: Math.floor(Math.random() * 3),
             speed: NORMAL_SPEED, dead: false, lastAttack: 0, damageFlash: 0,
-            knockback: { x: 0, z: 0 }, windup: 0, phase: 1, slamAt: 0, lastSlam: 0, lastSummon: 0,
+            knockback: { x: 0, z: 0 }, windup: 0, burn: 0, burnDps: 0, stagger: 0,
+            phase: 1, slamAt: 0, lastSlam: 0, lastSummon: 0,
           });
           spawnBurst(r, sp.x, sp.z, '#a855f7', 10, 8);
         }
@@ -1049,6 +1597,33 @@ export function stepSimulation(run: RunState, input: SimInput, dt: number, ev: S
   // the seeker is pulled back from the brink, nearby shades are blasted away,
   // and every monster's attack timer is pushed out for a short grace window.
   if (p.hp <= 0) {
+    // A Ghost pact spends itself first — it is borrowed, the Second Torch was
+    // paid for at the camp, and nobody wants to burn the thing they bought
+    // while a free save is still in hand.
+    if (r.ghost) {
+      r.ghost = false;
+      p.hp = Math.max(1, Math.round(r.maxHp * 0.5));
+      ev.setHp(p.hp);
+      r.shake = Math.max(r.shake, 14);
+      spawnBurst(r, p.pos.x, p.pos.z, '#a78bfa', 30, 14);
+      spawnBurst(r, p.pos.x, p.pos.z, '#ffffff', 12, 9);
+      addFloat(r, p.pos.x, p.pos.z, `+${p.hp}`, '#a78bfa');
+      for (const m of r.monsters) {
+        if (m.dead) continue;
+        m.lastAttack = r.clock + 1.4;
+        if (m.type === 'collector') m.stagger = Math.max(m.stagger, COLLECTOR_STAGGER);
+        const d = dist(m.pos, p.pos);
+        if (d < 14) {
+          const ux = (m.pos.x - p.pos.x) / (d || 1);
+          const uz = (m.pos.z - p.pos.z) / (d || 1);
+          m.knockback = { x: ux * 22, z: uz * 22 };
+        }
+      }
+      ev.setMsg('THE PACT OF GHOSTS PAYS OUT · YOU RISE');
+      ev.playSound('levelup');
+      ev.onHitFlash();
+      return;
+    }
     if (r.emberCharges > 0) {
       r.emberCharges -= 1;
       p.hp = Math.max(1, r.emberReviveHp);

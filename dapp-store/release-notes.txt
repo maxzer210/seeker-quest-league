@@ -1,0 +1,15 @@
+v1.1.4 — The Abyss Labyrinth
+
+🕳 A whole new game inside the app. Descend a dungeon that is different every run — your torch lights only what is near, traps flare before they fire, and every third floor a Guardian seals the stairs until it falls.
+
+🏕 Seeker's Camp — spend ORB on permanent upgrades. They survive every death, so a bad run still moves you forward.
+
+⚔️ Real combat — enemies rear back before they swing, dash through the danger, chain hits for a damage combo.
+
+🗺 At every stairwell: go deeper for a bigger multiplier, or walk out and bank the run.
+
+🎁 Invite a friend — you BOTH earn 2,000 ORB
+⚡ 5× bigger energy tank and faster recharge
+🔔 Reminders for streaks, full energy and tournaments
+🛠 More reliable SOL payments — no more false "payment failed"
+🟣 Seeker .skr names now display correctly

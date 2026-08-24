@@ -114,6 +114,40 @@ export const BRUTE: Sprite = {
   ],
 };
 
+// ── Collector (the debt made flesh) — faceless violet creditor in a long robe ──
+// Deliberately NOT monstrous: no claws, no teeth, no eyes to plead with. It is
+// taller and narrower than anything else on the floor, it carries the ledger
+// chain, and it reads at a glance as "this one is not a fight".
+export const COLLECTOR: Sprite = {
+  pal: {
+    k: '#160629', // outline / void
+    V: '#2e1065', // robe dark
+    v: '#4c1d95', // robe
+    m: '#6d28d9', // robe highlight
+    B: '#000000', // the hollow where a face should be
+    g: '#a78bfa', // sigil glow
+    G: '#ddd6fe', // sigil hot
+  },
+  rows: [
+    '....kkVVkk....',
+    '...kVVvvVVk...',
+    '..kVvBBBBvVk..',
+    '..kVBBBBBBVk..',
+    '..kVBBGGBBVk..',
+    '..kVvBBBBvVk..',
+    '..kVvvvvvvVk..',
+    '.kVvvmggmvvVk.',
+    '.kVvvmGGmvvVk.',
+    '.kVvvmggmvvVk.',
+    '.kVvvvvvvvvVk.',
+    '.kVvvvvvvvvVk.',
+    '.kVVvvvvvvVVk.',
+    '..kVVvvvvVVk..',
+    '..kVVVVVVVVk..',
+    '...kkVVVVkk...',
+  ],
+};
+
 // ── Guardian (boss) — towering armoured sentinel with a burning cyan core ──────
 export const GUARDIAN: Sprite = {
   pal: {
@@ -543,6 +577,36 @@ export const ICON_DASH: Sprite = {
     '...CC....CC.',
     '..CC....CC..',
     '.CC....CC...',
+  ],
+};
+
+// ── Pact — a broken chain link, the bargain and its price in one mark ─────────
+export const ICON_PACT: Sprite = {
+  pal: { v: '#7c3aed', g: '#a78bfa', G: '#ddd6fe' },
+  rows: [
+    '..GGg....gGG',
+    '.Gv..v..v..v',
+    '.g....v.v...',
+    '.v.....v....',
+    '.v....v.....',
+    '.g...v.v....',
+    '.Gv.v..v..v.',
+    '..GGg....gGG',
+  ],
+};
+
+// ── Debt — the Collector's mark, worn by the HUD chip while you owe ───────────
+export const ICON_DEBT: Sprite = {
+  pal: { v: '#6d28d9', g: '#a78bfa', G: '#ede9fe' },
+  rows: [
+    '...vvvvvv...',
+    '..vggggggv..',
+    '.vg.GGGG.gv.',
+    '.vgG.gg.Ggv.',
+    '.vg.G..G.gv.',
+    '.vgG.gg.Ggv.',
+    '..vggggggv..',
+    '...vvvvvv...',
   ],
 };
 

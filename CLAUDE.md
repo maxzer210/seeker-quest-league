@@ -1,155 +1,163 @@
-﻿# Seeker Quest League вЂ” Project Memory
+﻿# Seeker Quest League — Project Memory
 
-> Р­С‚РѕС‚ С„Р°Р№Р» AI С‡РёС‚Р°РµС‚ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё РїСЂРё СЃС‚Р°СЂС‚Рµ СЃРµСЃСЃРёРё РІ СЌС‚РѕР№ РїР°РїРєРµ.
-> РћР±РЅРѕРІР»СЏР№ РїРѕСЃР»Рµ РєР°Р¶РґРѕРіРѕ РєСЂСѓРїРЅРѕРіРѕ С€Р°РіР°.
+> Этот файл AI читает автоматически при старте сессии в этой папке.
+> Обновляй после каждого крупного шага.
 
 @AGENTS.md
 
 ---
 
-## 1. Р§С‚Рѕ СЌС‚Рѕ
+## 1. Что это
 
-**Seeker Quest League** вЂ” РјРѕР±РёР»СЊРЅР°СЏ Web3 РёРіСЂР° tap-to-earn РґР»СЏ Solana Mobile Seeker.
-РРіСЂРѕРєРё С‚Р°РїР°СЋС‚ в†’ Р·Р°СЂР°Р±Р°С‚С‹РІР°СЋС‚ ORB в†’ РёРіСЂР°СЋС‚ РІ РјРёРЅРё-РёРіСЂС‹ в†’ РєРѕРЅРІРµСЂС‚РёСЂСѓСЋС‚ РІ SKORA (SPL) в†’ РІС‹РёРіСЂС‹РІР°СЋС‚ SOL РІ РµР¶РµРґРЅРµРІРЅС‹С… С‚СѓСЂРЅРёСЂР°С….
+**Seeker Quest League** — мобильная Web3 игра tap-to-earn для Solana Mobile Seeker.
+Игроки тапают → зарабатывают ORB → играют в мини-игры → конвертируют в SKORA (SPL) → выигрывают SOL в ежедневных турнирах.
 
-- **РџР»Р°С‚С„РѕСЂРјР°:** РўРѕР»СЊРєРѕ Solana Mobile dApp Store (Seeker phone)
-- **РЇР·С‹Рє РѕР±С‰РµРЅРёСЏ:** СЂСѓСЃСЃРєРёР№, РґСЂСѓР¶РµР»СЋР±РЅРѕ, РїРѕ РґРµР»Сѓ
-- **РЎС‚РёР»СЊ РєРѕРґР°:** РЅРµ РєРѕРјРјРµРЅС‚РёСЂРѕРІР°С‚СЊ РѕС‡РµРІРёРґРЅРѕРµ, РјРёРЅРёРјСѓРј Р°Р±СЃС‚СЂР°РєС†РёР№
+- **Платформа:** Только Solana Mobile dApp Store (Seeker phone)
+- **Язык общения:** русский, дружелюбно, по делу
+- **Стиль кода:** не комментировать очевидное, минимум абстракций
 
 ---
 
-## 2. Р“РґРµ СЂР°Р±РѕС‚Р°РµРј
+## 2. Где работаем
 
-**рџ”ґ РљР РРўРР§РќРћ вЂ” Р РђР‘РћР§РђРЇ РџРђРџРљРђ:**
+**🔴 КРИТИЧНО — РАБОЧАЯ ПАПКА:**
 ```
-C:\sk\
+D:\sk\
 ```
 
-Р­С‚Рѕ С„РёР·РёС‡РµСЃРєР°СЏ РєРѕРїРёСЏ РёР· `C:\Users\User\Documents\Codex\2026-05-23\new-chat\seeker-quest-league\`,
-СЃРґРµР»Р°РЅРЅР°СЏ С‡С‚РѕР±С‹ РѕР±РѕР№С‚Рё Windows 260-char path limit РїСЂРё Р»РѕРєР°Р»СЊРЅРѕР№ СЃР±РѕСЂРєРµ Gradle.
+Короткий путь нужен, чтобы обойти Windows 260-char path limit при локальной сборке Gradle.
+Раньше проект жил в `C:\sk\` — этот путь **устарел**, папки больше нет.
 
-**Р’СЃРµ РёР·РјРµРЅРµРЅРёСЏ РґРµР»Р°С‚СЊ РІ `C:\sk\`.** РЎС‚Р°СЂР°СЏ РїР°РїРєР° СѓСЃС‚Р°СЂРµР»Р°.
+**Все изменения делать в `D:\sk\`.**
+
+⚠️ **Машина сменилась** (профиль `Seeker`, не `User`). На текущей машине **не установлены**
+Node.js, JDK и Android SDK — локальная сборка APK здесь невозможна до их установки.
+Для проверки типов можно поднять портативный Node:
+```powershell
+# распаковать node-vXX-win-x64.zip и добавить в $env:Path, затем:
+node node_modules\typescript\bin\tsc --noEmit --skipLibCheck
+```
 
 ---
 
 ## 3. Tech stack
 
-| РЎР»РѕР№ | РўРµС…РЅРѕР»РѕРіРёСЏ |
+| Слой | Технология |
 |------|-----------|
 | Frontend | React Native, Expo SDK 54, TypeScript |
 | Backend | Supabase (qxejdpvjggqjqoydujjd) |
 | Blockchain | Solana devnet (mainnet later) |
 | Wallet | Mobile Wallet Adapter (MWA) |
 | Token | SPL Token (SKORA) |
-| Build | **Р›РѕРєР°Р»СЊРЅР°СЏ Gradle СЃР±РѕСЂРєР°** (EAS free Р»РёРјРёС‚ РёСЃС‡РµСЂРїР°РЅ) |
+| Build | **Локальная Gradle сборка** (EAS free лимит исчерпан) |
 | Sound/Notif | expo-av, expo-notifications |
 
-**РљР»СЋС‡РµРІС‹Рµ РїР°РєРµС‚С‹:**
-- `seeker-sdk` (С‡РµСЂРµР· lazy require вЂ” РјРѕР¶РµС‚ РєСЂР°С€РёС‚СЊ)
-- `react-native-device-info` (РґР»СЏ installer detection)
-- `react-native-get-random-values`, `buffer`, `react-native-url-polyfill` (РїРѕР»РёС„РёР»Р»С‹)
+**Ключевые пакеты:**
+- `seeker-sdk` (через lazy require — может крашить)
+- `react-native-device-info` (для installer detection)
+- `react-native-get-random-values`, `buffer`, `react-native-url-polyfill` (полифиллы)
 - `expo-notifications`
 - `@solana/web3.js`, `@solana/spl-token`
 - `@solana-mobile/mobile-wallet-adapter-protocol`
 
 **i18n (2026-05-26):**
-- `lib/i18n.ts` вЂ” 5 СЏР·С‹РєРѕРІ (en/ru/zh/ja/fr), `t(key, vars?)`, `useLang()`, `setLang()`
-- `components/LanguageSelector.tsx` вЂ” РїРµСЂРІС‹Р№ Р·Р°РїСѓСЃРє
-- РџРµСЂРµРІРµРґРµРЅС‹ РєСЂРёС‚РёС‡РЅС‹Рµ UI surfaces (navbar, home, shop, profile, cup)
+- `lib/i18n.ts` — 5 языков (en/ru/zh/ja/fr), `t(key, vars?)`, `useLang()`, `setLang()`
+- `components/LanguageSelector.tsx` — первый запуск
+- Переведены критичные UI surfaces (navbar, home, shop, profile, cup)
 
 ---
 
-## 4. Р›РѕРєР°Р»СЊРЅР°СЏ СЃР±РѕСЂРєР° APK (Р±РµР· EAS)
+## 4. Локальная сборка APK (без EAS)
 
-**РћРєСЂСѓР¶РµРЅРёРµ:**
+**Окружение:**
 - Android SDK: `C:\Users\User\AppData\Local\Android\Sdk`
 - NDK: 27.1.12297006
 - cmake: 3.22.1
 - Java: 17 LTS Temurin (`C:\Program Files\Eclipse Adoptium\jdk-17.0.19.10-hotspot`)
-- Long Paths РІРєР»СЋС‡РµРЅС‹ РІ СЂРµРµСЃС‚СЂРµ (`LongPathsEnabled = 1`)
+- Long Paths включены в реестре (`LongPathsEnabled = 1`)
 
-**Env vars (СѓР¶Рµ persistent РІ СЃРёСЃС‚РµРјРµ):** `ANDROID_HOME`, `ANDROID_SDK_ROOT`, `JAVA_HOME`
+**Env vars (уже persistent в системе):** `ANDROID_HOME`, `ANDROID_SDK_ROOT`, `JAVA_HOME`
 
-**РљРѕРјР°РЅРґР° Р±РёР»РґР°:**
+**Команда билда:**
 ```powershell
 cd C:\sk\android
 $env:Path = "$env:JAVA_HOME\bin;$env:Path"
 .\gradlew.bat assembleRelease --no-daemon
 ```
 
-**Р РµР·СѓР»СЊС‚Р°С‚:** `C:\sk\android\app\build\outputs\apk\release\app-release.apk` (~92 MB)
+**Результат:** `C:\sk\android\app\build\outputs\apk\release\app-release.apk` (~92 MB)
 
-**Р’СЂРµРјСЏ:** 5-10 РјРёРЅ РїСЂРё С‚С‘РїР»РѕРј РєСЌС€Рµ.
+**Время:** 5-10 мин при тёплом кэше.
 
 ---
 
-## 5. Р¤Р°Р№Р»РѕРІР°СЏ СЃС‚СЂСѓРєС‚СѓСЂР°
+## 5. Файловая структура
 
 ```
 C:\sk\
-в”њв”Ђв”Ђ App.tsx                    в†ђ РіР»Р°РІРЅС‹Р№ (~2300 СЃС‚СЂРѕРє, РІСЃРµ СЌРєСЂР°РЅС‹ С‡РµСЂРµР· `screen` state)
-в”њв”Ђв”Ђ index.ts                   в†ђ РїРѕР»РёС„РёР»Р»С‹ РћР‘РЇР—РђРўР•Р›Р¬РќРћ РїРµСЂРІС‹РјРё
-в”њв”Ђв”Ђ skora-config.json          в†ђ mint authority keypair (.gitignored!)
-в”њв”Ђв”Ђ seeker-release.keystore    в†ђ РїРѕРґРїРёСЃСЊ APK
-в”‚
-в”њв”Ђв”Ђ components/
-в”‚   в”њв”Ђв”Ђ FortuneWheel.tsx
-в”‚   в”њв”Ђв”Ђ HorseRace.tsx          в†ђ fullscreen
-в”‚   в”њв”Ђв”Ђ SpaceRunner.tsx        в†ђ fullscreen, PanResponder
-в”‚   в”њв”Ђв”Ђ Arena.tsx              в†ђ СЂРµР№РґС‹ + Р±Р°Р·Р°
-в”‚   в”њв”Ђв”Ђ Tournament.tsx
-в”‚   в”њв”Ђв”Ђ TreasureHunt.tsx
-в”‚   в”њв”Ђв”Ђ SeekerLands.tsx        в†ђ Idle 24h cap + auto push
-в”‚   в”њв”Ђв”Ђ SKORAWallet.tsx        в†ђ claim ORBв†’SKORA
-в”‚   в”њв”Ђв”Ђ EarnHub.tsx            в†ђ РІРёС‚СЂРёРЅР° СЂРµРєР»Р°РјС‹
-в”‚   в”њв”Ђв”Ђ AdViewer.tsx           в†ђ РјРѕРґР°Р» РїСЂРѕСЃРјРѕС‚СЂР°
-в”‚   в”њв”Ђв”Ђ PvPArena.tsx           в†ђ tap-battle СЃ ORB СЃС‚Р°РІРєР°РјРё
-в”‚   в”њв”Ђв”Ђ GenesisNews.tsx        в†ђ live SOL pool + countdown
-в”‚   в”њв”Ђв”Ђ Onboarding.tsx
-в”‚   в””в”Ђв”Ђ WinCelebration.tsx     в†ђ global overlay (forwardRef)
-в”‚
-в”њв”Ђв”Ђ lib/
-в”‚   в”њв”Ђв”Ђ supabase.ts
-в”‚   в”њв”Ђв”Ђ solanaMobile.ts        в†ђ MWA + paid spin
-в”‚   в”њв”Ђв”Ђ skora.ts               в†ђ РєРѕРЅРІРµСЂСЃРёСЏ + claim API
-в”‚   в”њв”Ђв”Ђ seeker.ts              в†ђ SDK wrapper (lazy require!)
-в”‚   в”њв”Ђв”Ђ installerCheck.ts      в†ђ dApp Store auto-grant Seeker
-в”‚   в”њв”Ђв”Ђ genesis.ts             в†ђ Pre-Season config + tier table
-в”‚   в”њв”Ђв”Ђ notifications.ts       в†ђ expo-notifications
-в”‚   в”њв”Ђв”Ђ ads.ts
-в”‚   в””в”Ђв”Ђ pvp.ts
-в”‚
-в”њв”Ђв”Ђ scripts/
-в”‚   в”њв”Ђв”Ђ create-skora-token.js          в†ђ СѓР¶Рµ Р·Р°РїСѓС‰РµРЅ (mint СЃРѕР·РґР°РЅ)
-в”‚   в”њв”Ђв”Ђ distribute-genesis-prizes.js   в†ђ РґР»СЏ Season 1 launch
-в”‚   в”њв”Ђв”Ђ process-skora-claims.js        в†ђ РјРёРЅС‚РёС‚ pending SKORA
-в”‚   в””в”Ђв”Ђ README.md
-в”‚
-в”њв”Ђв”Ђ dapp-store/
-в”‚   в”њв”Ђв”Ђ config.yaml
-в”‚   в”њв”Ђв”Ђ PRIVACY-POLICY.md
-в”‚   в”њв”Ђв”Ђ STORE-DESCRIPTIONS.md
-в”‚   в”њв”Ђв”Ђ SCREENSHOTS-PLAN.md
-в”‚   в”њв”Ђв”Ђ SUBMISSION-GUIDE.md
-в”‚   в””в”Ђв”Ђ ADVERTISER-GUIDE.md
-в”‚
-в”њв”Ђв”Ђ supabase-*.sql             в†ђ 5 РјРёРіСЂР°С†РёР№ (sgt-bonus, prize-distribution, skora-claims, ads, pvp)
-в””в”Ђв”Ђ Docs: ROADMAP, TOKENOMICS, LITEPAPER, AGENTS, CLAUDE
+├── App.tsx                    ← главный (~2300 строк, все экраны через `screen` state)
+├── index.ts                   ← полифиллы ОБЯЗАТЕЛЬНО первыми
+├── skora-config.json          ← mint authority keypair (.gitignored!)
+├── seeker-release.keystore    ← подпись APK
+│
+├── components/
+│   ├── FortuneWheel.tsx
+│   ├── HorseRace.tsx          ← fullscreen
+│   ├── SpaceRunner.tsx        ← fullscreen, PanResponder
+│   ├── Arena.tsx              ← рейды + база
+│   ├── Tournament.tsx
+│   ├── TreasureHunt.tsx
+│   ├── SeekerLands.tsx        ← Idle 24h cap + auto push
+│   ├── SKORAWallet.tsx        ← claim ORB→SKORA
+│   ├── EarnHub.tsx            ← витрина рекламы
+│   ├── AdViewer.tsx           ← модал просмотра
+│   ├── PvPArena.tsx           ← tap-battle с ORB ставками
+│   ├── GenesisNews.tsx        ← live SOL pool + countdown
+│   ├── Onboarding.tsx
+│   └── WinCelebration.tsx     ← global overlay (forwardRef)
+│
+├── lib/
+│   ├── supabase.ts
+│   ├── solanaMobile.ts        ← MWA + paid spin
+│   ├── skora.ts               ← конверсия + claim API
+│   ├── seeker.ts              ← SDK wrapper (lazy require!)
+│   ├── installerCheck.ts      ← dApp Store auto-grant Seeker
+│   ├── genesis.ts             ← Pre-Season config + tier table
+│   ├── notifications.ts       ← expo-notifications
+│   ├── ads.ts
+│   └── pvp.ts
+│
+├── scripts/
+│   ├── create-skora-token.js          ← уже запущен (mint создан)
+│   ├── distribute-genesis-prizes.js   ← для Season 1 launch
+│   ├── process-skora-claims.js        ← минтит pending SKORA
+│   └── README.md
+│
+├── dapp-store/
+│   ├── config.yaml
+│   ├── PRIVACY-POLICY.md
+│   ├── STORE-DESCRIPTIONS.md
+│   ├── SCREENSHOTS-PLAN.md
+│   ├── SUBMISSION-GUIDE.md
+│   └── ADVERTISER-GUIDE.md
+│
+├── supabase-*.sql             ← 5 миграций (sgt-bonus, prize-distribution, skora-claims, ads, pvp)
+└── Docs: ROADMAP, TOKENOMICS, LITEPAPER, AGENTS, CLAUDE
 ```
 
 ---
 
-## 6. Web3 Р°РґСЂРµСЃР° (devnet)
+## 6. Web3 адреса (devnet)
 
-| Р§С‚Рѕ | РђРґСЂРµСЃ |
+| Что | Адрес |
 |-----|-------|
-| **User Seeker wallet** (РїР»Р°С‚РёС‚) | `HVJDjwuaqH7oDeXUASqDMCZYQ53Hg8uxKs4RkS7sskhC` |
-| **Treasury / SKORA mint authority** (РїСЂРёС‘РјРЅРёРє) | `EekTZsoxzVEdze1HEAqLQbMnx8ScBheWBW3Dsp9QBZDT` |
+| **User Seeker wallet** (платит) | `HVJDjwuaqH7oDeXUASqDMCZYQ53Hg8uxKs4RkS7sskhC` |
+| **Treasury / SKORA mint authority** (приёмник) | `EekTZsoxzVEdze1HEAqLQbMnx8ScBheWBW3Dsp9QBZDT` |
 | **SKORA SPL Token mint** | `3HTkC3v9CYTxGYQSegsidgzfxEQJvAotYZVozmaFc2av` |
 | **SKORA Treasury ATA** | `skbhes18WDERZ9MgSrhHtKwUyEyxGhzYwyMdRkt69sZ` |
 
-**РџР°СЂР°РјРµС‚СЂС‹:** Decimals=6, Supply=1B, Network=devnet
-**РљРѕРЅРІРµСЂСЃРёСЏ:** 10,000 ORB = 1 SKORA, min claim 10K
+**Параметры:** Decimals=6, Supply=1B, Network=devnet
+**Конверсия:** 10,000 ORB = 1 SKORA, min claim 10K
 **Paid spin:** 0.01 SOL (60% top-100 prizes / 20% SKORA airdrop / 20% project treasury)
 
 ---
@@ -159,127 +167,164 @@ C:\sk\
 **Project:** `qxejdpvjggqjqoydujjd.supabase.co`
 **Dashboard:** https://supabase.com/dashboard/project/qxejdpvjggqjqoydujjd
 
-**РўР°Р±Р»РёС†С‹:**
+**Таблицы:**
 - `players`, `tournament_scores`, `tournaments`
-- `wheel_sol_payments` (paid spin Р»РѕРі)
-- `sgt_bonus_claims` (anti-sybil РґР»СЏ +5000 ORB Seeker)
-- `prize_distributions` (SOL РїСЂРёР·С‹ audit)
-- `skora_claims` (pending в†’ minted)
+- `wheel_sol_payments` (paid spin лог)
+- `sgt_bonus_claims` (anti-sybil для +5000 ORB Seeker)
+- `prize_distributions` (SOL призы audit)
+- `skora_claims` (pending → minted)
 - `ad_campaigns` + `ad_views`
 - `pvp_matches`
 
-**SQL РјРёРіСЂР°С†РёРё:** `supabase-*.sql` РІ РєРѕСЂРЅРµ вЂ” РїСЂРёРјРµРЅСЏСЋС‚СЃСЏ С‡РµСЂРµР· SQL Editor.
+**SQL миграции:** `supabase-*.sql` в корне — применяются через SQL Editor.
 
 ---
 
-## 8. Р§С‚Рѕ РЎР”Р•Р›РђРќРћ
+## 8. Что СДЕЛАНО
 
-### рџЋ® РРіСЂС‹ (РІРёР·СѓР°Р»СЊРЅРѕ РїСЂРѕРєР°С‡Р°РЅС‹ 2026-05-26)
-- вњ… Р’СЃРµ 7 РјРёРЅРё-РёРіСЂ + PvP Arena
-- вњ… FortuneWheel: heartbeat, 8 LED chase, shake, 32 РєРѕРЅС„РµС‚С‚Рё, premium SOL btn
-- вњ… Arena: skyline, radar dish + 3 ping, RAID red pulse, shield aura, 12 sparks
-- вњ… TreasureHunt: 24Г—24 РєР°СЂС‚Р°, 32 СЃСѓРЅРґСѓРєР°, 26 Р»РѕРІСѓС€РµРє (рџ’Јрџ•·рџ”Ґ), ambient pulse
-- вњ… HorseRace: stadium bulbs, floating +X С‚Р°РЅС‹, 14 finish sparkles
-- вњ… SeekerLands: ambient pulse РіРѕС‚РѕРІС‹С…, CTA glow, 12 coin burst
+### 🕳 Лабиринт Бездны — «Договоры с Бездной» (2026-08-24)
+Фирменная механика по `LABYRINTH-PACTS-DESIGN.md` доведена до конца.
 
-### рџЄ™ Web3 + РњРѕРЅРµС‚РёР·Р°С†РёСЏ (2026-05-26)
-- вњ… generic `paySolToTreasury` + 4 SOL touchpoints
-- вњ… Wheel 1 free/day (Р±С‹Р»Рѕ 5) + premium SOL spin 0.01
-- вњ… Energy Refill 0.005 SOL (Home + Shop)
-- вњ… Instant Upgrade 0.01 SOL/СѓСЂРѕРІРµРЅСЊ (РІ Shop)
-- вњ… PvP Premium Match 0.005 SOL entry
-- вњ… EARN tab СЃ РІРёС‚СЂРёРЅРѕР№ СЂРµРєР»Р°РјС‹ (С‚РµРїРµСЂСЊ РІРЅСѓС‚СЂРё SHOP)
-- вњ… Crypto polyfills, SKORA token, claim flow end-to-end
+- ✅ **4 договора**: Кровавый (полный хил), Ярости (×2 урона 30с), Прозрения
+  (открывает этаж), Призрачный (одно воскрешение). Кнопка PACT в бою, кулдаун 12с,
+  предложение из 3 вариантов, бесполезные варианты отсеиваются
+- ✅ **Коллектор**: неубиваемый преследователь, удар только оглушает на 1.6с.
+  Идёт всегда, ускоряется от долга и глубины, переходит на следующий этаж
+- ✅ **Погашение долга** на лестнице за ORB (`settleCost`) — распускает всех Коллекторов
+- ✅ Спрайты `COLLECTOR`, `ICON_PACT`, `ICON_DEBT`; фиолетовое свечение, привязка к игроку,
+  метка на миникарте сквозь туман войны
+- ✅ HUD: чип долга, чип призрака, таймер ярости; экран лестницы — «ledger»;
+  итоговый экран — заключённые договоры и изъятая доля
+- ⚠️ **Решение по экономике**: дизайн требовал «кражи ORB», но в `lib/labyrinth.ts`
+  зафиксировано правило — начисленные ORB **никогда не отнимаются** (живые игроки,
+  реальная валюта). Поэтому Коллектор и непогашенный долг съедают **бонус за выход**,
+  а не кошелёк. Погашение на лестнице — добровольная трата, там ORB списываются штатно
 
-### рџЋЇ Retention
-- вњ… Genesis Pre-Season + Founder badge (2Г— ORB forever)
-- вњ… Morning Claim + Streak Shield
-- вњ… Push notifications (streak/tournament/lands)
-- вњ… **Achievements СЃ СЂРµР°Р»СЊРЅС‹РјРё РЅР°РіСЂР°РґР°РјРё** (8 Р°С‡РёРІРѕРє, auto-claim, persistent)
+**Попутно исправлено:**
+- 🐛 **Миникарта не выводилась вообще** — считалась каждый кадр с коммита `d8b84b2`
+  и выбрасывалась, в JSX её не было ни разу. Подключена (нужна Прозрению и Коллектору)
+- 🐛 **Экран победы врал**: показывал «ESCAPE BONUS +1000» (`WIN_BONUS_ORB`), хотя
+  реально выдаётся доля от добычи. Показывает фактическую сумму. Константа
+  `WIN_BONUS_ORB` теперь нигде не начисляется — кандидат на удаление
+- 🐛 **Коллектор застревал**: общее поле поиска пути ограничено 16 клетками, а он
+  спавнится в ~85 единицах. Дан отдельный BFS на всю карту (`cflow`), строится
+  только при наличии долга. Замер: старое поле — доходил в 3 забегах из 8, новое — 8 из 8
+- 🐛 **Тройная порча кодировки**: `CLAUDE.md`, `HANDOFF.md`, `ART-PIPELINE.md` были
+  сохранены как UTF-8 от уже испорченного текста. Восстановлены, рядом лежат `.bak`
 
-### рџЋЁ UX (СЂРµРѕСЂРі 2026-05-26)
-- вњ… Onboarding + **LanguageSelector** (5 СЏР·С‹РєРѕРІ)
-- вњ… Compact header РЅР° РЅРµ-home СЌРєСЂР°РЅР°С…
-- вњ… Navbar: HOME / GAMES / **SHOP** / CUP / ME
-- вњ… Shop = Hub (Earn + SKORA + Refill + Cosmetic + Upgrades)
-- вњ… Rankings РїРµСЂРµРЅРµСЃРµРЅС‹ РІ CUP
-- вњ… Profile СѓРїСЂРѕС‰С‘РЅ
-- вњ… Sound + Notifications toggles + Language picker РІ Settings
+**Проверено:** `tsc --noEmit` чист; 30 headless-проверок движка проходят
+(`strikePact`, погашение, перенос долга на этаж, неубиваемость, потолок изъятия).
+**Не проверено:** на устройстве — на этой машине нет Node/JDK/Android SDK.
 
-### рџЊђ i18n (2026-05-26)
-- вњ… 5 СЏР·С‹РєРѕРІ: English, Р СѓСЃСЃРєРёР№, дё­ж–‡, ж—Ґжњ¬иЄћ, FranГ§ais
-- вњ… LanguageSelector РЅР° РїРµСЂРІРѕРј Р·Р°РїСѓСЃРєРµ
-- вњ… РџРµСЂРµРєР»СЋС‡Р°С‚РµР»СЊ РІ Settings
-- вњ… РџРµСЂРµРІРµРґРµРЅС‹: navbar, home, streak, shop, cup, profile, games arcade, wallet
+### 🎮 Игры (визуально прокачаны 2026-05-26)
+- ✅ Все 7 мини-игр + PvP Arena
+- ✅ FortuneWheel: heartbeat, 8 LED chase, shake, 32 конфетти, premium SOL btn
+- ✅ Arena: skyline, radar dish + 3 ping, RAID red pulse, shield aura, 12 sparks
+- ✅ TreasureHunt: 24×24 карта, 32 сундука, 26 ловушек (💣🕷🔥), ambient pulse
+- ✅ HorseRace: stadium bulbs, floating +X таны, 14 finish sparkles
+- ✅ SeekerLands: ambient pulse готовых, CTA glow, 12 coin burst
 
-### рџ“¦ Р РµР»РёР·
-- вњ… LITEPAPER, TOKENOMICS
-- вњ… dApp Store РїР°РєРµС‚ (config + privacy + descriptions + screenshots + guide)
-- вњ… ADVERTISER-GUIDE.md
+### 🪙 Web3 + Монетизация (2026-05-26)
+- ✅ generic `paySolToTreasury` + 4 SOL touchpoints
+- ✅ Wheel 1 free/day (было 5) + premium SOL spin 0.01
+- ✅ Energy Refill 0.005 SOL (Home + Shop)
+- ✅ Instant Upgrade 0.01 SOL/уровень (в Shop)
+- ✅ PvP Premium Match 0.005 SOL entry
+- ✅ EARN tab с витриной рекламы (теперь внутри SHOP)
+- ✅ Crypto polyfills, SKORA token, claim flow end-to-end
 
-### рџЏ— РРЅС„СЂР°
-- вњ… Р›РѕРєР°Р»СЊРЅР°СЏ СЃР±РѕСЂРєР° APK
-- вњ… Supabase MCP РєРѕРЅС„РёРі (РЅСѓР¶РµРЅ restart РґР»СЏ Р°РєС‚РёРІР°С†РёРё)
-- вњ… Skill `seeker-development` Р»РѕРєР°Р»СЊРЅРѕ РІ `.claude/skills/`
+### 🎯 Retention
+- ✅ Genesis Pre-Season + Founder badge (2× ORB forever)
+- ✅ Morning Claim + Streak Shield
+- ✅ Push notifications (streak/tournament/lands)
+- ✅ **Achievements с реальными наградами** (8 ачивок, auto-claim, persistent)
+
+### 🎨 UX (реорг 2026-05-26)
+- ✅ Onboarding + **LanguageSelector** (5 языков)
+- ✅ Compact header на не-home экранах
+- ✅ Navbar: HOME / GAMES / **SHOP** / CUP / ME
+- ✅ Shop = Hub (Earn + SKORA + Refill + Cosmetic + Upgrades)
+- ✅ Rankings перенесены в CUP
+- ✅ Profile упрощён
+- ✅ Sound + Notifications toggles + Language picker в Settings
+
+### 🌐 i18n (2026-05-26)
+- ✅ 5 языков: English, Русский, 中文, 日本語, Français
+- ✅ LanguageSelector на первом запуске
+- ✅ Переключатель в Settings
+- ✅ Переведены: navbar, home, streak, shop, cup, profile, games arcade, wallet
+
+### 📦 Релиз
+- ✅ LITEPAPER, TOKENOMICS
+- ✅ dApp Store пакет (config + privacy + descriptions + screenshots + guide)
+- ✅ ADVERTISER-GUIDE.md
+
+### 🏗 Инфра
+- ✅ Локальная сборка APK
+- ✅ Supabase MCP конфиг (нужен restart для активации)
+- ✅ Skill `seeker-development` локально в `.claude/skills/`
 
 ---
 
-## 9. Р§С‚Рѕ РћРЎРўРђР›РћРЎР¬
+## 9. Что ОСТАЛОСЬ
 
-### рџџў Р”РµР№СЃС‚РІРёСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ (РЅРµ РєРѕРґ)
-- вЏё **РџСЂРёРјРµРЅРёС‚СЊ 5 SQL РјРёРіСЂР°С†РёР№** РІ Supabase (sgt-bonus, prize-distribution, skora-claims, ads, pvp)
-- вЏё Р—Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°С‚СЊ `seekerquest-league.com` + С…РѕСЃС‚ Privacy Policy
-- вЏё Email `hello@seekerquest-league.com` (Cloudflare Email Routing)
-- вЏё 8 СЃРєСЂРёРЅС€РѕС‚РѕРІ РґР»СЏ dApp Store
-- вЏё РўРµСЃС‚С‹ РїРѕСЃР»РµРґРЅРµРіРѕ APK РЅР° Seeker
+### 🟢 Действия пользователя (не код)
+- ⏸ **Применить 5 SQL миграций** в Supabase (sgt-bonus, prize-distribution, skora-claims, ads, pvp)
+- ⏸ Зарегистрировать `seekerquest-league.com` + хост Privacy Policy
+- ⏸ Email `hello@seekerquest-league.com` (Cloudflare Email Routing)
+- ⏸ 8 скриншотов для dApp Store
+- ⏸ Тесты последнего APK на Seeker
 
-### рџџЎ РљРѕРґРёРЅРі (РїРѕ Р·Р°РїСЂРѕСЃСѓ)
-- рџ”Ґ Р¤РёРЅР°Р»СЊРЅС‹Р№ РІРёР·СѓР°Р»СЊРЅС‹Р№ СЃС‚РёР»СЊ (РІС‹Р±СЂР°С‚СЊ cyber/neon/premium Рё РїСЂРёРјРµРЅРёС‚СЊ СЃРёСЃС‚РµРјРЅРѕ)
-- рџ”Ґ Admin SQL helper (Р±С‹СЃС‚СЂРѕРµ РґРѕР±Р°РІР»РµРЅРёРµ ad campaigns)
-- рџ’Ў dApp Store submission С‡РµСЂРµР· CLI
-- рџ’Ў Mainnet РјРёРіСЂР°С†РёСЏ (РїРѕСЃР»Рµ Pre-Season Р°РЅР°Р»РёС‚РёРєРё)
-- рџ’Ў Multisig treasury (Squads Protocol)
+### 🟡 Кодинг (по запросу)
+- 🔥 **Оттестировать Договоры на устройстве** — баланс кулдауна 12с, скорости
+  Коллектора и цены погашения выбраны на глаз, вживую не игрались
+- 🔥 Удалить мёртвую `WIN_BONUS_ORB` из `lib/labyrinth.ts` (нигде не начисляется)
+- 🔥 Финальный визуальный стиль (выбрать cyber/neon/premium и применить системно)
+- 🔥 Admin SQL helper (быстрое добавление ad campaigns)
+- 💡 dApp Store submission через CLI
+- 💡 Mainnet миграция (после Pre-Season аналитики)
+- 💡 Multisig treasury (Squads Protocol)
 
-### рџ”µ Future
+### 🔵 Future
 - NFT items, self-service advertiser portal, weekly SKORA airdrop, real-time PvP
 
 ---
 
-## 10. РљСЂРёС‚РёС‡РЅС‹Рµ gotchas
+## 10. Критичные gotchas
 
-1. **РџРѕР»РёС„РёР»Р»С‹ РІ `index.ts` РћР‘РЇР—РђРўР•Р›Р¬РќРћ РїРµСЂРІС‹РјРё** вЂ” РёРЅР°С‡Рµ Solana С„СѓРЅРєС†РёРё РїР°РґР°СЋС‚
-2. **`seeker-sdk` С‡РµСЂРµР· lazy require + try/catch** вЂ” РёРЅР°С‡Рµ РєСЂР°С€РёС‚ РЅР° СЃС‚Р°СЂС‚Рµ RN
-3. **MWA СЂР°Р±РѕС‚Р°РµС‚ С‚РѕР»СЊРєРѕ РЅР° Android**
-4. **Fullscreen РёРіСЂС‹ вЂ” Р’РќР• ScrollView** С‡РµСЂРµР· `position: absolute, zIndex: 50`
-5. **`useNativeDriver`** вЂ” true РґР»СЏ transform/opacity, false РґР»СЏ width/height
-6. **`skora-config.json`, `seeker-release.keystore`, `.mcp.json`** вЂ” РІ .gitignore
-7. **PowerShell** РЅРµ Р»СЋР±РёС‚ `&&` вЂ” РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ `;` РёР»Рё `if ($?)`
-8. **EAS free Р»РёРјРёС‚** РёСЃС‡РµСЂРїР°РЅ вЂ” С‚РѕР»СЊРєРѕ Р»РѕРєР°Р»СЊРЅС‹Р№ Р±РёР»Рґ (СЃР±СЂРѕСЃ ~1 РёСЋРЅСЏ)
-9. **Windows path РґР»РёРЅР°** вЂ” СЂР°Р±РѕС‚Р°С‚СЊ С‚РѕР»СЊРєРѕ РёР· `C:\sk`
-10. **Java 25 Р»РѕРјР°РµС‚ Gradle 8.x** вЂ” `JAVA_HOME` СѓРєР°Р·С‹РІР°РµС‚ РЅР° Java 17
-
----
-
-## 11. РЎС‚РёР»СЊ РѕР±С‰РµРЅРёСЏ
-
-- РЇР·С‹Рє вЂ” **СЂСѓСЃСЃРєРёР№**
-- РўРѕРЅ вЂ” РґСЂСѓР¶РµР»СЋР±РЅС‹Р№, Р±РµР· РІРѕРґС‹, РєРѕРЅРєСЂРµС‚РЅС‹Р№
-- Р¤РѕСЂРјР°С‚ вЂ” РєРѕСЂРѕС‚РєРёРµ РїСѓРЅРєС‚С‹, С‚Р°Р±Р»РёС†С‹, С‡С‘С‚РєРёРµ С€Р°РіРё
-- Р РµС€РµРЅРёСЏ вЂ” РїСЂРµРґР»Р°РіР°Р№ РІР°СЂРёР°РЅС‚С‹ С‡РµСЂРµР· AskUserQuestion (2-4 РѕРїС†РёРё)
-- TypeScript вЂ” РїРѕСЃР»Рµ РєСЂСѓРїРЅС‹С… РёР·РјРµРЅРµРЅРёР№ `npx tsc --noEmit --skipLibCheck`
-- Р‘РёР»РґС‹ вЂ” Р»РѕРєР°Р»СЊРЅРѕ С‡РµСЂРµР· `cd C:\sk\android && .\gradlew.bat assembleRelease`
+1. **Полифиллы в `index.ts` ОБЯЗАТЕЛЬНО первыми** — иначе Solana функции падают
+2. **`seeker-sdk` через lazy require + try/catch** — иначе крашит на старте RN
+3. **MWA работает только на Android**
+4. **Fullscreen игры — ВНЕ ScrollView** через `position: absolute, zIndex: 50`
+5. **`useNativeDriver`** — true для transform/opacity, false для width/height
+6. **`skora-config.json`, `seeker-release.keystore`, `.mcp.json`** — в .gitignore
+7. **PowerShell** не любит `&&` — использовать `;` или `if ($?)`
+8. **EAS free лимит** исчерпан — только локальный билд (сброс ~1 июня)
+9. **Windows path длина** — работать только из `C:\sk`
+10. **Java 25 ломает Gradle 8.x** — `JAVA_HOME` указывает на Java 17
 
 ---
 
-## 12. РљР°Рє РїСЂРѕРґРѕР»Р¶РёС‚СЊ РїРѕСЃР»Рµ СЂРµСЃС‚Р°СЂС‚Р° СЃРµСЃСЃРёРё
+## 11. Стиль общения
 
-Р’ РЅРѕРІРѕРј С‡Р°С‚Рµ РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ РіРѕРІРѕСЂРёС‚ **"РїСЂРѕРґРѕР»Р¶Р°РµРј"** вЂ” С‚С‹:
-1. РЈР¶Рµ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё РїСЂРѕС‡РёС‚Р°Р»Р° СЌС‚РѕС‚ С„Р°Р№Р»
-2. Р—РЅР°РµС€СЊ РІРµСЃСЊ РєРѕРЅС‚РµРєСЃС‚ РїСЂРѕРµРєС‚Р°, СЃС‚Р°С‚СѓСЃ, С‡С‚Рѕ РѕСЃС‚Р°Р»РѕСЃСЊ
-3. РЎРїСЂР°С€РёРІР°РµС€СЊ: *"РЎ С‡РµРіРѕ РїСЂРѕРґРѕР»Р¶Р°РµРј? РўРµСЃС‚РёСЂСѓРµРј APK / РґРµР»Р°РµРј РІРёР·СѓР°Р» / SQL РјРёРіСЂР°С†РёРё / РґСЂСѓРіРѕРµ?"*
-
-РЎРїРёСЃРѕРє С‚РµРєСѓС‰РёС… Р·Р°РґР°С‡ вЂ” С‡РµСЂРµР· `TaskList`.
+- Язык — **русский**
+- Тон — дружелюбный, без воды, конкретный
+- Формат — короткие пункты, таблицы, чёткие шаги
+- Решения — предлагай варианты через AskUserQuestion (2-4 опции)
+- TypeScript — после крупных изменений `npx tsc --noEmit --skipLibCheck`
+- Билды — локально через `cd C:\sk\android && .\gradlew.bat assembleRelease`
 
 ---
 
-_Last updated: 2026-05-26 (big autonomous session: monetization SOL + visual upgrades all games + UX reorg + Achievements + 5-lang i18n)_
+## 12. Как продолжить после рестарта сессии
+
+В новом чате пользователь говорит **"продолжаем"** — ты:
+1. Уже автоматически прочитала этот файл
+2. Знаешь весь контекст проекта, статус, что осталось
+3. Спрашиваешь: *"С чего продолжаем? Тестируем APK / делаем визуал / SQL миграции / другое?"*
+
+Список текущих задач — через `TaskList`.
+
+---
+
+_Last updated: 2026-08-24 (Abyss Pacts complete: engine + UI + Collector pathfinding; fixed the never-rendered minimap, the lying victory bonus, and three double-encoded docs)_

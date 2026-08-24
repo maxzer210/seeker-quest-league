@@ -23,10 +23,11 @@ import {
 } from '@shopify/react-native-skia';
 import * as L from '../lib/labyrinth';
 import {
-  SEEKER, SHADE_VARIANTS, BRUTE, GUARDIAN, GEM, GEM_GOLD, BARREL, spriteW, type Sprite,
+  SEEKER, SHADE_VARIANTS, BRUTE, GUARDIAN, COLLECTOR, GEM, GEM_GOLD, BARREL, spriteW, type Sprite,
   FLOOR_PROPS, PROP_BANNER, PROP_CHAIN, PROP_SHROOM,
-  ICON_BOLT, ICON_BOOT, ICON_CANDLE, ICON_DASH, ICON_HEART, ICON_LANTERN, ICON_LOCK,
-  ICON_ORB, ICON_PORTAL, ICON_SKULL, ICON_STAR, ICON_SWORD, ICON_TENT, ICON_TORCH, ICON_TROPHY,
+  ICON_BOLT, ICON_BOOT, ICON_CANDLE, ICON_DASH, ICON_DEBT, ICON_HEART, ICON_LANTERN, ICON_LOCK,
+  ICON_ORB, ICON_PACT, ICON_PORTAL, ICON_SKULL, ICON_STAR, ICON_SWORD, ICON_TENT, ICON_TORCH,
+  ICON_TROPHY,
 } from '../lib/labyrinthSprites';
 import {
   EngravedTitle, OrnamentRule, OrnateCard, PixelIcon, RuneButton, StatMedallion, TierPips,
@@ -529,21 +530,52 @@ function drawScene(
     }
   }
 
-  // ── monsters (normal variants, brutes, and the Guardian boss) ──
+  // ── monsters (normal variants, brutes, the Guardian boss, the Collectors) ──
   for (const m of run.monsters) {
     if (m.dead) continue;
     const isGuardian = m.type === 'guardian';
     const isBrute = m.type === 'brute';
+    const isCollector = m.type === 'collector';
     const dx = m.pos.x - p.pos.x, dz = m.pos.z - p.pos.z;
-    const cullCells = (torchR / TILE) * (isGuardian ? 1.35 : 1) + 1;
+    // A Collector is drawn well past the torchlight: seeing it out in the dark
+    // long before it arrives is the whole tension of owing the Abyss.
+    const cullCells = (torchR / TILE) * (isGuardian ? 1.35 : isCollector ? 2.6 : 1) + 1;
     if (dx * dx + dz * dz > (cullCells * CELL) ** 2) continue;
     const mx = wsx(m.pos.x);
-    const bob = Math.sin(run.clock * (isGuardian ? 5 : isBrute ? 8 : 12) + m.id) * (isGuardian ? 3 : 4);
+    const bob = Math.sin(run.clock * (isGuardian ? 5 : isBrute ? 8 : isCollector ? 2.2 : 12) + m.id)
+              * (isGuardian ? 3 : isCollector ? 2 : 4);
     const my = wsy(m.pos.z) + bob;
     // shadow
     scratch.setColor(col('#00000055'));
-    const sw = isGuardian ? 62 : isBrute ? 40 : 26;
+    const sw = isGuardian ? 62 : isBrute ? 40 : isCollector ? 30 : 26;
     canvas.drawOval(Skia.XYWHRect(mx - sw / 2, wsy(m.pos.z) + (isGuardian ? 24 : 14), sw, isGuardian ? 13 : 9), scratch);
+
+    // The Collector carries its own violet light — the one thing in the maze
+    // that is never lost in the dark, and never in doubt about where you are.
+    if (isCollector) {
+      const staggered = m.stagger > 0;
+      glowPaint.setColor(col(staggered ? '#4c1d95' : '#7c3aed'));
+      glowPaint.setAlphaf((staggered ? 0.22 : 0.42) + 0.14 * Math.sin(run.clock * 3));
+      canvas.drawCircle(mx, my, TILE * 1.05, glowPaint);
+      // a slow tether pointing at the seeker — it always knows the way
+      scratch.setStyle(PaintStyle.Stroke);
+      scratch.setStrokeWidth(1.6);
+      scratch.setColor(col('#7c3aed'));
+      scratch.setAlphaf(0.16 + 0.1 * Math.sin(run.clock * 2.4));
+      canvas.drawLine(mx, my, camX, camY, scratch);
+      scratch.setStyle(PaintStyle.Fill);
+      scratch.setAlphaf(1);
+      // stagger read: broken shackle ring while the blade has it rooted
+      if (staggered) {
+        scratch.setStyle(PaintStyle.Stroke);
+        scratch.setStrokeWidth(2.5);
+        scratch.setColor(col('#c4b5fd'));
+        scratch.setAlphaf(0.55 + 0.35 * Math.sin(run.clock * 24));
+        canvas.drawCircle(mx, wsy(m.pos.z), TILE * 0.7, scratch);
+        scratch.setStyle(PaintStyle.Fill);
+        scratch.setAlphaf(1);
+      }
+    }
     // the Guardian's core throbs with light — hotter and faster each phase
     if (isGuardian) {
       const beat = 4 + m.phase * 2;
@@ -572,17 +604,20 @@ function drawScene(
         canvas.drawCircle(mx, my, TILE * 1.3, glowPaint);
       }
     }
-    const sprite = isGuardian ? GUARDIAN : isBrute ? BRUTE : SHADE_VARIANTS[m.variant % SHADE_VARIANTS.length];
-    const size = isGuardian ? TILE * 2.15 : isBrute ? TILE * 1.25 : TILE * 0.85;
+    const sprite = isGuardian ? GUARDIAN : isCollector ? COLLECTOR : isBrute ? BRUTE
+                 : SHADE_VARIANTS[m.variant % SHADE_VARIANTS.length];
+    const size = isGuardian ? TILE * 2.15 : isCollector ? TILE * 1.45 : isBrute ? TILE * 1.25 : TILE * 0.85;
     // procedural animation: breathing pulse, attack pounce, hit recoil, chase lean
-    const breathe = Math.sin(run.clock * (isGuardian ? 3 : 6) + m.id * 1.7);
-    let asy = 1 + breathe * (isGuardian ? 0.05 : 0.09);
+    const breathe = Math.sin(run.clock * (isGuardian ? 3 : isCollector ? 1.6 : 6) + m.id * 1.7);
+    // The Collector does not breathe — it glides. A near-still silhouette
+    // among all this twitching reads as something that is simply arriving.
+    let asy = 1 + breathe * (isGuardian ? 0.05 : isCollector ? 0.03 : 0.09);
     let asx = 1 - (asy - 1) * 0.7;
     const sinceAtk = run.clock - m.lastAttack;
     if (sinceAtk < 0.22) { const l = 1 - sinceAtk / 0.22; asy += l * 0.18; asx += l * 0.1; }
     if (m.damageFlash > 0) { asx *= 1.14; asy *= 0.86; }
     const chasing = dx * dx + dz * dz < L.MONSTER_AGGRO * L.MONSTER_AGGRO;
-    const lean = chasing && !isGuardian ? (m.pos.x < p.pos.x ? -0.06 : 0.06) : 0;
+    const lean = chasing && !isGuardian && !isCollector ? (m.pos.x < p.pos.x ? -0.06 : 0.06) : 0;
 
     // ── attack tell ──
     // A winding-up monster rears back and flashes a ring at its strike range,
@@ -982,6 +1017,25 @@ function drawMinimap(canvas: SkCanvas, run: L.RunState, cache: MinimapCache) {
     scratch.setColor(col('#7f1d1d'));
     canvas.drawCircle(cxs(c.cx), cxs(c.cz), 1.1, scratch);
   }
+  // Collectors — always charted, fog or no fog. The debt is not something you
+  // get to lose track of, and watching the dot close is the point.
+  for (const m of run.monsters) {
+    if (m.type !== 'collector' || m.dead) continue;
+    const c = L.worldToCell(m.pos.x, m.pos.z, run.gridW, run.gridH);
+    const bx = cxs(c.cx), by = cxs(c.cz);
+    const t = (run.clock * 1.6 + m.id) % 1;
+    scratch.setStyle(PaintStyle.Stroke);
+    scratch.setStrokeWidth(1.2);
+    scratch.setColor(col('#a78bfa'));
+    scratch.setAlphaf(1 - t);
+    canvas.drawCircle(bx, by, 2 + t * 5, scratch);
+    scratch.setStyle(PaintStyle.Fill);
+    scratch.setAlphaf(1);
+    scratch.setColor(col(m.stagger > 0 ? '#4c1d95' : '#7c3aed'));
+    canvas.drawCircle(bx, by, 2.6, scratch);
+    scratch.setColor(col('#ede9fe'));
+    canvas.drawCircle(bx, by, 1.2, scratch);
+  }
   // stairs beacon — always shown, so a floor is navigable instead of a hunt.
   // Cyan when open, pink while a Guardian seals it.
   {
@@ -1014,7 +1068,7 @@ function drawMinimap(canvas: SkCanvas, run: L.RunState, cache: MinimapCache) {
 
 // ── input / phase ─────────────────────────────────────────────────────────────
 type InputState = { jx: number; jz: number; attack: boolean; dash: boolean };
-type Phase = 'menu' | 'playing' | 'stairs' | 'dead' | 'won';
+type Phase = 'menu' | 'playing' | 'pact' | 'stairs' | 'dead' | 'won';
 
 const BEST_KEY = 'sk_labyrinth_best';
 const DEPTH_KEY = 'sk_labyrinth_depth';      // deepest floor ever reached
@@ -1106,6 +1160,12 @@ export default function LabyrinthOfAbyss({
   const [best, setBest]           = useState(0);
   const [bestDepth, setBestDepth] = useState(1);
   const [, setFrame]              = useState(0);
+  // The three pacts currently on the table (empty when nothing is offered)
+  const [pactOffer, setPactOffer] = useState<L.PactId[]>([]);
+  // What extraction actually paid, and what the Abyss took on the way out —
+  // the victory screen used to print a flat constant that was never granted.
+  const [paidBonus, setPaidBonus] = useState(0);
+  const [seizedPct, setSeizedPct] = useState(0);
   // Seeker's Camp
   const [camp, setCamp]           = useState<CampLevels>(CAMP_ZERO);
   const [lantern, setLantern]     = useState(false);
@@ -1287,24 +1347,79 @@ export default function LabyrinthOfAbyss({
   function descendDeeper() {
     const r = runRef.current;
     if (!r) return;
+    const owed = r.debt;
     L.descendFloor(r);
     setCollected(0);
-    setMsg(`Floor ${r.depth} · ×${r.orbMult.toFixed(1)} ORB`);
+    setMsg(owed > 0
+      ? `Floor ${r.depth} · ×${r.orbMult.toFixed(1)} ORB · ${owed} ${owed === 1 ? 'Collector follows' : 'Collectors follow'} you down`
+      : `Floor ${r.depth} · ×${r.orbMult.toFixed(1)} ORB`);
     phaseRef.current = 'playing';
     setPhase('playing');
     onPlaySound('levelup');
   }
 
-  /** Walk away with the haul — pays a bonus scaled by how deep you got. */
+  /**
+   * Walk away with the haul. The bonus is the only thing at stake in this game
+   * — banked ORB is never clawed back — so an unsettled debt eats into the
+   * bonus rather than the purse.
+   */
   function extractRun() {
     const r = runRef.current;
     if (!r) return;
-    const bonus = Math.round(r.runOrb * L.EXTRACT_SHARE);
+    const bonus = L.extractBonus(r);
+    setPaidBonus(bonus);
+    setSeizedPct(Math.round(L.tollShare(r) * 100));
     r.runOrb += bonus;
     onEarnOrb(bonus);
     setRunOrb(r.runOrb);
     onPlaySound('jackpot');
     endRun(true);
+  }
+
+  // ── pacts ──────────────────────────────────────────────────────────────────
+
+  /**
+   * Open the bargain. The simulation only advances in 'playing', so switching
+   * phase freezes the floor mid-fight — which is the point: the pact is meant
+   * to be reachable in the exact moment you are being overrun.
+   */
+  function openPact() {
+    const r = runRef.current;
+    if (!r || phaseRef.current !== 'playing' || r.pactCd > 0) return;
+    setPactOffer(L.rollPactOffer(r));
+    phaseRef.current = 'pact';
+    setPhase('pact');
+    onPlaySound('tap');
+  }
+
+  function closePact() {
+    if (phaseRef.current !== 'pact') return;
+    setPactOffer([]);
+    phaseRef.current = 'playing';
+    setPhase('playing');
+  }
+
+  function choosePact(id: L.PactId) {
+    const r = runRef.current;
+    if (!r) return;
+    L.strikePact(r, id, eventsRef.current);
+    setPactOffer([]);
+    phaseRef.current = 'playing';
+    setPhase('playing');
+  }
+
+  /** Clear the ledger at the stairwell — real ORB, spent by choice. */
+  function settleTheDebt() {
+    const r = runRef.current;
+    if (!r || !onSpendOrb) return;
+    const cost = L.settleCost(r.debt, r.depth);
+    if (!L.settleDebt(r, orb ?? 0)) {
+      setMsg(`The Abyss wants ${cost.toLocaleString()} ORB`);
+      return;
+    }
+    onSpendOrb(cost);
+    onPlaySound('levelup');
+    setMsg('THE LEDGER IS CLEAR');
   }
 
   function startRun() {
@@ -1318,6 +1433,9 @@ export default function LabyrinthOfAbyss({
     setHp(runRef.current.maxHp);
     setCollected(0);
     setRunOrb(0);
+    setPactOffer([]);
+    setPaidBonus(0);
+    setSeizedPct(0);
     setMsg('Floor 1 · find the stairs, take what you can carry');
     phaseRef.current = 'playing';
     setPhase('playing');
@@ -1363,7 +1481,7 @@ export default function LabyrinthOfAbyss({
   // Reuses the existing frame tick (the component already re-renders every
   // frame during play) — no extra loops.
   let minimap: SkPicture | null = null;
-  if (phase === 'playing' && run) {
+  if ((phase === 'playing' || phase === 'pact') && run) {
     updateMinimapTerrain(minimapCache.current, run);
     minimap = createPicture(
       (canvas) => drawMinimap(canvas, run, minimapCache.current),
@@ -1486,6 +1604,10 @@ export default function LabyrinthOfAbyss({
                 d: `At every stairwell: go DEEPER for a bigger reward multiplier, or EXTRACT to bank the run and collect a bonus worth ${Math.round(L.EXTRACT_SHARE * 100)}% of your haul. Die, and you lose only that bonus.` },
               { icon: ICON_SKULL,  t: 'THE GUARDIAN',
                 d: `Every ${L.GUARDIAN_EVERY} floors a Guardian seals the stairs. It has three phases, calls shades to its side, and telegraphs a shockwave slam — dash out of the ring.` },
+              { icon: ICON_PACT,   t: 'PACTS WITH THE ABYSS',
+                d: `Press PACT any time to borrow power — full healing, ${L.FURY_MULT}× damage, the floor revealed, or one death held in reserve. It costs nothing up front. The price walks in from the far edge.` },
+              { icon: ICON_DEBT,   t: 'THE COLLECTOR',
+                d: `Each pact sends one Collector after you. It cannot be killed — STRIKE only staggers it for ${L.COLLECTOR_STAGGER}s. It never loses your trail, it follows you down the stairs, and it gets faster with every debt and every floor. Touch it and it takes ${Math.round(L.COLLECTOR_ORB_TOLL * 100)}% of your extraction bonus. Settle the debt with ORB at a stairwell to send them all away.` },
               { icon: ICON_TENT,   t: 'THE CAMP',
                 d: `Spend ORB at the camp on permanent upgrades. They survive every death, so a bad run still moves you forward.` },
             ] as const).map((r) => (
@@ -1636,7 +1758,7 @@ export default function LabyrinthOfAbyss({
       )}
 
       {/* ═══ HUD ═══ */}
-      {phase === 'playing' && (
+      {(phase === 'playing' || phase === 'pact') && (
         <>
           <View style={s.hudTop} pointerEvents="box-none">
             <View style={s.hpWrap}>
@@ -1649,6 +1771,17 @@ export default function LabyrinthOfAbyss({
               <Text style={s.hpTxt}>{hp} HP</Text>
             </View>
             <View style={s.hudChips}>
+              {(run?.debt ?? 0) > 0 && (
+                <View style={[s.hudChipBox, { borderColor: 'rgba(167,139,250,0.75)', backgroundColor: 'rgba(76,29,149,0.35)' }]}>
+                  <PixelIcon sprite={ICON_DEBT} size={14} />
+                  <Text style={[s.hudChip, { color: '#c4b5fd' }]}>{run!.debt}</Text>
+                </View>
+              )}
+              {(run?.ghost ?? false) && (
+                <View style={[s.hudChipBox, { borderColor: 'rgba(167,139,250,0.55)' }]}>
+                  <PixelIcon sprite={ICON_SKULL} size={14} />
+                </View>
+              )}
               {(run?.emberCharges ?? 0) > 0 && (
                 <View style={[s.hudChipBox, { borderColor: 'rgba(244,114,182,0.55)' }]}>
                   <PixelIcon sprite={ICON_CANDLE} size={15} />
@@ -1693,6 +1826,26 @@ export default function LabyrinthOfAbyss({
             );
           })()}
 
+          {/* The chart, at last on screen. Collectors show through the fog on
+              it, which is the only warning you get that the debt is closing. */}
+          {minimap && (
+            <View style={s.mapFrame} pointerEvents="none">
+              <Canvas style={{ width: MMAP_SIZE, height: MMAP_SIZE }}>
+                <Picture picture={minimap} />
+              </Canvas>
+            </View>
+          )}
+
+          {/* Fury is a countdown, and a countdown you cannot see is just an
+              unexplained damage drop when it ends. */}
+          {run && run.clock < run.furyUntil && (
+            <View style={s.furyWrap} pointerEvents="none">
+              <Text style={s.furyTxt}>
+                ⚔  FURY  {Math.ceil(run.furyUntil - run.clock)}s
+              </Text>
+            </View>
+          )}
+
           {msg !== '' && (
             <View style={s.msgWrap} pointerEvents="none">
               <Text style={s.msgTxt}>{msg}</Text>
@@ -1705,6 +1858,22 @@ export default function LabyrinthOfAbyss({
             </View>
           </View>
 
+          {/* PACT sits above the fight buttons, on the same thumb — it has to
+              be reachable in the second you decide you are not going to make it. */}
+          <View style={s.pactBtnWrap} pointerEvents="box-none">
+            <TouchableOpacity
+              onPress={openPact}
+              activeOpacity={0.85}
+              disabled={(run?.pactCd ?? 0) > 0}
+              style={[s.pactBtn, (run?.pactCd ?? 0) > 0 && s.pactBtnCold]}
+            >
+              <PixelIcon sprite={ICON_PACT} size={22} />
+              <Text style={s.pactBtnTxt}>
+                {(run?.pactCd ?? 0) > 0 ? `${Math.ceil(run!.pactCd)}s` : 'PACT'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={s.btnCol} pointerEvents="box-none">
             <RuneButton sprite={ICON_DASH} label="DASH" color="#22d3ee" size={74}
               onPressIn={() => { inputRef.current.dash = true; }} />
@@ -1712,6 +1881,55 @@ export default function LabyrinthOfAbyss({
               onPressIn={() => { inputRef.current.attack = true; }} />
           </View>
         </>
+      )}
+
+      {/* ═══ PACT — borrow now, and it comes walking ═══ */}
+      {phase === 'pact' && run && (
+        <View style={s.pactWrap}>
+          <LinearGradient
+            colors={['rgba(23,7,49,0.94)', 'rgba(8,4,20,0.97)']}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
+          <Text style={s.pactKicker}>· THE ABYSS OFFERS ·</Text>
+          <Text style={s.pactTitle}>NAME YOUR PRICE</Text>
+          <OrnamentRule color="#a78bfa" />
+          {/* Say the cost out loud, every single time. A bargain the player
+              does not fully understand is a trap, not a decision. */}
+          <Text style={s.pactWarn}>
+            Every pact sends one more Collector after you — for the rest of the run.
+          </Text>
+          {run.debt > 0 && (
+            <Text style={s.pactDebt}>
+              {run.debt} already {run.debt === 1 ? 'walks' : 'walk'} the maze · they speed up with every debt
+            </Text>
+          )}
+
+          <View style={s.pactList}>
+            {pactOffer.map(id => {
+              const def = L.PACTS[id];
+              return (
+                <TouchableOpacity
+                  key={id}
+                  onPress={() => choosePact(id)}
+                  activeOpacity={0.85}
+                  style={s.pactCard}
+                >
+                  <View style={s.pactCardHead}>
+                    <PixelIcon sprite={ICON_PACT} size={18} />
+                    <Text style={s.pactCardName}>{def.name}</Text>
+                  </View>
+                  <Text style={s.pactCardDesc}>{def.desc}</Text>
+                  <Text style={s.pactCardCost}>+1 DEBT · +1 COLLECTOR</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <TouchableOpacity onPress={closePact} activeOpacity={0.85} style={s.pactRefuse}>
+            <Text style={s.pactRefuseTxt}>OWE NOTHING — FIGHT ON</Text>
+          </TouchableOpacity>
+        </View>
       )}
 
       {/* ═══ STAIRS — the descent's decision ═══ */}
@@ -1742,6 +1960,43 @@ export default function LabyrinthOfAbyss({
             </View>
           </View>
 
+          {/* ── the ledger ── the one place the debt can be bought off ── */}
+          {run.debt > 0 && (() => {
+            const cost = L.settleCost(run.debt, run.depth);
+            const lost = Math.round(L.tollShare(run) * 100);
+            const canPay = onSpendOrb !== undefined && (orb ?? 0) >= cost;
+            return (
+              <View style={s.ledger}>
+                <View style={s.ledgerHead}>
+                  <PixelIcon sprite={ICON_DEBT} size={16} />
+                  <Text style={s.ledgerTitle}>
+                    THE ABYSS REMEMBERS · {run.debt} {run.debt === 1 ? 'PACT' : 'PACTS'}
+                  </Text>
+                </View>
+                <Text style={s.ledgerBody}>
+                  Descend still owing and {run.debt} {run.debt === 1 ? 'Collector follows' : 'Collectors follow'} you
+                  down, faster than before. Walk out owing and the Abyss keeps {lost}% of your bonus.
+                </Text>
+                <TouchableOpacity
+                  onPress={settleTheDebt}
+                  activeOpacity={0.85}
+                  disabled={!canPay}
+                  style={[s.settleBtn, !canPay && s.settleBtnOff]}
+                >
+                  <Text style={s.settleTxt}>SETTLE THE DEBT</Text>
+                  <Text style={s.settleCost}>{cost.toLocaleString()} ORB</Text>
+                </TouchableOpacity>
+                {!canPay && (
+                  <Text style={s.ledgerShort}>
+                    {onSpendOrb === undefined
+                      ? 'Settling needs a connected purse'
+                      : `Short by ${(cost - (orb ?? 0)).toLocaleString()} ORB`}
+                  </Text>
+                )}
+              </View>
+            );
+          })()}
+
           <TouchableOpacity onPress={descendDeeper} activeOpacity={0.85} style={s.descendBtn}>
             <Text style={s.descendTxt}>▼  GO DEEPER</Text>
             <View style={s.descendCost}>
@@ -1755,12 +2010,13 @@ export default function LabyrinthOfAbyss({
           <TouchableOpacity onPress={extractRun} activeOpacity={0.85} style={s.extractBtn}>
             <Text style={s.extractTxt}>▲  LEAVE WITH THE HAUL</Text>
             <Text style={s.extractSub}>
-              +{Math.round(runOrb * L.EXTRACT_SHARE).toLocaleString()} ORB bonus
+              +{L.extractBonus(run).toLocaleString()} ORB bonus
+              {L.tollShare(run) > 0 && `  ·  ${Math.round(L.tollShare(run) * 100)}% seized`}
             </Text>
           </TouchableOpacity>
           {/* Name the stake plainly — the bonus is what dying actually costs */}
           <Text style={s.stairsStake}>
-            Die below and this {Math.round(runOrb * L.EXTRACT_SHARE).toLocaleString()} ORB bonus is lost.
+            Die below and this {L.extractBonus(run).toLocaleString()} ORB bonus is lost.
           </Text>
         </View>
       )}
@@ -1805,11 +2061,32 @@ export default function LabyrinthOfAbyss({
               <Text style={s.endLbl}>ORB EARNED</Text>
               <Text style={[s.endVal, { color: '#facc15' }]}>+{runOrb.toLocaleString()}</Text>
             </View>
+            {(run?.pactsStruck ?? 0) > 0 && (
+              <View style={s.endRow}>
+                <PixelIcon sprite={ICON_DEBT} size={16} />
+                <Text style={s.endLbl}>PACTS STRUCK</Text>
+                <Text style={[s.endVal, { color: '#c4b5fd' }]}>{run!.pactsStruck}</Text>
+              </View>
+            )}
             {phase === 'won' && (
               <View style={s.endRow}>
                 <PixelIcon sprite={ICON_PORTAL} size={16} />
                 <Text style={s.endLbl}>ESCAPE BONUS</Text>
-                <Text style={[s.endVal, { color: '#22d3ee' }]}>+{L.WIN_BONUS_ORB}</Text>
+                <Text style={[s.endVal, { color: '#22d3ee' }]}>+{paidBonus.toLocaleString()}</Text>
+              </View>
+            )}
+            {phase === 'won' && seizedPct > 0 && (
+              <View style={s.endRow}>
+                <PixelIcon sprite={ICON_DEBT} size={16} />
+                <Text style={s.endLbl}>THE ABYSS TOOK</Text>
+                <Text style={[s.endVal, { color: '#a78bfa' }]}>{seizedPct}%</Text>
+              </View>
+            )}
+            {phase === 'dead' && (run?.debt ?? 0) > 0 && (
+              <View style={s.endRow}>
+                <PixelIcon sprite={ICON_DEBT} size={16} />
+                <Text style={s.endLbl}>DIED OWING</Text>
+                <Text style={[s.endVal, { color: '#a78bfa' }]}>{run!.debt}</Text>
               </View>
             )}
           </View>
@@ -1981,6 +2258,60 @@ const s = StyleSheet.create({
              borderWidth: 1.5, borderColor: '#C4B5FD' },
 
   btnCol:  { position: 'absolute', right: 18, bottom: 46, gap: 14, alignItems: 'center' },
+
+  // ── the chart — top-right, clear of the Guardian bar's band at y≈92-132 ──
+  mapFrame: { position: 'absolute', top: 142, right: 14, width: MMAP_SIZE, height: MMAP_SIZE,
+              borderRadius: 12, overflow: 'hidden', backgroundColor: 'rgba(5,3,16,0.66)',
+              borderWidth: 1, borderColor: 'rgba(124,58,237,0.42)' },
+
+  furyWrap: { position: 'absolute', bottom: 268, left: 0, right: 0, alignItems: 'center' },
+  furyTxt:  { color: '#fdba74', fontSize: 12, fontWeight: '900', letterSpacing: 2,
+              backgroundColor: 'rgba(67,20,7,0.8)', paddingHorizontal: 14, paddingVertical: 6,
+              borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(251,146,60,0.6)' },
+
+  // ── PACT button — above STRIKE, same thumb, deliberately violet ──
+  pactBtnWrap: { position: 'absolute', right: 18, bottom: 214, alignItems: 'center' },
+  pactBtn:  { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 14,
+              paddingVertical: 9, borderRadius: 16, backgroundColor: 'rgba(46,16,101,0.88)',
+              borderWidth: 1.5, borderColor: 'rgba(167,139,250,0.75)',
+              shadowColor: '#7C3AED', shadowRadius: 14, shadowOpacity: 0.7, elevation: 8 },
+  pactBtnCold: { opacity: 0.4, borderColor: 'rgba(100,116,139,0.5)', shadowOpacity: 0 },
+  pactBtnTxt:{ color: '#DDD6FE', fontSize: 12, fontWeight: '900', letterSpacing: 1.6 },
+
+  // ── the bargain ──
+  pactWrap:  { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center',
+               paddingHorizontal: 22 },
+  pactKicker:{ color: '#a78bfa', fontSize: 10, fontWeight: '900', letterSpacing: 3, marginBottom: 4 },
+  pactTitle: { color: '#F5F3FF', fontSize: 22, fontWeight: '900', letterSpacing: 3, textAlign: 'center',
+               textShadowColor: 'rgba(124,58,237,0.65)', textShadowRadius: 14,
+               textShadowOffset: { width: 0, height: 0 } },
+  pactWarn:  { color: '#c4b5fd', fontSize: 11.5, fontWeight: '700', textAlign: 'center',
+               marginTop: 10, paddingHorizontal: 12, lineHeight: 17 },
+  pactDebt:  { color: '#f472b6', fontSize: 11, fontWeight: '800', textAlign: 'center', marginTop: 6 },
+  pactList:  { alignSelf: 'stretch', gap: 10, marginTop: 18 },
+  pactCard:  { backgroundColor: 'rgba(30,12,66,0.9)', borderRadius: 16, paddingVertical: 13,
+               paddingHorizontal: 16, borderWidth: 1.5, borderColor: 'rgba(139,92,246,0.6)' },
+  pactCardHead: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  pactCardName: { color: '#EDE9FE', fontSize: 14, fontWeight: '900', letterSpacing: 1.6 },
+  pactCardDesc: { color: '#a5a0c4', fontSize: 12, fontWeight: '600', marginTop: 5 },
+  pactCardCost: { color: '#8b5cf6', fontSize: 10, fontWeight: '900', letterSpacing: 1.4, marginTop: 8 },
+  pactRefuse:{ marginTop: 18, paddingVertical: 11, paddingHorizontal: 26, borderRadius: 14,
+               borderWidth: 1, borderColor: 'rgba(100,116,139,0.5)' },
+  pactRefuseTxt: { color: '#94A3B8', fontSize: 12, fontWeight: '900', letterSpacing: 1.6 },
+
+  // ── the ledger at the stairs ──
+  ledger:     { alignSelf: 'stretch', marginTop: 16, backgroundColor: 'rgba(30,12,66,0.72)',
+                borderRadius: 16, paddingVertical: 13, paddingHorizontal: 16,
+                borderWidth: 1.5, borderColor: 'rgba(167,139,250,0.55)' },
+  ledgerHead: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  ledgerTitle:{ color: '#DDD6FE', fontSize: 12, fontWeight: '900', letterSpacing: 1.5 },
+  ledgerBody: { color: '#a5a0c4', fontSize: 11.5, fontWeight: '600', marginTop: 7, lineHeight: 17 },
+  ledgerShort:{ color: '#64748b', fontSize: 10.5, fontWeight: '700', marginTop: 7, textAlign: 'center' },
+  settleBtn:  { marginTop: 11, alignItems: 'center', paddingVertical: 10, borderRadius: 14,
+                backgroundColor: '#6D28D9', borderWidth: 1, borderColor: 'rgba(196,181,253,0.6)' },
+  settleBtnOff: { backgroundColor: 'rgba(51,65,85,0.6)', borderColor: 'rgba(100,116,139,0.45)' },
+  settleTxt:  { color: '#FFF', fontSize: 13, fontWeight: '900', letterSpacing: 1.8 },
+  settleCost: { color: '#DDD6FE', fontSize: 11, fontWeight: '800', marginTop: 2 },
 
   endWrap:  { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center',
               backgroundColor: '#04060f', paddingHorizontal: 22, paddingVertical: 28 },

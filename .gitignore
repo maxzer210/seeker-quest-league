@@ -91,3 +91,6 @@ assets/labyrinth/_source/
 # scratch screenshots from emulator verification (root only)
 /_*.png
 /_*.log
+
+# Encoding-repair backups — transient, never part of the repo
+*.bak
