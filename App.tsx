@@ -69,6 +69,7 @@ import SKORAWallet from './components/SKORAWallet';
 import FortuneWheel from './components/FortuneWheel';
 import HorseRace from './components/HorseRace';
 import LabyrinthOfAbyss from './components/LabyrinthOfAbyss';
+import SolanaQuest from './components/SolanaQuest';
 import Onboarding from './components/Onboarding';
 import WinCelebration, { WinCelebrationHandle } from './components/WinCelebration';
 import {
@@ -107,7 +108,7 @@ const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
-type Screen = 'home' | 'quests' | 'wheel' | 'leaderboard' | 'signal' | 'horse' | 'shop' | 'wallet' | 'treasure' | 'arena' | 'lands' | 'tournament' | 'runner' | 'skora' | 'games' | 'profile' | 'news' | 'earn' | 'pvp' | 'labyrinth';
+type Screen = 'home' | 'quests' | 'wheel' | 'leaderboard' | 'signal' | 'horse' | 'shop' | 'wallet' | 'treasure' | 'arena' | 'lands' | 'tournament' | 'runner' | 'skora' | 'games' | 'profile' | 'news' | 'earn' | 'pvp' | 'labyrinth' | 'quest';
 type UpgradeKey = 'signalPower' | 'critChance' | 'wheelLuck' | 'horsePower';
 
 // ─── upgrade config ───────────────────────────────────────────────────────────
@@ -2644,8 +2645,28 @@ function AppInner() {
                 <Text style={styles.homeLastReward}>✦ {lastWheelReward}</Text>
               )}
 
+              {/* ── Solana Quest CTA — the daily hero. Sits above the arcade
+                     because a fresh set of five is the reason to open the app
+                     today, whereas the arcade is always there. ── */}
+              <TouchableOpacity onPress={() => setScreen('quest')} activeOpacity={0.85} style={{ marginTop: 14 }}>
+                <LinearGradient
+                  colors={['#14F195', '#00C2FF']}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                  style={styles.playGamesCta}
+                >
+                  <Text style={styles.playGamesIcon}>◎</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.playGamesTitle, { color: '#02120C' }]}>SOLANA QUEST</Text>
+                    <Text style={[styles.playGamesSub, { color: 'rgba(2,18,12,0.72)' }]}>
+                      5 questions · 10 seconds each · daily
+                    </Text>
+                  </View>
+                  <Text style={[styles.playGamesArrow, { color: '#02120C' }]}>›</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
               {/* ── Play Games CTA ── */}
-              <TouchableOpacity onPress={() => setScreen('games')} activeOpacity={0.85} style={{ marginTop: 14 }}>
+              <TouchableOpacity onPress={() => setScreen('games')} activeOpacity={0.85} style={{ marginTop: 10 }}>
                 <LinearGradient
                   colors={['#06B6D4', '#7C3AED', '#EC4899']}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
@@ -4057,6 +4078,30 @@ function AppInner() {
                 else if (snd === 'dead')    playSound(sndDead.current);
               }}
               onExit={() => setScreen('games')}
+            />
+          </View>
+        )}
+
+        {/* ═══ SOLANA QUEST — the daily quiz ═══ */}
+        {screen === 'quest' && (
+          <View style={styles.fullscreenGame}>
+            <SolanaQuest
+              deviceId={deviceIdRef.current}
+              onEarnOrb={(n) => {
+                setOrb(prev => {
+                  const next = prev + n;
+                  scheduleSyncScore(next, level, streakCount);
+                  return next;
+                });
+              }}
+              onPlaySound={(snd) => {
+                if      (snd === 'tap')     playSound(sndTap.current);
+                else if (snd === 'crit')    playSound(sndCrit.current);
+                else if (snd === 'jackpot') playSound(sndJackpot.current);
+                else if (snd === 'levelup') playSound(sndLevelUp.current);
+                else if (snd === 'dead')    playSound(sndDead.current);
+              }}
+              onExit={() => setScreen('home')}
             />
           </View>
         )}
