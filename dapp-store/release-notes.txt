@@ -1,15 +1,15 @@
-v1.1.4 — The Abyss Labyrinth
+v1.2.0 — Pacts with the Abyss, and a daily Solana quest
 
-🕳 A whole new game inside the app. Descend a dungeon that is different every run — your torch lights only what is near, traps flare before they fire, and every third floor a Guardian seals the stairs until it falls.
+🕳 PACTS WITH THE ABYSS — borrow power mid-fight and the price walks in from the far edge of the floor. Heal to full, double your damage, lay the floor bare, or hold one death in reserve. Every pact sends a Collector after you: it cannot be killed, a clean hit only staggers it, and it follows you down the stairs getting faster with every debt. Settle at a stairwell to send them all away — or dive deeper with a procession behind you.
 
-🏕 Seeker's Camp — spend ORB on permanent upgrades. They survive every death, so a bad run still moves you forward.
+⚔️ The Labyrinth fights back properly now. Enemies rear back before they swing, traps flare before they fire, and the Guardian holds the stairs until it falls. Multi-floor descents: go deeper for a bigger multiplier, or walk out and bank the run.
 
-⚔️ Real combat — enemies rear back before they swing, dash through the danger, chain hits for a damage combo.
+🗺 The map you were promised. Explored corridors are charted, the stairwell is always marked, and a Collector shows through the fog.
 
-🗺 At every stairwell: go deeper for a bigger multiplier, or walk out and bank the run.
+◎ SOLANA QUEST — five questions a day about Solana and its ecosystem, the same five for everyone, ten seconds each. Answer fast: most of your score is speed. Every answer teaches you something, and correct ones pay ORB.
 
-🎁 Invite a friend — you BOTH earn 2,000 ORB
-⚡ 5× bigger energy tank and faster recharge
-🔔 Reminders for streaks, full energy and tournaments
-🛠 More reliable SOL payments — no more false "payment failed"
-🟣 Seeker .skr names now display correctly
+🏕 Seeker's Camp — spend ORB on upgrades that survive every death.
+
+🎨 Painted stone, new key art, and a death screen that no longer breaks.
+
+🛠 Payments explain themselves. If a purchase cannot go through, the game now says why and how much you need, instead of showing a wall of network errors.
