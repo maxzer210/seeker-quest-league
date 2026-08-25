@@ -94,3 +94,7 @@ assets/labyrinth/_source/
 
 # Encoding-repair backups — transient, never part of the repo
 *.bak
+
+# Any publisher keypair variant - never commit a private key
+dapp-store/publisher*.json
+dapp-store/*keypair*.json
