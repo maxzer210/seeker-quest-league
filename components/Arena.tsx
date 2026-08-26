@@ -346,7 +346,7 @@ export default function Arena({ orb, onOrbChange, deviceId, username, onRaidWin 
               }]} />
             )}
             <Text style={s.shieldBadgeIcon}>{shielded ? '🛡' : '💀'}</Text>
-            <Text style={s.shieldBadgeTxt}>{shielded ? `${shieldHoursLeft}ч` : 'уязвим'}</Text>
+            <Text style={s.shieldBadgeTxt}>{shielded ? `${shieldHoursLeft}h` : t('arena.vulnerable')}</Text>
           </View>
         </View>
 
@@ -469,7 +469,7 @@ export default function Arena({ orb, onOrbChange, deviceId, username, onRaidWin 
                         </Text>
                       </View>
                     )}
-                    {maxed && <Text style={s.maxed}>✦  МАКС</Text>}
+                    {maxed && <Text style={s.maxed}>{t('arena.maxed')}</Text>}
                   </LinearGradient>
                 </TouchableOpacity>
               );
@@ -547,7 +547,7 @@ export default function Arena({ orb, onOrbChange, deviceId, username, onRaidWin 
                 >
                   <Text style={s.raidBigIcon}>⚔️</Text>
                   <Text style={s.raidBigTitle}>{raidReady ? t('arena.startRaid') : `${t('arena.cooldown')}  ${raidMins} min`}</Text>
-                  <Text style={s.raidBigSub}>{raidReady ? 'Найти противника и атаковать' : 'Жди перед следующим рейдом'}</Text>
+                  <Text style={s.raidBigSub}>{raidReady ? t('arena.raidFind') : t('arena.raidWait')}</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -575,7 +575,7 @@ export default function Arena({ orb, onOrbChange, deviceId, username, onRaidWin 
                 <Text style={s.radarIcon}>📡</Text>
               </View>
               <Text style={s.searchTitle}>{t('arena.searching')}</Text>
-              <Text style={s.searchSub}>Ищем уязвимого противника</Text>
+              <Text style={s.searchSub}>{t('arena.scanning')}</Text>
             </View>
           )}
 
@@ -631,10 +631,10 @@ export default function Arena({ orb, onOrbChange, deviceId, username, onRaidWin 
         const cost  = maxed ? 0 : UPGRADE_COSTS[cur];
         const canAfford = orb >= cost;
         const nextStat = !maxed ? (() => {
-          if (upgradeKey === 'generator') return `${GENERATOR_OPH[cur+1]} ORB/час`;
-          if (upgradeKey === 'vault')     return `${VAULT_PROTECT[cur+1].toLocaleString()} ORB защищено`;
-          if (upgradeKey === 'tower')     return `−${TOWER_DEF[cur+1]}% урона`;
-          return `Уровень ${cur+1}`;
+          if (upgradeKey === 'generator') return t('arena.upGen', { n: GENERATOR_OPH[cur+1] });
+          if (upgradeKey === 'vault')     return t('arena.upVault', { n: VAULT_PROTECT[cur+1].toLocaleString() });
+          if (upgradeKey === 'tower')     return t('arena.upTower', { n: TOWER_DEF[cur+1] });
+          return t('arena.upLevel', { n: cur+1 });
         })() : '';
         return (
           <View style={s.modalOverlay}>

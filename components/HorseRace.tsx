@@ -335,11 +335,11 @@ export default function HorseRace({ orb, horsePower, onEarnOrb, onEarnTickets, o
 
         <Animated.View style={[s.timerWrap, { transform: [{ scale: timerPulse }] }]}>
           <Text style={[s.timer, { color: timerColor }]}>{phase === 'racing' ? timeLeft : '⏱'}</Text>
-          <Text style={s.timerLabel}>СЕК</Text>
+          <Text style={s.timerLabel}>{t('horse.sec')}</Text>
         </Animated.View>
 
         <View style={s.hudRight}>
-          <Text style={s.hudTapsLabel}>ТАПОВ</Text>
+          <Text style={s.hudTapsLabel}>{t('horse.taps')}</Text>
           <Text style={s.hudTaps}>{tapCount}</Text>
         </View>
       </View>
@@ -369,7 +369,7 @@ export default function HorseRace({ orb, horsePower, onEarnOrb, onEarnTickets, o
 
           {/* Label */}
           <View style={s.laneLabel}>
-            <Text style={s.laneLabelTxt}>🟣  ВЫ</Text>
+            <Text style={s.laneLabelTxt}>🟣  {t('horse.you')}</Text>
           </View>
 
           {/* Speed lines */}
@@ -438,7 +438,7 @@ export default function HorseRace({ orb, horsePower, onEarnOrb, onEarnTickets, o
           </Animated.View>
 
           <View style={s.laneLabel}>
-            <Text style={s.laneLabelTxt}>🔴  БОТ</Text>
+            <Text style={s.laneLabelTxt}>🔴  {t('horse.bot')}</Text>
           </View>
 
           {/* Bot horse */}
@@ -524,7 +524,7 @@ export default function HorseRace({ orb, horsePower, onEarnOrb, onEarnTickets, o
           >
             <Text style={s.resultEmoji}>{result === 'win' ? '🏆' : result === 'draw' ? '🤝' : '💀'}</Text>
             <Text style={s.resultTitle}>
-              {result === 'win' ? t('horse.win') : result === 'draw' ? t('horse.draw') : t('horse.lose')}
+              {result === 'win' ? t('horse.win') : result === 'draw' ? t('horse.drawSub') : t('horse.lose')}
             </Text>
 
             {result === 'win' && (
@@ -535,24 +535,26 @@ export default function HorseRace({ orb, horsePower, onEarnOrb, onEarnTickets, o
                 </View>
                 <View style={s.resultRewardItem}>
                   <Text style={s.resultRewardVal}>+{WIN_TICKETS}</Text>
-                  <Text style={s.resultRewardLbl}>ТИКЕТ</Text>
+                  <Text style={s.resultRewardLbl}>{t('horse.ticket')}</Text>
                 </View>
                 <View style={s.resultRewardItem}>
                   <Text style={s.resultRewardVal}>{tapCount}</Text>
-                  <Text style={s.resultRewardLbl}>ТАПОВ</Text>
+                  <Text style={s.resultRewardLbl}>{t('horse.taps')}</Text>
                 </View>
               </View>
             )}
 
             {result !== 'win' && (
               <Text style={s.resultSub}>
-                {result === 'draw' ? 'Почти! Попробуй снова' : `Бот обошёл тебя — ${Math.round(botPct)}% vs ${Math.round(playerPct)}%`}
+                {result === 'draw'
+                  ? t('horse.drawSub')
+                  : t('horse.lost', { bot: Math.round(botPct), you: Math.round(playerPct) })}
               </Text>
             )}
 
             <TouchableOpacity style={s.resultPlayAgain} onPress={startRace} activeOpacity={0.85}>
               <LinearGradient colors={['#7C3AED','#A855F7']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.resultPlayGrad}>
-                <Text style={s.resultPlayTxt}>▶  СНОВА</Text>
+                <Text style={s.resultPlayTxt}>{t('horse.again')}</Text>
               </LinearGradient>
             </TouchableOpacity>
             <TouchableOpacity style={s.resultBackBtn} onPress={onBack}>
@@ -603,8 +605,8 @@ export default function HorseRace({ orb, horsePower, onEarnOrb, onEarnTickets, o
               style={s.tapGrad}
             >
               <Text style={s.tapEmoji}>🐎</Text>
-              <Text style={s.tapTxt}>ТАП</Text>
-              <Text style={s.tapSubTxt}>+{horsePower} прогресс</Text>
+              <Text style={s.tapTxt}>{t('horse.tap')}</Text>
+              <Text style={s.tapSubTxt}>{t('horse.progress', { n: horsePower })}</Text>
             </LinearGradient>
           </TouchableOpacity>
         )}
