@@ -924,6 +924,29 @@ function AppInner() {
     setLbLoading(false);
   }
 
+  // ── adopt the .skr domain as the player's name ─────────────────────────────
+  // Its own effect, waiting on both the profile and the loaded username.
+  // It used to sit inside loadSeekerProfile, which runs from loadWallet() in
+  // parallel with the device-id chain that loads the name — so the profile
+  // usually arrived while `username` was still the initial empty string,
+  // ''.startsWith('Seeker#') was false, and the name was never adopted. That
+  // is why every player on the leaderboard is still Seeker#XXXX.
+  const skrAdopted = useRef(false);
+  useEffect(() => {
+    const skr = seekerProfile?.skrDomain;
+    if (skrAdopted.current || !skr) return;
+    if (!/^[a-z0-9][a-z0-9-]{0,62}\.skr$/i.test(skr)) return;   // never write junk into a name
+    if (!username || !username.startsWith('Seeker#')) return;   // wait for it, and respect a custom name
+    if (!deviceIdRef.current) return;
+
+    skrAdopted.current = true;
+    setUsername(skr);
+    setPendingUsername(skr);
+    supabase.from('players').update({ username: skr })
+      .eq('device_id', deviceIdRef.current)
+      .then(undefined, () => {});
+  }, [seekerProfile, username]);
+
   // ── wallet helpers ─────────────────────────────────────────────────────────
 
   async function loadWallet() {
@@ -998,22 +1021,9 @@ function AppInner() {
         }
       }
 
-      // Adopt .skr domain as username if user still has the default Seeker#XXXX
-      // name. Checked against the same shape normalizeSkrDomain guarantees —
-      // a malformed domain once reached this far and would have written raw
-      // char codes into the player's name.
-      const skr = profile?.skrDomain;
-      if (skr && /^[a-z0-9][a-z0-9-]{0,62}\.skr$/i.test(skr)) {
-        const isDefault = username.startsWith('Seeker#');
-        if (isDefault) {
-          setUsername(skr);
-          setPendingUsername(skr);
-          try {
-            await supabase.from('players').update({ username: skr })
-              .eq('device_id', deviceIdRef.current);
-          } catch (_) {}
-        }
-      }
+      // Adopting the .skr domain as a username happens in its own effect —
+      // see adoptSkrName below. Doing it here raced the username load and
+      // usually lost.
     } catch (_) {
       // silent
     } finally {
