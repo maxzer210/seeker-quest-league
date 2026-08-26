@@ -125,15 +125,16 @@ type Props = {
 const STORAGE_KEY = 'sk_treasure3_';  // bumped for 24×24 map + dangers
 
 function HowToPlayTreasure() {
+  useLang();          // its own subscription, or the rules stay in the old language
   const [open, setOpen] = React.useState(false);
   const steps = [
-    { icon: '🗺️', text: 'Карта 24×24. Каждый день новая. 32 сундука и 26 ловушек' },
-    { icon: '📦', text: 'Сундук → +50..300 ORB. Туман открывается на 2 клетки вокруг' },
-    { icon: '👣', text: 'Свайп по карте или тап соседней клетки = 1 шаг (−1 ⚡). Энергия +1/мин' },
-    { icon: '💣', text: 'Мина → −30..150 ORB. Скрыта в тумане. Будь внимателен!' },
-    { icon: '🕷', text: 'Паук → −50..200 ORB и −7 ⚡. Самый опасный враг' },
-    { icon: '🔥', text: 'Лава → −5 ⚡. Без потери ORB, но больно когда мало энергии' },
-    { icon: '💀', text: 'Сработавшая ловушка → безопасно, можно ходить' },
+    { icon: '🗺️', text: t('treasure.rule.map') },
+    { icon: '📦', text: t('treasure.rule.chest') },
+    { icon: '👣', text: t('treasure.rule.step') },
+    { icon: '💣', text: t('treasure.rule.mine') },
+    { icon: '🕷', text: t('treasure.rule.spider') },
+    { icon: '🔥', text: t('treasure.rule.lava') },
+    { icon: '💀', text: t('treasure.rule.sprung') },
   ];
   return (
     <View style={{ marginBottom: 10 }}>
@@ -546,15 +547,15 @@ export default function TreasureHunt({ energy, onSpendEnergy, onEarnOrb, onSpend
 
       {/* Controls hint (swipe / tap replaced the old D-pad) */}
       <View style={s.controlsHint}>
-        <Text style={s.controlsHintTxt}>👆 Свайпни по карте или тапни соседнюю клетку, чтобы идти</Text>
+        <Text style={s.controlsHintTxt}>👆 {t('treasure.hint.move')}</Text>
       </View>
 
       <Text style={s.hint}>
         {energy < MOVE_ENERGY
-          ? '⚠️ Нет энергии — подожди пока восстановится'
+          ? `⚠️ ${t('treasure.hint.spent')}`
           : foundCount === CHEST_COUNT
-            ? '🏆 Все сундуки найдены! Новая карта завтра'
-            : `📦 ${CHEST_COUNT - foundCount} осталось · 💣🕷🔥 опасности скрыты в тумане · карта обновится завтра`}
+            ? `🏆 ${t('treasure.hint.cleared')}`
+            : `📦 ${t('treasure.hint.left', { n: CHEST_COUNT - foundCount })}`}
       </Text>
     </View>
   );

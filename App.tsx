@@ -2440,7 +2440,7 @@ function AppInner() {
                 <View style={styles.homeEnergyChip}>
                   <Text style={styles.homeChipText}>⚡ {energy}/{MAX_ENERGY}</Text>
                   {energy < MAX_ENERGY && (
-                    <Text style={styles.homeEnergyTimer}>+1 в {energyTick}s</Text>
+                    <Text style={styles.homeEnergyTimer}>{t('home.energyTick', { s: energyTick })}</Text>
                   )}
                 </View>
 
