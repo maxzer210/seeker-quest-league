@@ -3522,12 +3522,12 @@ function AppInner() {
 
               {/* All games — uniform full-width cards */}
               {([
-                { id: 'labyrinth', icon: '🕳️', name: 'ABYSS LABYRINTH', tag: 'NEW', desc: 'Torch-lit maze — slay shades, loot artifacts, escape alive', reward: 'Up to 10,000+ ORB per run', color: '#8B5CF6' },
+                { id: 'labyrinth', icon: '🗝️', name: 'ABYSS LABYRINTH', tag: t('gameTag.new'),   desc: t('gameDesc.labyrinth'), reward: t('gameReward.labyrinth'), color: '#8B5CF6' },
                 { id: 'tap',      icon: '🌌', name: 'TAP TO EARN',    tag: t('gameTag.core'),     desc: t('gameDesc.tap'),      reward: t('gameReward.tap'),      color: '#FACC15' },
                 { id: 'runner',   icon: '🚀', name: 'SPACE RUNNER',  tag: t('games.featured'),   desc: t('gameDesc.runner'),   reward: t('gameReward.runner'),   color: '#00E5FF' },
                 { id: 'wheel',    icon: '🎰', name: 'FORTUNE WHEEL', tag: t('gameTag.luck'),     desc: t('gameDesc.wheel'),    reward: t('gameReward.wheel'),    color: '#A855F7' },
-                { id: 'pvp',      icon: '⚡', name: 'PvP ARENA',     tag: 'LIVE',                desc: t('gameDesc.pvp'),      reward: t('gameReward.pvp'),      color: '#EC4899' },
-                { id: 'arena',    icon: '⚔️', name: 'SEEKER ARENA',  tag: 'PvP',                 desc: t('gameDesc.arena'),    reward: t('gameReward.arena'),    color: '#EF4444' },
+                { id: 'pvp',      icon: '⚡', name: 'PvP ARENA',     tag: t('gameTag.live'),     desc: t('gameDesc.pvp'),      reward: t('gameReward.pvp'),      color: '#EC4899' },
+                { id: 'arena',    icon: '⚔️', name: 'SEEKER ARENA',  tag: t('gameTag.pvp'),      desc: t('gameDesc.arena'),    reward: t('gameReward.arena'),    color: '#EF4444' },
                 { id: 'horse',    icon: '🐎', name: 'HORSE RACE',    tag: t('gameTag.race'),     desc: t('gameDesc.horse'),    reward: t('gameReward.horse'),    color: '#FB923C' },
                 { id: 'treasure', icon: '📦', name: 'TREASURE HUNT', tag: t('gameTag.explore'),  desc: t('gameDesc.treasure'), reward: t('gameReward.treasure'), color: '#FACC15' },
                 { id: 'lands',    icon: '🌾', name: 'SEEKER LANDS',  tag: t('gameTag.passive'),  desc: t('gameDesc.lands'),    reward: t('gameReward.lands'),    color: '#22C55E' },
