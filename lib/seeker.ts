@@ -41,34 +41,55 @@ export type SeekerProfileSnapshot = {
  * stringified byte array like "99,114,121,..."). Rendered directly in <Text>
  * that shows up as raw comma-separated char codes. Decode to a real string.
  */
+/**
+ * Printable ASCII only — anything else is not part of a domain. Built with a
+ * loop rather than String.fromCharCode(...bytes), which blows the stack on a
+ * long array.
+ */
+function decodeBytes(bytes: number[]): string {
+  let out = '';
+  for (const b of bytes) {
+    if (Number.isFinite(b) && b >= 0x20 && b <= 0x7e) out += String.fromCharCode(b);
+  }
+  return out;
+}
+
 export function normalizeSkrDomain(raw: any): string | null {
   if (raw == null) return null;
 
-  let bytes: number[] | null = null;
+  let s: string;
+
   if (typeof raw === 'string') {
-    // Already a clean string? return as-is.
-    if (!/^\s*\d+(\s*,\s*\d+)+\s*$/.test(raw)) return raw.trim() || null;
-    // Stringified byte array "99,114,..."
-    bytes = raw.split(',').map(n => parseInt(n.trim(), 10));
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+    // The SDK hands this back as a stringified byte array — and sometimes with
+    // the ".skr" suffix already glued on the end: "99,114,121,...,101.skr".
+    // The old test demanded the WHOLE string be digits and commas, so that
+    // variant fell through untouched and the profile screen printed the raw
+    // char codes. Strip a trailing suffix before deciding what we are holding.
+    const body = trimmed.replace(/\.skr\s*$/i, '');
+    // Two or more numbers, so a genuinely numeric name like "123.skr" stays a
+    // name instead of being decoded into punctuation.
+    s = /^\d+(\s*,\s*\d+)+$/.test(body)
+      ? decodeBytes(body.split(',').map(n => parseInt(n.trim(), 10)))
+      : trimmed;
   } else if (Array.isArray(raw)) {
-    bytes = raw.map(Number);
+    s = decodeBytes(raw.map(Number));
   } else if (raw instanceof Uint8Array) {
-    bytes = Array.from(raw);
+    s = decodeBytes(Array.from(raw));
   } else if (raw?.type === 'Buffer' && Array.isArray(raw.data)) {
-    bytes = raw.data.map(Number);
+    s = decodeBytes(raw.data.map(Number));
   } else {
-    return String(raw);
+    s = String(raw);
   }
 
-  if (!bytes) return null;
-  const clean = bytes.filter(b => Number.isFinite(b) && b > 0 && b < 0x110000);
-  let s = '';
-  try { s = String.fromCharCode(...clean); } catch { return null; }
-  s = s.trim();
+  s = s.trim().toLowerCase();
   if (!s) return null;
-  // Ensure the .skr suffix (decoded value may or may not include it)
-  if (!s.toLowerCase().endsWith('.skr')) s = s + '.skr';
-  return s;
+  if (s.endsWith('.skr')) s = s.slice(0, -4);
+  // A name that survived decoding but still looks like junk is worse than no
+  // name at all: it would be shown on the profile and adopted as the username.
+  if (!/^[a-z0-9][a-z0-9-]{0,62}$/.test(s)) return null;
+  return s + '.skr';
 }
 
 // ── Lazy SDK loader ──────────────────────────────────────────────────────────

@@ -998,14 +998,18 @@ function AppInner() {
         }
       }
 
-      // Adopt .skr domain as username if user still has the default Seeker#XXXX name
-      if (profile?.skrDomain) {
+      // Adopt .skr domain as username if user still has the default Seeker#XXXX
+      // name. Checked against the same shape normalizeSkrDomain guarantees —
+      // a malformed domain once reached this far and would have written raw
+      // char codes into the player's name.
+      const skr = profile?.skrDomain;
+      if (skr && /^[a-z0-9][a-z0-9-]{0,62}\.skr$/i.test(skr)) {
         const isDefault = username.startsWith('Seeker#');
         if (isDefault) {
-          setUsername(profile.skrDomain);
-          setPendingUsername(profile.skrDomain);
+          setUsername(skr);
+          setPendingUsername(skr);
           try {
-            await supabase.from('players').update({ username: profile.skrDomain })
+            await supabase.from('players').update({ username: skr })
               .eq('device_id', deviceIdRef.current);
           } catch (_) {}
         }
