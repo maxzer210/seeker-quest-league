@@ -108,7 +108,7 @@ const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
-type Screen = 'home' | 'quests' | 'wheel' | 'leaderboard' | 'signal' | 'horse' | 'shop' | 'wallet' | 'treasure' | 'arena' | 'lands' | 'tournament' | 'runner' | 'skora' | 'games' | 'profile' | 'news' | 'earn' | 'pvp' | 'labyrinth' | 'quest';
+type Screen = 'home' | 'quests' | 'wheel' | 'leaderboard' | 'signal' | 'horse' | 'shop' | 'wallet' | 'treasure' | 'arena' | 'lands' | 'tournament' | 'runner' | 'skora' | 'games' | 'profile' | 'news' | 'earn' | 'pvp' | 'labyrinth' | 'quest' | 'tap';
 type UpgradeKey = 'signalPower' | 'critChance' | 'wheelLuck' | 'horsePower';
 
 // ─── upgrade config ───────────────────────────────────────────────────────────
@@ -482,6 +482,9 @@ function AppInner() {
   const [shakeAnim]     = useState(new Animated.Value(0));
   const [flashAnim]     = useState(new Animated.Value(0));
   const [shimmerAnim]   = useState(new Animated.Value(0));
+  // Slow breath under the Solana Quest hero — the home screen's one moving
+  // thing now that the tapper has moved to the arcade.
+  const [questPulse]    = useState(new Animated.Value(0));
 
   // Visual FX
   const particleRef = useRef<ParticleEmitterHandle>(null);
@@ -923,6 +926,18 @@ function AppInner() {
     } catch (_) {}
     setLbLoading(false);
   }
+
+  // Quest hero breath. Only while home is on screen, so it costs nothing
+  // anywhere else.
+  useEffect(() => {
+    if (screen !== 'home') { questPulse.stopAnimation(); return; }
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(questPulse, { toValue: 1, duration: 1900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      Animated.timing(questPulse, { toValue: 0, duration: 1900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+    ]));
+    loop.start();
+    return () => loop.stop();
+  }, [screen, questPulse]);
 
   // ── adopt the .skr domain as the player's name ─────────────────────────────
   // Its own effect, waiting on both the profile and the loaded username.
@@ -2566,61 +2581,35 @@ function AppInner() {
                 </TouchableOpacity>
               )}
 
-              {/* ── TAP TO EARN — Core Mechanic ── */}
-              <View style={styles.tapHeroWrap}>
-                <Text style={styles.tapHeroTitle}>{t('home.tapTitle')}</Text>
-                <Text style={styles.tapHeroSub}>
-                  {energy === 0
-                    ? t('home.tapEnergyEmpty', { n: energyTick })
-                    : boostActive
-                    ? t('home.tapBoostActive')
-                    : t('home.tapHintMain')}
-                </Text>
-              </View>
+              {/* ── SOLANA QUEST — the reason to open the app today ──
+                   The tapper used to hold this spot. It is always available and
+                   never changes, so it gave the home screen nothing new to say;
+                   the quest is a fresh set of five every day. The tapper now
+                   lives in the arcade with the other games. ── */}
+              <TouchableOpacity onPress={() => setScreen('quest')} activeOpacity={0.9} style={styles.questHeroWrap}>
+                <LinearGradient
+                  colors={['#14F195', '#00C2FF']}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                  style={styles.questHero}
+                >
+                  {/* breathing halo behind the mark */}
+                  <Animated.View style={[styles.questHalo, {
+                    opacity: questPulse.interpolate({ inputRange: [0, 1], outputRange: [0.16, 0.42] }),
+                    transform: [{ scale: questPulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.35] }) }],
+                  }]} />
+                  <Animated.Text style={[styles.questHeroMark, {
+                    transform: [{ scale: questPulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }) }],
+                  }]}>◎</Animated.Text>
 
-              <View style={styles.homeOrbArea}>
-                <PremiumTapOrb
-                  onTap={handleTap}
-                  disabled={energy === 0}
-                  boostActive={boostActive}
-                  centerEmoji={energy === 0 ? '⚡' : boostActive ? '🔥' : '🌌'}
-                  centerLabel={energy === 0 ? `${energyTick}s` : boostActive ? 'FIRE' : t('home.tap')}
-                />
+                  <Text style={styles.questHeroKicker}>{t('quest.kicker')}</Text>
+                  <Text style={styles.questHeroTitle}>{t('quest.title')}</Text>
+                  <Text style={styles.questHeroSub}>{t('quest.sub')}</Text>
 
-                {/* Floating reward text */}
-                {floatingText !== '' && (
-                  <Animated.Text style={[styles.homeFloating, {
-                    opacity: floatingAnim.interpolate({ inputRange:[0,1], outputRange:[1,0] }),
-                    transform:[
-                      { translateY: floatingAnim.interpolate({ inputRange:[0,1], outputRange:[0,-70] }) },
-                      { scale: floatingAnim.interpolate({ inputRange:[0,0.4,1], outputRange:[1,1.4,1] }) },
-                    ],
-                  }]}>{floatingText}</Animated.Text>
-                )}
-                {critText !== '' && (
-                  <Text style={styles.homeCritText}>{critText}</Text>
-                )}
-                {levelUpText !== '' && (
-                  <Animated.Text style={[styles.homeLevelUpText, { opacity: lvlUpAnim }]}>{levelUpText}</Animated.Text>
-                )}
-                {boostActive && (
-                  <Text style={styles.homeBoostBadge}>🔥 BOOST ×3 — {boostTime}s</Text>
-                )}
-                {comboLevel > 0 && (
-                  <Animated.View style={[styles.homeCombo, { transform:[{ scale: comboAnim }] }]}>
-                    <Text style={styles.homeComboText}>×{COMBO_MULTIPLIERS[comboLevel]} COMBO</Text>
-                  </Animated.View>
-                )}
-              </View>
-
-              {/* Boost button (when available) */}
-              {showBoost && (
-                <TouchableOpacity style={[styles.homeBoostBtn, { marginBottom: 14 }]} onPress={activateBoost} activeOpacity={0.85}>
-                  <LinearGradient colors={['#C2410C','#9A3412']} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.homeBoostGrad}>
-                    <Text style={styles.homeBoostText}>{t('home.activateBoost')}</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              )}
+                  <View style={styles.questHeroCta}>
+                    <Text style={styles.questHeroCtaTxt}>{t('quest.play')}</Text>
+                  </View>
+                </LinearGradient>
+              </TouchableOpacity>
 
               {/* ── Energy refill SOL (when energy not full) ── */}
               {energy < MAX_ENERGY && (
@@ -2659,28 +2648,8 @@ function AppInner() {
                 <Text style={styles.homeLastReward}>✦ {lastWheelReward}</Text>
               )}
 
-              {/* ── Solana Quest CTA — the daily hero. Sits above the arcade
-                     because a fresh set of five is the reason to open the app
-                     today, whereas the arcade is always there. ── */}
-              <TouchableOpacity onPress={() => setScreen('quest')} activeOpacity={0.85} style={{ marginTop: 14 }}>
-                <LinearGradient
-                  colors={['#14F195', '#00C2FF']}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                  style={styles.playGamesCta}
-                >
-                  <Text style={styles.playGamesIcon}>◎</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.playGamesTitle, { color: '#02120C' }]}>SOLANA QUEST</Text>
-                    <Text style={[styles.playGamesSub, { color: 'rgba(2,18,12,0.72)' }]}>
-                      5 questions · 10 seconds each · daily
-                    </Text>
-                  </View>
-                  <Text style={[styles.playGamesArrow, { color: '#02120C' }]}>›</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-
               {/* ── Play Games CTA ── */}
-              <TouchableOpacity onPress={() => setScreen('games')} activeOpacity={0.85} style={{ marginTop: 10 }}>
+              <TouchableOpacity onPress={() => setScreen('games')} activeOpacity={0.85} style={{ marginTop: 14 }}>
                 <LinearGradient
                   colors={['#06B6D4', '#7C3AED', '#EC4899']}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
@@ -3056,6 +3025,68 @@ function AppInner() {
           )}
 
           {/* ═══════════ SIGNAL ═══════════ */}
+          {/* ═══ TAP TO EARN — now a game in the arcade, not the home screen ═══ */}
+          {screen === 'tap' && (
+            <View style={{ gap: 10 }}>
+              <View style={styles.tapHeroWrap}>
+                <Text style={styles.tapHeroTitle}>{t('home.tapTitle')}</Text>
+                <Text style={styles.tapHeroSub}>
+                  {energy === 0
+                    ? t('home.tapEnergyEmpty', { n: energyTick })
+                    : boostActive
+                    ? t('home.tapBoostActive')
+                    : t('home.tapHintMain')}
+                </Text>
+              </View>
+
+              <View style={styles.homeOrbArea}>
+                <PremiumTapOrb
+                  onTap={handleTap}
+                  disabled={energy === 0}
+                  boostActive={boostActive}
+                  centerEmoji={energy === 0 ? '⚡' : boostActive ? '🔥' : '🌌'}
+                  centerLabel={energy === 0 ? `${energyTick}s` : boostActive ? 'FIRE' : t('home.tap')}
+                />
+
+                {floatingText !== '' && (
+                  <Animated.Text style={[styles.homeFloating, {
+                    opacity: floatingAnim.interpolate({ inputRange:[0,1], outputRange:[1,0] }),
+                    transform:[
+                      { translateY: floatingAnim.interpolate({ inputRange:[0,1], outputRange:[0,-70] }) },
+                      { scale: floatingAnim.interpolate({ inputRange:[0,0.4,1], outputRange:[1,1.4,1] }) },
+                    ],
+                  }]}>{floatingText}</Animated.Text>
+                )}
+                {critText !== '' && (
+                  <Text style={styles.homeCritText}>{critText}</Text>
+                )}
+                {levelUpText !== '' && (
+                  <Animated.Text style={[styles.homeLevelUpText, { opacity: lvlUpAnim }]}>{levelUpText}</Animated.Text>
+                )}
+                {boostActive && (
+                  <Text style={styles.homeBoostBadge}>🔥 BOOST ×3 — {boostTime}s</Text>
+                )}
+                {comboLevel > 0 && (
+                  <Animated.View style={[styles.homeCombo, { transform:[{ scale: comboAnim }] }]}>
+                    <Text style={styles.homeComboText}>×{COMBO_MULTIPLIERS[comboLevel]} COMBO</Text>
+                  </Animated.View>
+                )}
+              </View>
+
+              {showBoost && (
+                <TouchableOpacity style={[styles.homeBoostBtn, { marginBottom: 14 }]} onPress={activateBoost} activeOpacity={0.85}>
+                  <LinearGradient colors={['#C2410C','#9A3412']} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.homeBoostGrad}>
+                    <Text style={styles.homeBoostText}>{t('home.activateBoost')}</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity onPress={() => setScreen('games')} style={styles.secondaryButton}>
+                <Text style={styles.secondaryButtonText}>‹  {t('nav.games')}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {screen === 'signal' && (
             <View style={{ gap: 10 }}>
               {boostActive && <View style={styles.boostBackgroundGlow} />}
@@ -3492,6 +3523,7 @@ function AppInner() {
               {/* All games — uniform full-width cards */}
               {([
                 { id: 'labyrinth', icon: '🕳️', name: 'ABYSS LABYRINTH', tag: 'NEW', desc: 'Torch-lit maze — slay shades, loot artifacts, escape alive', reward: 'Up to 10,000+ ORB per run', color: '#8B5CF6' },
+                { id: 'tap',      icon: '🌌', name: 'TAP TO EARN',    tag: t('gameTag.core'),     desc: t('gameDesc.tap'),      reward: t('gameReward.tap'),      color: '#FACC15' },
                 { id: 'runner',   icon: '🚀', name: 'SPACE RUNNER',  tag: t('games.featured'),   desc: t('gameDesc.runner'),   reward: t('gameReward.runner'),   color: '#00E5FF' },
                 { id: 'wheel',    icon: '🎰', name: 'FORTUNE WHEEL', tag: t('gameTag.luck'),     desc: t('gameDesc.wheel'),    reward: t('gameReward.wheel'),    color: '#A855F7' },
                 { id: 'pvp',      icon: '⚡', name: 'PvP ARENA',     tag: 'LIVE',                desc: t('gameDesc.pvp'),      reward: t('gameReward.pvp'),      color: '#EC4899' },
@@ -4675,6 +4707,21 @@ const styles = StyleSheet.create({
 
   // ── TAP hero ──────────────────────────────────────────────────────────────
   tapHeroWrap:      { alignItems: 'center', gap: 4, marginBottom: 4, marginTop: 6 },
+
+  // ── Solana Quest hero (home) ──
+  questHeroWrap: { marginTop: 8, marginBottom: 4, borderRadius: 26, overflow: 'hidden',
+                   shadowColor: '#14F195', shadowRadius: 22, shadowOpacity: 0.5, elevation: 12 },
+  questHero:     { alignItems: 'center', paddingVertical: 26, paddingHorizontal: 22 },
+  questHalo:     { position: 'absolute', top: 6, width: 150, height: 150, borderRadius: 75,
+                   backgroundColor: '#ffffff' },
+  questHeroMark: { fontSize: 52, color: '#02120C', fontWeight: '900', marginBottom: 6 },
+  questHeroKicker:{ color: 'rgba(2,18,12,0.62)', fontSize: 9.5, fontWeight: '900', letterSpacing: 3 },
+  questHeroTitle:{ color: '#02120C', fontSize: 26, fontWeight: '900', letterSpacing: 2.5, marginTop: 3 },
+  questHeroSub:  { color: 'rgba(2,18,12,0.74)', fontSize: 12.5, fontWeight: '700', marginTop: 6,
+                   textAlign: 'center' },
+  questHeroCta:  { marginTop: 16, backgroundColor: 'rgba(2,18,12,0.86)', paddingVertical: 11,
+                   paddingHorizontal: 34, borderRadius: 16 },
+  questHeroCtaTxt:{ color: '#14F195', fontSize: 13, fontWeight: '900', letterSpacing: 2 },
   tapHeroTitle:     { color: '#FACC15', fontSize: 16, fontWeight: '900', letterSpacing: 4,
                       textShadowColor: 'rgba(250,204,21,0.4)', textShadowRadius: 8 },
   tapHeroSub:       { color: '#94A3B8', fontSize: 11, textAlign: 'center', paddingHorizontal: 30,
