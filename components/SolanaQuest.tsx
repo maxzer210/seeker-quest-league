@@ -10,10 +10,11 @@
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Animated, Easing, ScrollView, StyleSheet, Text,
+  Animated, Easing, ScrollView, StyleSheet, Text,
   TouchableOpacity, View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import LottieView from 'lottie-react-native';
 import * as Q from '../lib/quiz';
 
 type Props = {
@@ -155,7 +156,14 @@ export default function SolanaQuest({ deviceId, onEarnOrb, onPlaySound, onExit }
     return (
       <View style={s.root}>
         {Header}
-        <View style={s.center}><ActivityIndicator color="#14F195" size="large" /></View>
+        <View style={s.center}>
+          <LottieView
+            source={require('../assets/lottie/quest-loading.json')}
+            autoPlay
+            loop
+            style={{ width: 120, height: 120 }}
+          />
+        </View>
       </View>
     );
   }

@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, Animated, Easing, Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import LottieView from 'lottie-react-native';
 
 const { width: W, height: H } = Dimensions.get('window');
 
@@ -103,6 +104,29 @@ const WinCelebration = forwardRef<WinCelebrationHandle>((_props, ref) => {
 
   return (
     <Animated.View style={[s.backdrop, { opacity: visible }]} pointerEvents="none">
+      {/* Rings and sparkles behind everything. Vector, so it stays sharp on any
+          screen, and it only mounts while the overlay is up. */}
+      {isVisible && (
+        <LottieView
+          source={require('../assets/lottie/victory.json')}
+          autoPlay
+          loop={false}
+          style={s.lottieBurst}
+          resizeMode="cover"
+        />
+      )}
+
+      {/* Coins rising through the card */}
+      {isVisible && (
+        <LottieView
+          source={require('../assets/lottie/orb-collect.json')}
+          autoPlay
+          loop
+          style={s.lottieCoins}
+          resizeMode="cover"
+        />
+      )}
+
       {/* Confetti */}
       {confetti.map((p, i) => (
         <Animated.View key={i} style={[s.confettiPiece, {
@@ -145,6 +169,10 @@ const s = StyleSheet.create({
                   alignItems: 'center', justifyContent: 'center' },
 
   confettiPiece:{ position: 'absolute', top: H * 0.55, left: W / 2 },
+
+  // Both sit behind the card and ignore touches — the backdrop already does.
+  lottieBurst:  { position: 'absolute', width: W * 1.15, height: W * 1.15 },
+  lottieCoins:  { position: 'absolute', width: W * 0.9,  height: W * 0.9, bottom: H * 0.28 },
 
   cardWrap:     { alignItems: 'center' },
   card:         { borderRadius: 28, paddingVertical: 28, paddingHorizontal: 40,
