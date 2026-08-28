@@ -17,11 +17,11 @@ const LAND_CONFIG: Record<Rarity, {
   icon: string; label: string; color: string; bg: string;
   orbPerHour: number; claimCost: number; total: number; mapColor: string;
 }> = {
-  common:    { icon: '🌾', label: 'Равнина',  color: '#94A3B8', bg: '#1E293B', mapColor: '#334155', orbPerHour: 8,   claimCost: 500,     total: 120 },
-  uncommon:  { icon: '🌲', label: 'Лес',      color: '#4ADE80', bg: '#052E16', mapColor: '#166534', orbPerHour: 25,  claimCost: 2_500,   total: 50  },
-  rare:      { icon: '🏔', label: 'Горы',     color: '#60A5FA', bg: '#0C1A4A', mapColor: '#1D4ED8', orbPerHour: 70,  claimCost: 10_000,  total: 20  },
-  epic:      { icon: '🌋', label: 'Вулкан',   color: '#FB923C', bg: '#3B0A00', mapColor: '#C2410C', orbPerHour: 200, claimCost: 40_000,  total: 8   },
-  legendary: { icon: '💎', label: 'Кристал',  color: '#E879F9', bg: '#2E0A3A', mapColor: '#A21CAF', orbPerHour: 600, claimCost: 150_000, total: 2   },
+  common:    { icon: '🌾', label: 'lands.rarity.common',  color: '#94A3B8', bg: '#1E293B', mapColor: '#334155', orbPerHour: 8,   claimCost: 500,     total: 120 },
+  uncommon:  { icon: '🌲', label: 'lands.rarity.uncommon',      color: '#4ADE80', bg: '#052E16', mapColor: '#166534', orbPerHour: 25,  claimCost: 2_500,   total: 50  },
+  rare:      { icon: '🏔', label: 'lands.rarity.rare',     color: '#60A5FA', bg: '#0C1A4A', mapColor: '#1D4ED8', orbPerHour: 70,  claimCost: 10_000,  total: 20  },
+  epic:      { icon: '🌋', label: 'lands.rarity.epic',   color: '#FB923C', bg: '#3B0A00', mapColor: '#C2410C', orbPerHour: 200, claimCost: 40_000,  total: 8   },
+  legendary: { icon: '💎', label: 'lands.rarity.legendary',  color: '#E879F9', bg: '#2E0A3A', mapColor: '#A21CAF', orbPerHour: 600, claimCost: 150_000, total: 2   },
 };
 
 const RARITY_ORDER: Rarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
@@ -244,7 +244,7 @@ export default function SeekerLands({ orb, onOrbChange, onAfterCollect }: Props)
     const remaining = secPerOrb - (secPassed % secPerOrb);
     const m = Math.floor(remaining / 60);
     const s = Math.floor(remaining % 60);
-    return `${m}м ${s}с`;
+    return t('lands.timeMS', { m, s });
   }
 
   /** Time until 24h cap reached (formatted). For UI hints. */
@@ -253,7 +253,7 @@ export default function SeekerLands({ orb, onOrbChange, onAfterCollect }: Props)
     if (msToCap <= 0) return 'FULL';
     const h = Math.floor(msToCap / 3_600_000);
     const m = Math.floor((msToCap % 3_600_000) / 60_000);
-    return h > 0 ? `${h}ч ${m}м до cap` : `${m}м до cap`;
+    return h > 0 ? t('lands.toCapH', { h, m }) : t('lands.toCapM', { m });
   }
 
   // ── Stats ──
@@ -271,15 +271,15 @@ export default function SeekerLands({ orb, onOrbChange, onAfterCollect }: Props)
       <View style={s.statsRow}>
         <View style={s.statBox}>
           <Text style={s.statNum}>{ownedList.length}</Text>
-          <Text style={s.statLbl}>участков</Text>
+          <Text style={s.statLbl}>{t('lands.statPlots')}</Text>
         </View>
         <View style={s.statBox}>
           <Text style={s.statNum}>{totalOrbPerHr}</Text>
-          <Text style={s.statLbl}>ORB/час</Text>
+          <Text style={s.statLbl}>{t('lands.statPerHour')}</Text>
         </View>
         <View style={[s.statBox, pendingOrb > 0 && s.statBoxGlow]}>
           <Text style={[s.statNum, pendingOrb > 0 && s.statNumGlow]}>{pendingOrb.toLocaleString()}</Text>
-          <Text style={s.statLbl}>к сбору</Text>
+          <Text style={s.statLbl}>{t('lands.statPending')}</Text>
         </View>
       </View>
 
@@ -301,10 +301,10 @@ export default function SeekerLands({ orb, onOrbChange, onAfterCollect }: Props)
       {/* View toggle */}
       <View style={s.toggleRow}>
         <TouchableOpacity style={[s.toggleBtn, view === 'map' && s.toggleActive]} onPress={() => setView('map')}>
-          <Text style={s.toggleTxt}>🗺 Карта мира</Text>
+          <Text style={s.toggleTxt}>{t('lands.worldMap')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[s.toggleBtn, view === 'owned' && s.toggleActive]} onPress={() => setView('owned')}>
-          <Text style={s.toggleTxt}>🏠 Мои земли ({ownedList.length})</Text>
+          <Text style={s.toggleTxt}>{t('lands.myLands', { n: ownedList.length })}</Text>
         </TouchableOpacity>
       </View>
 
@@ -313,13 +313,13 @@ export default function SeekerLands({ orb, onOrbChange, onAfterCollect }: Props)
           {/* Rarity legend */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterRow} contentContainerStyle={{ gap: 6 }}>
             <TouchableOpacity style={[s.filterChip, !filter && s.filterActive]} onPress={() => setFilter(null)}>
-              <Text style={s.filterTxt}>Все</Text>
+              <Text style={s.filterTxt}>{t('lands.filterAll')}</Text>
             </TouchableOpacity>
             {RARITY_ORDER.map(r => (
               <TouchableOpacity key={r}
                 style={[s.filterChip, filter === r && s.filterActive, { borderColor: LAND_CONFIG[r].color }]}
                 onPress={() => setFilter(filter === r ? null : r)}>
-                <Text style={s.filterTxt}>{LAND_CONFIG[r].icon} {LAND_CONFIG[r].label} ({LAND_CONFIG[r].total})</Text>
+                <Text style={s.filterTxt}>{LAND_CONFIG[r].icon} {t(LAND_CONFIG[r].label)} ({LAND_CONFIG[r].total})</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -359,7 +359,7 @@ export default function SeekerLands({ orb, onOrbChange, onAfterCollect }: Props)
               {RARITY_ORDER.map(r => (
                 <View key={r} style={s.mmLegendItem}>
                   <View style={[s.mmLegendDot, { backgroundColor: LAND_CONFIG[r].mapColor }]} />
-                  <Text style={s.mmLegendTxt}>{LAND_CONFIG[r].label}</Text>
+                  <Text style={s.mmLegendTxt}>{t(LAND_CONFIG[r].label)}</Text>
                 </View>
               ))}
             </View>
@@ -396,10 +396,10 @@ export default function SeekerLands({ orb, onOrbChange, onAfterCollect }: Props)
           {ownedList.length === 0 ? (
             <View style={s.emptyOwned}>
               <Text style={s.emptyOwnedIcon}>🗺</Text>
-              <Text style={s.emptyOwnedTxt}>У тебя нет участков</Text>
-              <Text style={s.emptyOwnedSub}>Перейди на карту и купи первый участок</Text>
+              <Text style={s.emptyOwnedTxt}>{t('lands.emptyTitle')}</Text>
+              <Text style={s.emptyOwnedSub}>{t('lands.emptySub')}</Text>
               <TouchableOpacity style={s.goMapBtn} onPress={() => setView('map')}>
-                <Text style={s.goMapTxt}>Открыть карту</Text>
+                <Text style={s.goMapTxt}>{t('lands.openMap')}</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -416,10 +416,10 @@ export default function SeekerLands({ orb, onOrbChange, onAfterCollect }: Props)
                   <Text style={s.ownedRowIcon}>{cfg.icon}</Text>
                   <View style={s.ownedRowInfo}>
                     <View style={s.ownedRowHead}>
-                      <Text style={[s.ownedRowName, { color: cfg.color }]}>{cfg.label} {op.id}</Text>
+                      <Text style={[s.ownedRowName, { color: cfg.color }]}>{t(cfg.label)} {op.id}</Text>
                       {full && <View style={s.fullBadge}><Text style={s.fullBadgeText}>FULL</Text></View>}
                     </View>
-                    <Text style={s.ownedRowStat}>{cfg.orbPerHour} ORB/час · {timer}</Text>
+                    <Text style={s.ownedRowStat}>{t('lands.perHour', { n: cfg.orbPerHour })} · {timer}</Text>
                     {/* Storage fill bar */}
                     <View style={s.storageTrack}>
                       <View style={[s.storageFill, {
@@ -474,35 +474,35 @@ export default function SeekerLands({ orb, onOrbChange, onAfterCollect }: Props)
               <Animated.View style={[s.modalCard, { borderColor: cfg.color, transform: [{ scale: modalAnim }] }]}>
                 <TouchableOpacity activeOpacity={1}>
                   <Text style={s.modalIcon}>{cfg.icon}</Text>
-                  <Text style={[s.modalRarity, { color: cfg.color }]}>{cfg.label.toUpperCase()}</Text>
-                  <Text style={s.modalCoords}>Координаты {selected.x},{selected.y}</Text>
+                  <Text style={[s.modalRarity, { color: cfg.color }]}>{t(cfg.label).toUpperCase()}</Text>
+                  <Text style={s.modalCoords}>{t('lands.coords', { x: selected.x, y: selected.y })}</Text>
 
                   <View style={[s.modalStats, { backgroundColor: cfg.bg }]}>
                     <View style={s.modalStatRow}>
                       <Text style={s.modalStatIcon}>⚡</Text>
-                      <Text style={s.modalStatTxt}>{cfg.orbPerHour} ORB / час</Text>
+                      <Text style={s.modalStatTxt}>{t('lands.perHourLong', { n: cfg.orbPerHour })}</Text>
                     </View>
                     {!op && (
                       <View style={s.modalStatRow}>
                         <Text style={s.modalStatIcon}>💰</Text>
-                        <Text style={s.modalStatTxt}>Цена: {cfg.claimCost.toLocaleString()} ORB</Text>
+                        <Text style={s.modalStatTxt}>{t('lands.price', { n: cfg.claimCost.toLocaleString() })}</Text>
                       </View>
                     )}
                     {op && (
                       <>
                         <View style={s.modalStatRow}>
                           <Text style={s.modalStatIcon}>💰</Text>
-                          <Text style={s.modalStatTxt}>Накоплено: {pending.toLocaleString()} ORB</Text>
+                          <Text style={s.modalStatTxt}>{t('lands.accrued', { n: pending.toLocaleString() })}</Text>
                         </View>
                         <View style={s.modalStatRow}>
                           <Text style={s.modalStatIcon}>⏳</Text>
-                          <Text style={s.modalStatTxt}>След. +1 ORB через {timer}</Text>
+                          <Text style={s.modalStatTxt}>{t('lands.nextOrb', { t: timer })}</Text>
                         </View>
                       </>
                     )}
                     <View style={s.modalStatRow}>
                       <Text style={s.modalStatIcon}>📦</Text>
-                      <Text style={s.modalStatTxt}>В мире: {cfg.total} участков</Text>
+                      <Text style={s.modalStatTxt}>{t('lands.inWorld', { n: cfg.total })}</Text>
                     </View>
                   </View>
 
@@ -511,7 +511,9 @@ export default function SeekerLands({ orb, onOrbChange, onAfterCollect }: Props)
                       style={[s.actionBtn, !canAfford && s.actionBtnDisabled, { backgroundColor: canAfford ? cfg.color + 'CC' : '#1E293B' }]}
                       onPress={() => claimPlot(selected)}>
                       <Text style={s.actionBtnTxt}>
-                        {canAfford ? `КУПИТЬ · ${cfg.claimCost.toLocaleString()} ORB` : `Нужно ещё ${(cfg.claimCost - orb).toLocaleString()} ORB`}
+                        {canAfford
+                          ? t('lands.buy', { n: cfg.claimCost.toLocaleString() })
+                          : t('lands.needMore', { n: (cfg.claimCost - orb).toLocaleString() })}
                       </Text>
                     </TouchableOpacity>
                   ) : (
@@ -519,7 +521,9 @@ export default function SeekerLands({ orb, onOrbChange, onAfterCollect }: Props)
                       style={[s.actionBtn, pending < 1 && s.actionBtnDisabled, { backgroundColor: pending > 0 ? '#22C55E' : '#1E293B' }]}
                       onPress={() => collectPlot(selected)}>
                       <Text style={s.actionBtnTxt}>
-                        {pending > 0 ? `СОБРАТЬ · +${pending.toLocaleString()} ORB` : 'Накапливается...'}
+                        {pending > 0
+                          ? t('lands.collect', { n: pending.toLocaleString() })
+                          : t('lands.accruing')}
                       </Text>
                     </TouchableOpacity>
                   )}
@@ -529,7 +533,7 @@ export default function SeekerLands({ orb, onOrbChange, onAfterCollect }: Props)
                   </View>
 
                   <TouchableOpacity onPress={() => setSelected(null)} style={s.closeRow}>
-                    <Text style={s.closeTxt}>✕ закрыть</Text>
+                    <Text style={s.closeTxt}>{t('lands.close')}</Text>
                   </TouchableOpacity>
                 </TouchableOpacity>
               </Animated.View>
