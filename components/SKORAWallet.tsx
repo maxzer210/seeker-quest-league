@@ -36,10 +36,12 @@ const STATUS_COLOR: Record<string, string> = {
   processed: '#22C55E',
   rejected:  '#EF4444',
 };
+// i18n keys, not text — this is module-level, so t() here would resolve once
+// at import and freeze the language.
 const STATUS_LABEL: Record<string, string> = {
-  pending:   '⏳ В очереди',
-  processed: '✅ Выполнено',
-  rejected:  '❌ Отклонено',
+  pending:   'skora.st.pending',
+  processed: 'skora.st.processed',
+  rejected:  'skora.st.rejected',
 };
 
 function shortAddr(addr: string) {
@@ -97,26 +99,31 @@ export default function SKORAWallet({ orb, onSpendOrb, deviceId }: Props) {
   const submitClaim = useCallback(async () => {
     const addr = walletInput.trim();
     if (!addr || addr.length < 32) {
-      Alert.alert('Ошибка', 'Введи корректный Solana-адрес кошелька');
+      Alert.alert(t('skora.err'), t('skora.errAddr'));
       return;
     }
     if (claimAmount < MIN_CLAIM_ORB) {
-      Alert.alert('Минимум', `Минимальная заявка: ${MIN_CLAIM_ORB.toLocaleString()} ORB (1 SKORA)`);
+      Alert.alert(t('skora.errMinTitle'), t('skora.errMin', { n: MIN_CLAIM_ORB.toLocaleString() }));
       return;
     }
     if (orb < claimAmount) {
-      Alert.alert('Недостаточно ORB', `У тебя ${orb.toLocaleString()} ORB, нужно ${claimAmount.toLocaleString()}`);
+      Alert.alert(t('skora.errFundsTitle'),
+        t('skora.errFunds', { have: orb.toLocaleString(), need: claimAmount.toLocaleString() }));
       return;
     }
     const skoraAmt = orbToSkora(claimAmount);
 
     Alert.alert(
-      '💎 Подтверди заявку',
-      `Потратить ${claimAmount.toLocaleString()} ORB → получить ${skoraAmt.toFixed(2)} SKORA?\n\nКошелёк: ${shortAddr(addr)}`,
+      t('skora.confirmTitle'),
+      t('skora.confirmBody', {
+        orb:   claimAmount.toLocaleString(),
+        skora: skoraAmt.toFixed(2),
+        addr:  shortAddr(addr),
+      }),
       [
-        { text: 'Отмена', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'ПОДТВЕРДИТЬ',
+          text: t('skora.confirmYes'),
           onPress: async () => {
             setLoading(true);
             try {
@@ -139,9 +146,9 @@ export default function SKORAWallet({ orb, onSpendOrb, deviceId }: Props) {
               setWalletInput('');
               setClaims(prev => [data as ClaimRow, ...prev]);
               setTab('history');
-              Alert.alert('✅ Заявка принята!', `${skoraAmt.toFixed(2)} SKORA будут отправлены на твой кошелёк в течение 24 часов.`);
+              Alert.alert(t('skora.okTitle'), t('skora.okBody', { skora: skoraAmt.toFixed(2) }));
             } catch (e: any) {
-              Alert.alert('Ошибка', e?.message ?? 'Попробуй снова');
+              Alert.alert(t('skora.err'), e?.message ?? t('skora.retry'));
             }
             setLoading(false);
           },
@@ -237,7 +244,7 @@ export default function SKORAWallet({ orb, onSpendOrb, deviceId }: Props) {
             />
             {savedWallet !== '' && (
               <TouchableOpacity onPress={() => setWalletInput(savedWallet)} style={s.savedAddrBtn}>
-                <Text style={s.savedAddrTxt}>📋 Использовать: {shortAddr(savedWallet)}</Text>
+                <Text style={s.savedAddrTxt}>{t('skora.useSaved', { addr: shortAddr(savedWallet) })}</Text>
               </TouchableOpacity>
             )}
 
@@ -245,13 +252,13 @@ export default function SKORAWallet({ orb, onSpendOrb, deviceId }: Props) {
             {walletInput.length > 30 && (
               <View style={s.summaryBox}>
                 <Text style={s.summaryRow}>
-                  Отдашь: <Text style={{ color: '#EF4444', fontWeight: '800' }}>{claimAmount.toLocaleString()} ORB</Text>
+                  {t('skora.youGive')}<Text style={{ color: '#EF4444', fontWeight: '800' }}>{claimAmount.toLocaleString()} ORB</Text>
                 </Text>
                 <Text style={s.summaryRow}>
-                  Получишь: <Text style={{ color: '#22C55E', fontWeight: '800' }}>{orbToSkora(claimAmount).toFixed(2)} SKORA</Text>
+                  {t('skora.youGet')}<Text style={{ color: '#22C55E', fontWeight: '800' }}>{orbToSkora(claimAmount).toFixed(2)} SKORA</Text>
                 </Text>
                 <Text style={s.summaryRow}>
-                  Кошелёк: <Text style={{ color: '#94A3B8' }}>{shortAddr(walletInput.trim())}</Text>
+                  {t('skora.toWallet')}<Text style={{ color: '#94A3B8' }}>{shortAddr(walletInput.trim())}</Text>
                 </Text>
               </View>
             )}
@@ -274,13 +281,13 @@ export default function SKORAWallet({ orb, onSpendOrb, deviceId }: Props) {
           <View style={s.infoCard}>
             <Text style={s.infoTitle}>{t('skora.infoTitle')}</Text>
             {[
-              ['Название',   'SKORA'],
-              ['Сеть',       'Solana ' + SKORA_NETWORK],
-              ['Стандарт',   'SPL Token'],
-              ['Decimals',   '6'],
-              ['Эмиссия',    '1,000,000,000 SKORA'],
-              ['Курс',       '10,000 ORB = 1 SKORA'],
-              ['Mint',       (SKORA_MINT as string) === 'PASTE_MINT_ADDRESS_HERE' ? '⚠️ Настройка...' : SKORA_MINT],
+              [t('skora.infoName'),     'SKORA'],
+              [t('skora.infoNetwork'),  'Solana ' + SKORA_NETWORK],
+              [t('skora.infoStandard'), 'SPL Token'],
+              ['Decimals',              '6'],
+              [t('skora.infoSupply'),   '1,000,000,000 SKORA'],
+              [t('skora.infoRate'),     '10,000 ORB = 1 SKORA'],
+              ['Mint',                  (SKORA_MINT as string) === 'PASTE_MINT_ADDRESS_HERE' ? t('skora.infoSetup') : SKORA_MINT],
             ].map(([k, v]) => (
               <View key={k} style={s.infoRow}>
                 <Text style={s.infoKey}>{k}</Text>
@@ -291,12 +298,12 @@ export default function SKORAWallet({ orb, onSpendOrb, deviceId }: Props) {
             <View style={s.divider} />
             <Text style={s.infoTitle}>{t('skora.howToEarnTitle')}</Text>
             {[
-              ['⚡', 'Тап по Signal',         '10-75 ORB'],
-              ['🎰', 'Выигрыш на Wheel',       '500–50K ORB'],
-              ['🚀', 'Space Runner',            'Очки × 2'],
-              ['⚔️', 'Победа в Arena',          '500–5K ORB'],
-              ['🌾', 'Сбор урожая в Lands',     'до 600/час'],
-              ['📦', 'Сундуки в Treasure Hunt', '100–1K ORB'],
+              ['⚡', t('skora.earnTap'),      '10–75 ORB'],
+              ['🎰', t('skora.earnWheel'),    '500–50K ORB'],
+              ['🚀', t('skora.earnRunner'),   t('skora.earnRunnerVal')],
+              ['⚔️', t('skora.earnArena'),    '500–5K ORB'],
+              ['🌾', t('skora.earnLands'),    t('skora.earnLandsVal')],
+              ['📦', t('skora.earnTreasure'), '100–1K ORB'],
             ].map(([icon, act, earn]) => (
               <View key={act} style={s.earnRow}>
                 <Text style={s.earnIcon}>{icon}</Text>
@@ -317,7 +324,7 @@ export default function SKORAWallet({ orb, onSpendOrb, deviceId }: Props) {
             claims.map(c => (
               <View key={c.id} style={s.claimRow}>
                 <View style={s.claimRowLeft}>
-                  <Text style={[s.claimStatus, { color: STATUS_COLOR[c.status] }]}>{STATUS_LABEL[c.status]}</Text>
+                  <Text style={[s.claimStatus, { color: STATUS_COLOR[c.status] }]}>{t(STATUS_LABEL[c.status] ?? 'skora.st.pending')}</Text>
                   <Text style={s.claimWallet}>{shortAddr(c.wallet_address)}</Text>
                   <Text style={s.claimDate}>{new Date(c.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</Text>
                 </View>
