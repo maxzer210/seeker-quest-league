@@ -182,6 +182,31 @@ C:\sk\
 
 ## 8. Что СДЕЛАНО
 
+### 🔐 Серверный ORB + аудит живой базы (2026-09-05)
+Аудит боевым anon-ключом из APK показал, что баланс писался кем угодно.
+
+- ✅ **Часть 1 закрыта** (`supabase-security-lockdown.sql`, применена): удаление
+  игроков, правка ключа ответов квиза, подделка `prize_distributions`, правка
+  лога платежей. Проверено повторным зондом
+- ✅ **Серверный ORB готов, НЕ применён** — `supabase-orb-authoritative.sql` v3.0.
+  `apply_orb_delta` + `create_skora_claim` (`security definer`, `search_path`),
+  журнал `orb_ledger`, лимиты 10M/вызов · 12M/мин · 30M/сутки
+- ✅ Клиент переведён: `lib/orb.ts`, `syncScore` шлёт дельту вместо абсолюта,
+  `syncedOrbRef` + `syncInFlightRef`, `initPlayer` не шлёт `orb`,
+  `createSkoraClaim` через RPC, кошелёк не списывает локально
+- ✅ `scripts/orb-sync-test.js` — 10 headless-проверок сверки, проходят
+
+**Найдено в живой базе:** верхний аккаунт 1 082 663 328 ORB при нуле платежей
+(честный потолок такого аккаунта — 2,9 млн/сутки, нужен 371 день; аккаунт жил 3
+дня). Верхняя восьмёрка ≈ 233 000 SKORA. Показательно: владелец проекта заплатил
+больше всех (0,15 SOL) и имеет меньше всех из них — 19 млн.
+
+**Решение (2026-09-05):** Pre-Season объявляется тестовым, балансы обнуляются
+(`PART R`, закомментирован). Ничего ещё не выплачивалось — момент самый дешёвый.
+
+⚠️ **Порядок выката строгий**, см. `ORB-REFACTOR-PLAN.md`: SQL → APK → `PART R`.
+Если поставить APK раньше SQL, RPC не существует и начисления откатываются.
+
 ### 🕳 Лабиринт Бездны — «Договоры с Бездной» (2026-08-24)
 Фирменная механика по `LABYRINTH-PACTS-DESIGN.md` доведена до конца.
 
@@ -269,6 +294,11 @@ C:\sk\
 ## 9. Что ОСТАЛОСЬ
 
 ### 🟢 Действия пользователя (не код)
+- 🔥 **Применить `supabase-orb-authoritative.sql` до `PART R`** — до установки нового APK
+- 🔥 **Поставить APK** `android/app/build/outputs/apk/release/app-release.apk` (5 сен, 07:18)
+- 🔥 **Затем `PART R`** — обнуление Pre-Season (делает снимок в `preseason_snapshot`)
+- 🔥 **Портал dApp Store**: publisher-кошелёк `7NLKe7d6…CAsf` vs ожидаемый `CxYfXX…LGSp` —
+  публикация заблокирована до совпадения
 - ⏸ **Применить 5 SQL миграций** в Supabase (sgt-bonus, prize-distribution, skora-claims, ads, pvp)
 - ⏸ Зарегистрировать `seekerquest-league.com` + хост Privacy Policy
 - ⏸ Email `hello@seekerquest-league.com` (Cloudflare Email Routing)
@@ -327,4 +357,4 @@ C:\sk\
 
 ---
 
-_Last updated: 2026-08-24 (Abyss Pacts complete: engine + UI + Collector pathfinding; fixed the never-rendered minimap, the lying victory bonus, and three double-encoded docs)_
+_Last updated: 2026-09-05 (server-authoritative ORB: client refactored, SQL v3.0 ready but not applied. Live audit found a 1.08B balance with zero payments; Pre-Season declared a test season. Rollout order is strict — see ORB-REFACTOR-PLAN.md)_
