@@ -228,9 +228,21 @@ end $$;
 -- ── 5. Lock the balance columns, leave the rest writable ────────────────────
 -- players carries columns the client legitimately owns — username, level,
 -- streak, wallet_address — so revoking UPDATE wholesale would break renaming
--- and wallet linking. Revoking the two balance columns leaves those working.
--- SECURITY DEFINER functions run as the owner and are unaffected.
-revoke update (orb, season_orb) on public.players from anon, authenticated;
+-- and wallet linking. Only the two balance columns must go.
+--
+-- Doing that with `revoke update (orb, season_orb)` does NOT work, and the
+-- first attempt on 2026-09-05 shipped exactly that mistake: a table-wide
+-- `grant update` already covers every column, and revoking a column-level
+-- privilege that was never separately granted is a no-op. Verified against the
+-- live database — PATCH players.orb still returned 204 afterwards.
+--
+-- The working shape is revoke-then-grant, the same one used for INSERT below:
+-- take the table-wide privilege away, then hand back the specific columns.
+revoke update on public.players from anon, authenticated;
+grant update (username, level, streak, wallet_address)
+  on public.players to anon, authenticated;
+-- ^ orb and season_orb are absent by design. The SECURITY DEFINER functions
+--   run as the owner, so they are unaffected by this.
 
 -- INSERT is the other way in: revoking UPDATE alone still lets a cheater create
 -- a brand new row with a balance already in it, then claim SKORA against it.
