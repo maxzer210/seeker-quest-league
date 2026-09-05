@@ -188,9 +188,16 @@ C:\sk\
 - ✅ **Часть 1 закрыта** (`supabase-security-lockdown.sql`, применена): удаление
   игроков, правка ключа ответов квиза, подделка `prize_distributions`, правка
   лога платежей. Проверено повторным зондом
-- ✅ **Серверный ORB готов, НЕ применён** — `supabase-orb-authoritative.sql` v3.0.
+- ✅ **Серверный ORB ПРИМЕНЁН на живой базе** (2026-09-05) —
+  `supabase-orb-authoritative.sql` v3.0 + `supabase-orb-fix-column-update.sql`.
   `apply_orb_delta` + `create_skora_claim` (`security definer`, `search_path`),
-  журнал `orb_ledger`, лимиты 10M/вызов · 12M/мин · 30M/сутки
+  журнал `orb_ledger`, лимиты 10M/вызов · 12M/мин · 30M/сутки.
+  Проверено ключом из APK: `UPDATE players.orb` → 401, переименование → 204,
+  сквозной прогон через RPC даёт верный баланс
+- ⚠️ **Грабля**: `revoke update (col) ...` — пустая операция, если у роли есть
+  право на всю таблицу. Нужно `revoke update on <table>` целиком, потом
+  `grant update (нужные колонки)`. Первый заход это пропустил, дыра осталась
+  открытой и нашлась только повторным зондом
 - ✅ Клиент переведён: `lib/orb.ts`, `syncScore` шлёт дельту вместо абсолюта,
   `syncedOrbRef` + `syncInFlightRef`, `initPlayer` не шлёт `orb`,
   `createSkoraClaim` через RPC, кошелёк не списывает локально
