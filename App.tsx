@@ -24,6 +24,7 @@ import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-
 import { ParticleEmitter, ParticleEmitterHandle } from './ParticleSystem';
 import { StarField } from './StarField';
 import { supabase, SUPABASE_URL, type PlayerRow } from './lib/supabase';
+import { applyOrbDelta, fetchOrbBalance } from './lib/orb';
 import {
   TREASURY_WALLET,
   SOLANA_RPC,
@@ -394,6 +395,14 @@ function AppInner() {
   const pendingSyncRef = useRef<{ orb: number; level: number; streak: number } | null>(null);
   const energyWriteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // The balance the server last confirmed. syncScore sends the difference
+  // between this and the local balance, so the server sees a delta it can check
+  // rather than a number it has to trust. null until the server has been read;
+  // while it is null the balance is not synced at all, which is the safe way to
+  // be wrong — the alternative is guessing a baseline and inventing ORB.
+  const syncedOrbRef   = useRef<number | null>(null);
+  const syncInFlightRef = useRef(false);
+
   // Progress persistence — restore-on-start guards.
   // hydratedRef blocks syncScore until saved progress is loaded, so a fresh
   // launch can never overwrite the server row with default values.
@@ -611,7 +620,7 @@ function AppInner() {
       // Restore saved progress FIRST — everything that writes orb to the
       // server (initReferrals, syncScore) must see the real balance.
       const restored = await hydratePlayer(id);
-      await initPlayer(id, restored.orb, restored.level);
+      await initPlayer(id, restored.level);
       initReferrals(id);
     });
     loadWallet();
@@ -743,15 +752,16 @@ function AppInner() {
     return id;
   }
 
-  async function initPlayer(id: string, currentOrb: number, currentLevel: number) {
+  async function initPlayer(id: string, currentLevel: number) {
     try {
+      // No orb here on purpose. The starting gift is a column default in the
+      // database, because a client that can name its own opening balance can
+      // simply mint new accounts that are already rich.
       await supabase.from('players').upsert({
         device_id:  id,
         username:   'Seeker#' + id.slice(-4).toUpperCase(),
-        orb:        currentOrb,
         level:      currentLevel,
         streak:     0,
-        season_orb: currentOrb,
       }, { onConflict: 'device_id', ignoreDuplicates: true });
     } catch (_) {}
   }
@@ -798,16 +808,21 @@ function AppInner() {
       }
     } catch (_) {}
 
-    // Fallback: server row (progress from before the snapshot existed).
-    if (savedOrb === null) {
-      try {
-        const { data } = await supabase
-          .from('players')
-          .select('orb, level, username')
-          .eq('device_id', id)
-          .maybeSingle();
-        if (data) {
-          savedOrb   = asNum(data.orb);
+    // The server row is read on every launch now, not only when the local
+    // snapshot is missing: its orb value is the baseline that every later delta
+    // is measured against, so syncScore has something the server agrees with.
+    let serverOrb: number | null = null;
+    try {
+      const { data } = await supabase
+        .from('players')
+        .select('orb, level, username')
+        .eq('device_id', id)
+        .maybeSingle();
+      if (data) {
+        serverOrb = asNum(data.orb);
+        // Fallback: server progress from before the snapshot existed.
+        if (savedOrb === null) {
+          savedOrb   = serverOrb;
           savedLevel = savedLevel ?? asNum(data.level);
           // Custom username also used to reset to Seeker#XXXX on every launch.
           if (typeof data.username === 'string' && data.username.trim()) {
@@ -815,8 +830,9 @@ function AppInner() {
             setPendingUsername(data.username);
           }
         }
-      } catch (_) {}
-    }
+      }
+    } catch (_) {}
+    syncedOrbRef.current = serverOrb;
 
     let restoredOrb = INITIAL_ORB;
     if (savedOrb !== null) {
@@ -903,15 +919,49 @@ function AppInner() {
 
   async function syncScore(currentOrb: number, currentLevel: number, currentStreak: number) {
     // Never push defaults to the server before saved progress is restored.
-    if (!deviceIdRef.current || !hydratedRef.current) return;
+    const id = deviceIdRef.current;
+    if (!id || !hydratedRef.current) return;
+
+    // level and streak stay a straight write — the client legitimately owns
+    // them and neither one pays out anything.
     try {
-      await supabase.from('players').update({
-        orb:        currentOrb,
-        level:      currentLevel,
-        streak:     currentStreak,
-        season_orb: currentOrb,
-      }).eq('device_id', deviceIdRef.current);
+      await supabase.from('players')
+        .update({ level: currentLevel, streak: currentStreak })
+        .eq('device_id', id);
     } catch (_) {}
+
+    // The balance goes through the server, which decides whether the change is
+    // possible. Until the baseline has been read there is nothing to diff
+    // against, so the balance simply waits rather than being guessed at.
+    const base = syncedOrbRef.current;
+    if (base === null) {
+      syncedOrbRef.current = await fetchOrbBalance(id);
+      return;
+    }
+
+    // One sync at a time. Two in flight would both diff against the same
+    // baseline and send the same earnings twice; whatever accumulates while
+    // this one runs is picked up by the next call.
+    if (syncInFlightRef.current) return;
+
+    const sent = Math.trunc(currentOrb);
+    const delta = sent - base;
+    if (delta === 0) return;
+
+    syncInFlightRef.current = true;
+    const res = await applyOrbDelta(id, delta, 'sync');
+    syncInFlightRef.current = false;
+
+    // Correct by the difference between what the server agreed to and what we
+    // asked for — never by assigning the server's number outright. The player
+    // keeps tapping during the round trip, and assigning would roll those taps
+    // back off the counter and lose them. When the server agrees the
+    // correction is zero and nothing moves on screen.
+    const balance = res.balance;
+    if (balance === null) return;
+    syncedOrbRef.current = balance;
+    const correction = balance - sent;
+    if (correction !== 0) setOrb(prev => Math.max(0, prev + correction));
   }
 
   async function fetchLeaderboard() {
@@ -3470,10 +3520,17 @@ function AppInner() {
           {screen === 'skora' && (
             <SKORAWallet
               orb={orb}
-              onSpendOrb={(n) => {
-                const next = Math.max(0, orb - n);
-                setOrb(next);
-                syncScore(next, level, streakCount);
+              onSpendOrb={() => {
+                // create_skora_claim already took the ORB as part of creating
+                // the claim, so this reads the balance back instead of
+                // subtracting again — a second debit would charge twice.
+                const id = deviceIdRef.current;
+                if (!id) return;
+                fetchOrbBalance(id).then(b => {
+                  if (b === null) return;
+                  syncedOrbRef.current = b;
+                  setOrb(b);
+                });
               }}
               deviceId={deviceIdRef.current}
             />

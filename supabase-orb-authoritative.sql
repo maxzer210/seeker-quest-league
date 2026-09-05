@@ -1,195 +1,336 @@
 -- ═══════════════════════════════════════════════════════════════════════════
--- ORB SERVER-AUTHORITATIVE — Phase 2 anti-cheat
+-- ORB SERVER-AUTHORITATIVE — the balance stops being the client's opinion
 -- ═══════════════════════════════════════════════════════════════════════════
 -- Apply to: qxejdpvjggqjqoydujjd.supabase.co  (SQL Editor → NEW QUERY)
--- Version: 2.0 (2026-06-02) — closes the "client sets own ORB balance" exploit
+-- Version: 3.0 (2026-09-05) — supersedes the 2.0 draft of 2026-06-02
 --
--- PROBLEM THIS FIXES:
---   Before: client wrote players.orb directly via update(). Anyone with the
---   anon key (embedded in the APK) could set orb = 999,999,999 and then claim
---   real SKORA tokens. The balance was not trustworthy.
+-- WHY THIS EXISTS, with numbers from the live database:
+--   players.orb was writable by anyone holding the anon key, which ships inside
+--   the APK. The audit of 2026-09-05 found the top account at 1,082,663,328 ORB
+--   with zero SOL payments — meaning no Founder tier (x1 multiplier) and no
+--   bought energy refills. The honest ceiling for such an account is 4,320 taps
+--   a day x 675 ORB = 2.9M/day, so that balance needs 371 days of flawless
+--   play. The account was last active on its third day. The numbers were
+--   written, not earned.
 --
---   After: the orb column can ONLY be written by the apply_orb_delta RPC, which
---   rate-limits and plausibility-checks every change and writes an audit ledger.
---   Direct writes to players.orb are revoked at the column level.
+--   At 10,000 ORB = 1 SKORA the top eight accounts alone stand for ~233,000
+--   SKORA, and tournament_scores decides who receives real SOL.
 --
--- ⚠️ This migration MUST be applied BEFORE the client is switched to use the RPC
---    (otherwise legitimate earns would be blocked). See rollout note at bottom.
+-- WHAT CHANGED SINCE THE 2.0 DRAFT (all four mattered):
+--   1. SET search_path on both SECURITY DEFINER functions. Without it the
+--      function resolves table names through the caller's search_path, so a
+--      hostile temp schema can shadow `players`. Supabase's own linter flags
+--      this; the 2.0 draft had it on neither function.
+--   2. A rolling 24h earn cap. The 2.0 limit of 200K/minute permits 288M/day —
+--      a hundred times the honest ceiling, so it would not have stopped the
+--      exploit it was written to stop.
+--   3. Per-reason delta caps. A tap cannot pay more than a max-build tap.
+--   4. tournament_scores locked. The client never writes it (verified: only
+--      reads in Tournament.tsx and GenesisNews.tsx, and the payout scripts run
+--      under the service key), so this costs nothing and closes the table that
+--      decides real SOL payouts.
+--
+-- ⚠️ APPLY THIS BEFORE shipping the refactored client. Order is in ROLLOUT at
+--    the bottom. PART R (the Pre-Season reset) is deliberately separate — read
+--    it before running it, it zeroes every balance.
 -- ═══════════════════════════════════════════════════════════════════════════
 
--- ── 1. Audit ledger — every ORB change is recorded here ─────────────────────
-CREATE TABLE IF NOT EXISTS public.orb_ledger (
-  id          bigint generated always as identity primary key,
-  device_id   text   not null,
-  delta       bigint not null,            -- + earn, - spend
-  reason      text   not null,            -- 'tap','wheel','runner','shop','p2p','claim',...
+
+-- ── 1. Audit ledger — every ORB change leaves a trace ───────────────────────
+create table if not exists public.orb_ledger (
+  id            bigint generated always as identity primary key,
+  device_id     text   not null,
+  delta         bigint not null,          -- + earn, - spend
+  reason        text   not null,          -- 'tap','wheel','game_*','shop','skora_claim',…
   balance_after bigint not null,
-  created_at  timestamptz not null default now()
+  created_at    timestamptz not null default now()
 );
 
-CREATE INDEX IF NOT EXISTS orb_ledger_device_idx
-  ON public.orb_ledger (device_id, created_at desc);
+create index if not exists orb_ledger_device_idx
+  on public.orb_ledger (device_id, created_at desc);
 
--- ── 2. apply_orb_delta — the ONLY way orb changes ──────────────────────────
--- Server-side rate limit + plausibility cap. Returns the new balance.
-CREATE OR REPLACE FUNCTION apply_orb_delta(
+-- Partial index for the rate-limit scans, which only ever look at earns.
+create index if not exists orb_ledger_earn_idx
+  on public.orb_ledger (device_id, created_at desc) where delta > 0;
+
+
+-- ── 2. The honest ceiling, written down once ────────────────────────────────
+-- All four numbers come from App.tsx, not from taste:
+--
+--   max_tap 20,000  — TAP_VALUES max 75, CRIT x3, boost x3, Founder Diamond x5,
+--     COMBO_MULTIPLIERS max x5 = 16,875 is the most one tap can pay. Rounded up.
+--
+--   max_single 10,000,000 — the client batches taps for 5 seconds before
+--     syncing (scheduleSyncScore), and while offline the batch keeps growing.
+--     MAX_ENERGY is 500, so the largest honest single delta is a full energy
+--     bar at maximum build: 500 x 16,875 = 8.4M. A tighter cap here would throw
+--     away the progress of a player who tapped through a tunnel.
+--
+--   per_minute 12,000,000 — one full bar plus regeneration, same reasoning.
+--
+--   per_day 30,000,000 — this is the cap that actually does the work. Energy
+--     regenerates 1 per 20s = 4,320 taps a day, so a maxed free account tops
+--     out near 2.9M and a maxed Diamond account near 14.6M in expectation.
+--     Doubling that leaves room for lands, mini-games, achievements, tournament
+--     prizes and refills bought with SOL, which are the one honest way past the
+--     energy limit. A player who genuinely reaches this will show up in
+--     orb_ledger, and the number can be raised knowingly rather than guessed.
+--
+-- Against the attack this was written for — one request setting the balance to
+-- 999,999,999 — any cap in this range is fatal to it. The precision matters for
+-- not punishing real players, not for stopping the exploit.
+create or replace function public.orb_limits()
+returns table (max_tap bigint, max_single bigint, per_minute bigint, per_day bigint)
+language sql immutable
+as $$ select 20000::bigint, 10000000::bigint, 12000000::bigint, 30000000::bigint $$;
+
+
+-- ── 3. apply_orb_delta — the only door the balance opens through ────────────
+create or replace function public.apply_orb_delta(
   p_device_id text,
   p_delta     bigint,
-  p_reason    text DEFAULT 'unknown'
-) RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-  v_balance       bigint;
-  v_recent_earned bigint;
-  v_new_balance   bigint;
-BEGIN
-  -- Validate input
-  IF p_device_id IS NULL OR length(p_device_id) < 8 THEN
-    RAISE EXCEPTION 'Invalid device_id';
-  END IF;
-  -- Bound a single delta: no single action grants more than 50K or spends >10M
-  IF p_delta > 50000 OR p_delta < -10000000 THEN
-    RAISE EXCEPTION 'Delta out of bounds: %', p_delta;
-  END IF;
+  p_reason    text default 'unknown'
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_balance     bigint;
+  v_minute      bigint;
+  v_day         bigint;
+  v_new_balance bigint;
+  v_lim         record;
+begin
+  if p_device_id is null or length(p_device_id) < 8 then
+    raise exception 'Invalid device_id';
+  end if;
+  if p_delta = 0 then
+    raise exception 'Empty delta';
+  end if;
 
-  -- Plausibility: cap total POSITIVE earn to 200K ORB per rolling minute.
-  -- (legit play earns far less; this throttles scripted spam.)
-  IF p_delta > 0 THEN
-    SELECT COALESCE(sum(delta), 0) INTO v_recent_earned
-    FROM orb_ledger
-    WHERE device_id = p_device_id
-      AND delta > 0
-      AND created_at > now() - interval '1 minute';
-    IF v_recent_earned + p_delta > 200000 THEN
-      RAISE EXCEPTION 'Earn rate limit exceeded';
-    END IF;
-  END IF;
+  select * into v_lim from orb_limits();
 
-  -- Current balance (row must exist — created on first player upsert)
-  SELECT orb INTO v_balance FROM players WHERE device_id = p_device_id;
-  IF v_balance IS NULL THEN
-    RAISE EXCEPTION 'Player not found: %', p_device_id;
-  END IF;
+  -- A tap is bounded by what a tap can pay. Everything else by the generic cap.
+  if p_delta > 0 then
+    if p_reason = 'tap' and p_delta > v_lim.max_tap then
+      raise exception 'Tap delta above the maximum a tap can pay: %', p_delta;
+    end if;
+    if p_delta > v_lim.max_single then
+      raise exception 'Delta out of bounds: %', p_delta;
+    end if;
+  elsif p_delta < -10000000 then
+    raise exception 'Spend out of bounds: %', p_delta;
+  end if;
 
-  v_new_balance := GREATEST(0, v_balance + p_delta);
+  -- Rate limits apply to earns only; spending your own balance is never capped.
+  if p_delta > 0 then
+    select coalesce(sum(delta), 0) into v_minute
+      from orb_ledger
+     where device_id = p_device_id and delta > 0
+       and created_at > now() - interval '1 minute';
+    if v_minute + p_delta > v_lim.per_minute then
+      raise exception 'Earn rate limit exceeded (minute)';
+    end if;
 
-  -- Reject overspend (spend more than you have)
-  IF p_delta < 0 AND v_balance + p_delta < 0 THEN
-    RAISE EXCEPTION 'Insufficient ORB: have %, tried to spend %', v_balance, -p_delta;
-  END IF;
+    select coalesce(sum(delta), 0) into v_day
+      from orb_ledger
+     where device_id = p_device_id and delta > 0
+       and created_at > now() - interval '24 hours';
+    if v_day + p_delta > v_lim.per_day then
+      raise exception 'Earn rate limit exceeded (day)';
+    end if;
+  end if;
 
-  UPDATE players
-    SET orb = v_new_balance,
-        season_orb = v_new_balance
-    WHERE device_id = p_device_id;
+  -- Lock the row so two concurrent calls cannot both read the same balance.
+  select orb into v_balance from players where device_id = p_device_id for update;
+  if v_balance is null then
+    raise exception 'Player not found: %', p_device_id;
+  end if;
 
-  INSERT INTO orb_ledger (device_id, delta, reason, balance_after)
-  VALUES (p_device_id, p_delta, p_reason, v_new_balance);
+  if p_delta < 0 and v_balance + p_delta < 0 then
+    raise exception 'Insufficient ORB: have %, tried to spend %', v_balance, -p_delta;
+  end if;
 
-  RETURN jsonb_build_object('ok', true, 'balance', v_new_balance);
-END $$;
+  v_new_balance := greatest(0, v_balance + p_delta);
 
--- ── 3. create_skora_claim — atomic ORB debit + claim insert ────────────────
--- Replaces the direct INSERT into skora_claims. Debits ORB server-side so the
--- claim can never exceed the trustworthy balance.
-CREATE OR REPLACE FUNCTION create_skora_claim(
+  update players
+     set orb = v_new_balance,
+         season_orb = v_new_balance
+   where device_id = p_device_id;
+
+  insert into orb_ledger (device_id, delta, reason, balance_after)
+  values (p_device_id, p_delta, left(coalesce(p_reason, 'unknown'), 40), v_new_balance);
+
+  return jsonb_build_object('ok', true, 'balance', v_new_balance);
+end $$;
+
+
+-- ── 4. create_skora_claim — debit and claim in one transaction ──────────────
+create or replace function public.create_skora_claim(
   p_device_id      text,
   p_wallet_address text,
   p_orb_amount     bigint
-) RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-  v_balance     bigint;
-  v_skora       numeric;
-  v_recent      int;
-  v_claim_id    uuid;
-BEGIN
-  IF p_device_id IS NULL OR length(p_device_id) < 8 THEN
-    RAISE EXCEPTION 'Invalid device_id';
-  END IF;
-  IF p_wallet_address IS NULL OR length(p_wallet_address) < 32 THEN
-    RAISE EXCEPTION 'Invalid wallet address';
-  END IF;
-  IF p_orb_amount < 10000 OR p_orb_amount > 10000000 THEN
-    RAISE EXCEPTION 'Claim amount out of bounds: %', p_orb_amount;
-  END IF;
+) returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_balance  bigint;
+  v_skora    numeric;
+  v_recent   int;
+  v_claim_id uuid;
+begin
+  if p_device_id is null or length(p_device_id) < 8 then
+    raise exception 'Invalid device_id';
+  end if;
+  -- Base58 Solana addresses are 32-44 characters.
+  if p_wallet_address is null or p_wallet_address !~ '^[1-9A-HJ-NP-Za-km-z]{32,44}$' then
+    raise exception 'Invalid wallet address';
+  end if;
+  if p_orb_amount < 10000 or p_orb_amount > 10000000 then
+    raise exception 'Claim amount out of bounds: %', p_orb_amount;
+  end if;
 
-  -- Rate limit: max 5 claims per device per hour
-  SELECT count(*) INTO v_recent FROM skora_claims
-  WHERE device_id = p_device_id AND created_at > now() - interval '1 hour';
-  IF v_recent >= 5 THEN
-    RAISE EXCEPTION 'Too many claims this hour';
-  END IF;
+  select count(*) into v_recent from skora_claims
+   where device_id = p_device_id and created_at > now() - interval '1 hour';
+  if v_recent >= 5 then
+    raise exception 'Too many claims this hour';
+  end if;
 
-  -- Balance check against the trustworthy server balance
-  SELECT orb INTO v_balance FROM players WHERE device_id = p_device_id;
-  IF v_balance IS NULL THEN
-    RAISE EXCEPTION 'Player not found';
-  END IF;
-  IF v_balance < p_orb_amount THEN
-    RAISE EXCEPTION 'Insufficient ORB: have %, need %', v_balance, p_orb_amount;
-  END IF;
+  select orb into v_balance from players where device_id = p_device_id for update;
+  if v_balance is null then
+    raise exception 'Player not found';
+  end if;
+  if v_balance < p_orb_amount then
+    raise exception 'Insufficient ORB: have %, need %', v_balance, p_orb_amount;
+  end if;
 
-  v_skora := p_orb_amount::numeric / 10000;  -- 10,000 ORB = 1 SKORA
+  v_skora := p_orb_amount::numeric / 10000;   -- 10,000 ORB = 1 SKORA
 
-  -- Atomic: debit ORB (+ ledger) then insert claim
-  UPDATE players
-    SET orb = orb - p_orb_amount,
-        season_orb = season_orb - p_orb_amount
-    WHERE device_id = p_device_id;
+  update players
+     set orb        = orb - p_orb_amount,
+         season_orb = greatest(0, season_orb - p_orb_amount)
+   where device_id = p_device_id;
 
-  INSERT INTO orb_ledger (device_id, delta, reason, balance_after)
-  VALUES (p_device_id, -p_orb_amount, 'skora_claim', v_balance - p_orb_amount);
+  insert into orb_ledger (device_id, delta, reason, balance_after)
+  values (p_device_id, -p_orb_amount, 'skora_claim', v_balance - p_orb_amount);
 
-  INSERT INTO skora_claims (device_id, wallet_address, orb_spent, skora_amount, status)
-  VALUES (p_device_id, p_wallet_address, p_orb_amount, v_skora, 'pending')
-  RETURNING id INTO v_claim_id;
+  insert into skora_claims (device_id, wallet_address, orb_spent, skora_amount, status)
+  values (p_device_id, p_wallet_address, p_orb_amount, v_skora, 'pending')
+  returning id into v_claim_id;
 
-  RETURN jsonb_build_object('ok', true, 'claim_id', v_claim_id, 'skora', v_skora);
-END $$;
+  return jsonb_build_object('ok', true, 'claim_id', v_claim_id, 'skora', v_skora);
+end $$;
 
--- ── 4. Column-level lockdown — client can no longer write the balance ──────
--- players has columns the client legitimately writes (username, level, streak,
--- wallet_address). We revoke ONLY the orb/season_orb columns so those other
--- updates keep working. SECURITY DEFINER functions above bypass this.
-REVOKE UPDATE (orb, season_orb) ON public.players FROM anon, authenticated;
 
--- skora_claims: block direct INSERT — only via create_skora_claim RPC
-ALTER TABLE public.skora_claims ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Allow players to create claims" ON public.skora_claims;
-DROP POLICY IF EXISTS "block direct claim insert"      ON public.skora_claims;
-CREATE POLICY "block direct claim insert" ON public.skora_claims
-  FOR INSERT WITH CHECK (false);
--- (existing read policy "Allow players to read own claims" stays)
+-- ── 5. Lock the balance columns, leave the rest writable ────────────────────
+-- players carries columns the client legitimately owns — username, level,
+-- streak, wallet_address — so revoking UPDATE wholesale would break renaming
+-- and wallet linking. Revoking the two balance columns leaves those working.
+-- SECURITY DEFINER functions run as the owner and are unaffected.
+revoke update (orb, season_orb) on public.players from anon, authenticated;
 
--- orb_ledger: read-only for clients (audit), writes only via SECURITY DEFINER
-ALTER TABLE public.orb_ledger ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "read own ledger"       ON public.orb_ledger;
-DROP POLICY IF EXISTS "block direct ledger"   ON public.orb_ledger;
-CREATE POLICY "read own ledger"     ON public.orb_ledger FOR SELECT USING (true);
-CREATE POLICY "block direct ledger" ON public.orb_ledger FOR INSERT WITH CHECK (false);
+-- INSERT is the other way in: revoking UPDATE alone still lets a cheater create
+-- a brand new row with a balance already in it, then claim SKORA against it.
+-- So the starting gift becomes a column default and the client stops sending a
+-- balance at all. INITIAL_ORB in App.tsx:122 is 2450 — keep the two in step.
+alter table public.players alter column orb        set default 2450;
+alter table public.players alter column season_orb set default 2450;
 
--- ── 5. Grants ──────────────────────────────────────────────────────────────
-GRANT EXECUTE ON FUNCTION apply_orb_delta(text, bigint, text)        TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION create_skora_claim(text, text, bigint)     TO anon, authenticated;
+revoke insert on public.players from anon, authenticated;
+grant insert (device_id, username, level, streak, wallet_address)
+  on public.players to anon, authenticated;
+-- ^ orb and season_orb are absent by design. A new row gets the default; every
+--   change after that goes through apply_orb_delta. Requires the matching
+--   client change in initPlayer() — the old payload would now be rejected.
+
+
+-- ── 6. skora_claims — only through the RPC ──────────────────────────────────
+alter table public.skora_claims enable row level security;
+drop policy if exists "Allow players to create claims" on public.skora_claims;
+drop policy if exists "block direct claim insert"      on public.skora_claims;
+create policy "block direct claim insert" on public.skora_claims
+  for insert with check (false);
+revoke insert, update, delete on public.skora_claims from anon, authenticated;
+
+
+-- ── 7. tournament_scores — this table decides who receives real SOL ─────────
+-- The client only reads it (Tournament.tsx:93, GenesisNews.tsx:79). The payout
+-- scripts run under the service key. So nothing legitimate loses anything here.
+revoke insert, update, delete on public.tournament_scores from anon, authenticated;
+revoke insert, update, delete on public.tournaments       from anon, authenticated;
+
+
+-- ── 8. orb_ledger — operator-only ───────────────────────────────────────────
+-- The client never reads its ledger, and a blanket read policy would hand out
+-- every player's device_id and full activity history. So no client access at
+-- all: the ledger is written by the SECURITY DEFINER functions and read from
+-- the dashboard under the service key.
+alter table public.orb_ledger enable row level security;
+drop policy if exists "read own ledger"     on public.orb_ledger;
+drop policy if exists "block direct ledger" on public.orb_ledger;
+revoke all on public.orb_ledger from anon, authenticated;
+
+
+-- ── 9. Grants ───────────────────────────────────────────────────────────────
+grant execute on function public.apply_orb_delta(text, bigint, text)    to anon, authenticated;
+grant execute on function public.create_skora_claim(text, text, bigint) to anon, authenticated;
+grant execute on function public.orb_limits()                           to anon, authenticated;
+
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- ROLLOUT ORDER (important — do NOT skip):
---   1. Apply this SQL.  Earns still work via old client (direct orb write) UNTIL
---      the REVOKE takes effect — after REVOKE, the old client's syncScore() orb
---      writes will SILENTLY FAIL (update affects 0 rows). That is acceptable:
---      balance just stops syncing up; nothing breaks.
---   2. Ship a new APK where the client calls apply_orb_delta / create_skora_claim
---      instead of writing players.orb directly (see ORB-REFACTOR-PLAN.md).
---   3. Only after that APK is live: enable the SKORA claim button.
+-- PART R — Pre-Season reset.  READ BEFORE RUNNING.  Zeroes every balance.
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Decision of 2026-09-05: Pre-Season is declared a test season. The ORB economy
+-- was provably open for its whole run, so no balance from it can be trusted,
+-- including the honest ones — there is no way to tell them apart after the
+-- fact. Nothing has been paid out yet, which makes this the cheapest moment
+-- this will ever be.
 --
--- VERIFY:
---   SELECT proname FROM pg_proc WHERE proname IN
---     ('apply_orb_delta','create_skora_claim');
---   SELECT grantee, privilege_type, column_name FROM information_schema.column_privileges
---     WHERE table_name='players' AND column_name IN ('orb','season_orb');
+-- Run this ONLY after the new APK is live, so players see the reset explained
+-- in an app that can no longer be cheated. Running it early resets balances
+-- that the old client would then immediately write back.
+--
+-- Uncomment to run:
+
+-- begin;
+--   -- Keep a copy. Untouched by the reset, useful for compensating real players.
+--   create table if not exists public.preseason_snapshot as
+--     select device_id, username, orb, season_orb, level, streak, wallet_address,
+--            now() as snapshot_at
+--       from public.players;
+--
+--   insert into public.orb_ledger (device_id, delta, reason, balance_after)
+--     select device_id, -orb, 'preseason_reset', 0
+--       from public.players where orb <> 0;
+--
+--   update public.players set orb = 0, season_orb = 0;
+--   delete from public.tournament_scores;
+-- commit;
+
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- ROLLOUT ORDER — do not skip a step
+--   1. Apply everything above PART R.
+--      The live v1.1.4 client keeps working: its syncScore() writes to orb are
+--      silently ignored (0 rows), so balances stop climbing but nothing errors.
+--   2. Ship the APK that calls apply_orb_delta / create_skora_claim instead of
+--      writing players.orb directly (see ORB-REFACTOR-PLAN.md).
+--   3. Once that APK is live: run PART R, announce the reset, open Season 1.
+--   4. Only then enable the SKORA claim button.
+--
+-- VERIFY
+--   select proname, prosecdef, proconfig from pg_proc
+--    where proname in ('apply_orb_delta','create_skora_claim');
+--   -- proconfig must show search_path on both.
+--
+--   select grantee, privilege_type, column_name
+--     from information_schema.column_privileges
+--    where table_name = 'players' and column_name in ('orb','season_orb');
+--   -- UPDATE must be absent for anon and authenticated.
+--
+--   select public.apply_orb_delta('zz-does-not-exist-1234', 100, 'tap');
+--   -- must raise "Player not found", proving the function is reachable.
 -- ═══════════════════════════════════════════════════════════════════════════

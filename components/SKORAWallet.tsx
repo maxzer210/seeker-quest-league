@@ -6,7 +6,7 @@ import {
 import { supabase } from '../lib/supabase';
 import {
   SKORA_MINT, SKORA_NETWORK, ORB_PER_SKORA, MIN_CLAIM_ORB,
-  orbToSkora, skoraDisplay,
+  orbToSkora, skoraDisplay, createSkoraClaim,
 } from '../lib/skora';
 import { t, useLang } from '../lib/i18n';
 
@@ -126,29 +126,24 @@ export default function SKORAWallet({ orb, onSpendOrb, deviceId }: Props) {
           text: t('skora.confirmYes'),
           onPress: async () => {
             setLoading(true);
-            try {
-              const { data, error } = await supabase
-                .from('skora_claims')
-                .insert({
-                  device_id:      deviceId,
-                  wallet_address: addr,
-                  orb_spent:      claimAmount,
-                  skora_amount:   skoraAmt,
-                  status:         'pending',
-                })
-                .select()
-                .single();
+            // The database debits the ORB as part of creating the claim, so
+            // nothing is subtracted here. onSpendOrb only asks the app to read
+            // the new balance back — subtracting locally would charge twice.
+            const res = await createSkoraClaim({
+              deviceId,
+              walletAddress: addr,
+              orbAmount:     claimAmount,
+            });
 
-              if (error) throw error;
-
+            if (res.ok) {
               onSpendOrb(claimAmount);
               setSavedWallet(addr);
               setWalletInput('');
-              setClaims(prev => [data as ClaimRow, ...prev]);
+              setClaims(prev => [res.row as ClaimRow, ...prev]);
               setTab('history');
               Alert.alert(t('skora.okTitle'), t('skora.okBody', { skora: skoraAmt.toFixed(2) }));
-            } catch (e: any) {
-              Alert.alert(t('skora.err'), e?.message ?? t('skora.retry'));
+            } else {
+              Alert.alert(t('skora.err'), res.error || t('skora.retry'));
             }
             setLoading(false);
           },

@@ -45,39 +45,44 @@ export type SkoraClaimRow = {
 };
 
 /**
- * Create a SKORA claim. Caller is responsible for deducting ORB from local
- * balance BEFORE calling this — we cannot roll back ORB on failure here,
- * but the processor script will not refund a rejected claim either.
+ * Create a SKORA claim.
  *
- * Best practice: wrap call site in try/catch, only deduct ORB if this resolves OK.
+ * The ORB debit happens server-side in the same transaction as the insert, so
+ * the caller must NOT deduct anything itself — doing so charges the player
+ * twice. On success, read the balance back from the server.
  */
+export type SkoraClaimResult =
+  | { ok: true;  row: SkoraClaimRow }
+  | { ok: false; error: string };
+
 export async function createSkoraClaim(input: {
   deviceId:      string;
   walletAddress: string;
   orbAmount:     number;
-}): Promise<SkoraClaimRow | null> {
+}): Promise<SkoraClaimResult> {
   const { deviceId, walletAddress, orbAmount } = input;
-  if (orbAmount < MIN_CLAIM_ORB) return null;
-  if (orbAmount > MAX_CLAIM_ORB) return null;
+  if (orbAmount < MIN_CLAIM_ORB) return { ok: false, error: 'below minimum' };
+  if (orbAmount > MAX_CLAIM_ORB) return { ok: false, error: 'above maximum' };
 
-  const skoraAmount = orbToSkora(orbAmount);
-  const { data, error } = await supabase
-    .from('skora_claims')
-    .insert({
-      device_id:      deviceId,
-      wallet_address: walletAddress,
-      orb_spent:      orbAmount,
-      skora_amount:   skoraAmount,
-      status:         'pending',
-    })
-    .select('*')
-    .single();
+  // The database checks the balance and debits it inside the same transaction,
+  // so a claim can never be larger than what was actually earned. A direct
+  // insert here is refused now — that is how the old balances got out.
+  const { data, error } = await supabase.rpc('create_skora_claim', {
+    p_device_id:      deviceId,
+    p_wallet_address: walletAddress,
+    p_orb_amount:     Math.trunc(orbAmount),
+  });
 
   if (error) {
     console.warn('[skora] createSkoraClaim error:', error.message);
-    return null;
+    return { ok: false, error: error.message };
   }
-  return data as SkoraClaimRow;
+
+  const claimId = (data as { claim_id?: unknown } | null)?.claim_id;
+  if (!claimId) return { ok: false, error: 'no claim id returned' };
+
+  const row = await getClaimStatus(String(claimId));
+  return row ? { ok: true, row } : { ok: false, error: 'claim created but not readable' };
 }
 
 /** Fetch most recent claims for this device. */
