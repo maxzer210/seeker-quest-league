@@ -98,3 +98,11 @@ assets/labyrinth/_source/
 # Any publisher keypair variant - never commit a private key
 dapp-store/publisher*.json
 dapp-store/*keypair*.json
+
+# Signed release APKs — ~140 MB each, rebuilt from source, never versioned
+releases/
+
+# Season Zero refund records — they list players' wallet addresses next to the
+# amounts refunded. This repository is public; these stay on the owner's disk.
+SEASON-ZERO-REFUNDS.md
+supabase-season-zero-refunds.sql

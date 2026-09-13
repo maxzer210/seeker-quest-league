@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../lib/supabase';
+import { repairUsername } from '../lib/seeker';
 import { t, useLang } from '../lib/i18n';
 
 const { width: W } = Dimensions.get('window');
@@ -86,6 +87,32 @@ export default function Tournament({ deviceId, username, myScore }: Props) {
   }, []);
 
   // ── data ─────────────────────────────────────────────────────────────────
+
+  /**
+   * The live name for each device, from players.
+   *
+   * tournament_scores.username is a copy taken at the moment the points were
+   * scored, and it is only rewritten the next time that player scores. So
+   * anyone who picked a custom name — or whose .skr domain was adopted — after
+   * their last run is still listed here under the old Seeker#XXXX. players
+   * holds the name they actually go by.
+   */
+  async function fetchCurrentNames(ids: string[]): Promise<Map<string, string>> {
+    const out = new Map<string, string>();
+    if (!ids.length) return out;
+    try {
+      const { data } = await supabase
+        .from('players')
+        .select('device_id, username')
+        .in('device_id', ids);
+      for (const p of (data ?? []) as { device_id: string; username: string | null }[]) {
+        const name = repairUsername(p.username);
+        if (name) out.set(p.device_id, name);
+      }
+    } catch (_) {}
+    return out;
+  }
+
   const fetchScores = useCallback(async () => {
     setLoading(true);
     try {
@@ -96,8 +123,13 @@ export default function Tournament({ deviceId, username, myScore }: Props) {
         .order('score', { ascending: false })
         .limit(50);
       if (data) {
-        setScores(data as ScoreRow[]);
-        const rank = (data as ScoreRow[]).findIndex(r => r.device_id === deviceId);
+        const rows  = data as ScoreRow[];
+        const names = await fetchCurrentNames(rows.map(r => r.device_id));
+        setScores(rows.map(r => ({
+          ...r,
+          username: names.get(r.device_id) || repairUsername(r.username),
+        })));
+        const rank = rows.findIndex(r => r.device_id === deviceId);
         setMyRank(rank >= 0 ? rank + 1 : null);
       }
     } catch (_) {}
@@ -249,7 +281,9 @@ export default function Tournament({ deviceId, username, myScore }: Props) {
             if (!row) return <View key={idx} style={s.podiumItem} />;
             return (
               <View key={row.device_id} style={[s.podiumItem, idx === 1 && s.podiumCenter]}>
-                <Text style={s.podiumUsername} numberOfLines={1}>{row.username.slice(0, 9)}</Text>
+                {/* No hard slice — it cut a 17-char .skr domain down to
+                    "cryptonof". numberOfLines already ellipsizes at the edge. */}
+                <Text style={s.podiumUsername} numberOfLines={1}>{row.username}</Text>
                 <Text style={s.podiumScore}>{row.score.toLocaleString()}</Text>
                 <LinearGradient colors={colors} style={[s.podiumBar, { height: barH }]}>
                   <Text style={s.podiumMedal}>{getMedal(rank)}</Text>

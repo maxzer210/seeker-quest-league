@@ -53,8 +53,24 @@ export type LeaderRow = {
   total_ms: number;
 };
 
-/** Today's five, in slot order. Empty array means no issue was built. */
+/**
+ * Today's five, in slot order. Empty array means no issue was built.
+ *
+ * The issue is built by whoever opens the quest first that day. There is no
+ * scheduler on the project, and the version of this that relied on someone
+ * running build_quiz_day() by hand posted exactly one issue and then left the
+ * home screen advertising an empty quest for twelve days. ensure_quiz_day() is
+ * idempotent and returns 0 for everyone after the first, so the cost of this
+ * is one cheap call per open.
+ *
+ * A failure here is not fatal: if the issue already exists the read below
+ * still finds it.
+ */
 export async function fetchTodaysQuiz(): Promise<QuizQuestion[]> {
+  try {
+    await supabase.rpc('ensure_quiz_day');
+  } catch (_) {}
+
   const { data, error } = await supabase
     .from('quiz_today')
     .select('*')

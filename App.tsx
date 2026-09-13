@@ -74,7 +74,7 @@ import SolanaQuest from './components/SolanaQuest';
 import Onboarding from './components/Onboarding';
 import WinCelebration, { WinCelebrationHandle } from './components/WinCelebration';
 import {
-  fetchSeekerProfile, claimSgtBonus,
+  fetchSeekerProfile, claimSgtBonus, repairUsername,
   SGT_BONUS_ORB, type SeekerProfileSnapshot,
 } from './lib/seeker';
 import GenesisNews from './components/GenesisNews';
@@ -90,7 +90,7 @@ import {
   scheduleEnergyFull, cancelEnergyFull,
   cancelAllScheduled, sendTestNotification,
 } from './lib/notifications';
-import { loadSavedLang, t, useLang, LANGUAGES, setLang } from './lib/i18n';
+import { loadSavedLang, t, useLang, LANGUAGES, setLang, getLang } from './lib/i18n';
 import {
   ensureReferralCode, claimReferral, collectReferrerRewards,
   getReferralCount, hasClaimedReferral, REFERRER_REWARD, REFERRED_REWARD,
@@ -101,6 +101,7 @@ import PremiumWallet from './components/PremiumWallet';
 import CosmeticNftTeaser from './components/CosmeticNftTeaser';
 import { loadSavedTheme, setActiveTheme, NFT_THEMES, THEME_ORDER, useTheme } from './lib/theme';
 import { VERSION_LABEL, VERSION_FULL, APP_VERSION, BUILD_CODE } from './lib/version';
+import * as Funnel from './lib/funnel';
 import LottieView from 'lottie-react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Video, ResizeMode } from 'expo-av';
@@ -455,6 +456,10 @@ function AppInner() {
   const [username, setUsername]             = useState('');
   const [editingUsername, setEditingUsername] = useState(false);
   const [pendingUsername, setPendingUsername]  = useState('');
+  // Flips once the stored name has been read back. Until then `username` is
+  // only the Seeker#XXXX placeholder, and the .skr adoption below must not
+  // mistake that for a player who never chose a name.
+  const [nameRestored, setNameRestored]     = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showDonateModal,  setShowDonateModal]  = useState(false);
   // P2P ORB Send modal
@@ -558,17 +563,21 @@ function AppInner() {
     loadEnergy();
     loadSounds();
     AsyncStorage.getItem('@seeker_onboarded').then(v => {
-      setOnboarded(v === '1');
+      const onboardedBefore = v === '1';
+      setOnboarded(onboardedBefore);
+      // markLaunch needs to know this: an install that has already been through
+      // onboarding is not a first session, and must not be counted as one.
+      Funnel.markLaunch(onboardedBefore);
+      if (!onboardedBefore) Funnel.mark('onboard_start');
     });
     // Load saved language, or trigger selector if none
     AsyncStorage.getItem('@seeker_lang_picked').then(async picked => {
-      if (picked === '1') {
-        await loadSavedLang();
-        setLangPicked(true);
-      } else {
-        await loadSavedLang(); // sets to en default
-        setLangPicked(false);
-      }
+      const lang = await loadSavedLang(); // sets to en default when unset
+      setLangPicked(picked === '1');
+      // Reported on every launch, not just at the selector: the useful question
+      // is what the existing players run in, and waiting for new installs to
+      // answer it would take months at the current rate.
+      Funnel.markLanguage(lang);
     });
     // Load saved theme
     loadSavedTheme();
@@ -614,6 +623,9 @@ function AppInner() {
     });
     getOrCreateDeviceId().then(async id => {
       deviceIdRef.current = id;
+      // Releases whatever was marked while this was still loading — app_open
+      // and the language pick both happen before the id exists.
+      Funnel.attachDevice(id);
       const defaultName = 'Seeker#' + id.slice(-4).toUpperCase();
       setUsername(defaultName);
       setPendingUsername(defaultName);
@@ -632,6 +644,19 @@ function AppInner() {
       sndDead.current?.unloadAsync();
     };
   }, []);
+
+  // ── funnel: which screens the first session actually reaches ───────────────
+  // One effect rather than a mark at every setScreen call: there are dozens of
+  // those and a new one would silently miss the funnel.
+  const GAME_SCREENS: Screen[] = [
+    'wheel', 'horse', 'treasure', 'arena', 'lands', 'runner', 'pvp', 'labyrinth', 'tap', 'signal',
+  ];
+  useEffect(() => {
+    if (screen === 'home' && langPicked && onboarded) Funnel.mark('home_seen');
+    if (screen === 'quest') Funnel.mark('quest_open');
+    if (GAME_SCREENS.includes(screen)) Funnel.mark('first_game');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen, langPicked, onboarded]);
 
   // Energy refill: +1 every ENERGY_REGEN_SEC seconds, persisted via AsyncStorage
   useEffect(() => {
@@ -820,18 +845,29 @@ function AppInner() {
         .maybeSingle();
       if (data) {
         serverOrb = asNum(data.orb);
+        // The name is restored on every launch, not only when the local
+        // snapshot is missing. Sitting inside that branch, it only ever ran
+        // for a fresh install: every returning player came back up as
+        // Seeker#XXXX, and that placeholder is what addTournamentScore then
+        // stamped onto their tournament row — which is why the cup table is
+        // full of Seeker#XXXX while players holds the real names. It also let
+        // the .skr adoption below mistake a chosen name for the placeholder
+        // and overwrite it.
+        const saved = repairUsername(data.username as string | null);
+        if (saved) {
+          setUsername(saved);
+          setPendingUsername(saved);
+        }
         // Fallback: server progress from before the snapshot existed.
         if (savedOrb === null) {
           savedOrb   = serverOrb;
           savedLevel = savedLevel ?? asNum(data.level);
-          // Custom username also used to reset to Seeker#XXXX on every launch.
-          if (typeof data.username === 'string' && data.username.trim()) {
-            setUsername(data.username);
-            setPendingUsername(data.username);
-          }
         }
       }
     } catch (_) {}
+    // Also set when the read failed or the row is new: the .skr domain should
+    // still be adopted, it just no longer races the stored name.
+    setNameRestored(true);
     syncedOrbRef.current = serverOrb;
 
     let restoredOrb = INITIAL_ORB;
@@ -1001,6 +1037,7 @@ function AppInner() {
     const skr = seekerProfile?.skrDomain;
     if (skrAdopted.current || !skr) return;
     if (!/^[a-z0-9][a-z0-9-]{0,62}\.skr$/i.test(skr)) return;   // never write junk into a name
+    if (!nameRestored) return;                                  // the stored name outranks the placeholder
     if (!username || !username.startsWith('Seeker#')) return;   // wait for it, and respect a custom name
     if (!deviceIdRef.current) return;
 
@@ -1010,7 +1047,7 @@ function AppInner() {
     supabase.from('players').update({ username: skr })
       .eq('device_id', deviceIdRef.current)
       .then(undefined, () => {});
-  }, [seekerProfile, username]);
+  }, [seekerProfile, username, nameRestored]);
 
   // ── wallet helpers ─────────────────────────────────────────────────────────
 
@@ -1046,6 +1083,7 @@ function AppInner() {
       await AsyncStorage.setItem('sk_wallet_auth_token', session.authToken);
       setWalletAddr(session.address);
       setWalletAuthToken(session.authToken);
+      Funnel.mark('wallet');
       fetchSolBalance(session.address);
       // Persist wallet to players row so the prize distribution script can find it
       try {
@@ -1699,6 +1737,7 @@ function AppInner() {
 
   function handleTap() {
     if (energy === 0) return;
+    Funnel.mark('first_tap');
     const tapVal  = TAP_VALUES[upgrades.signalPower];
     const isCrit  = Math.random() < CRIT_CHANCES[upgrades.critChance];
     const mul     = boostActive ? 3 : 1;
@@ -1754,6 +1793,7 @@ function AppInner() {
       const nx = x + 1;
       if (nx >= 100) {
         const nl = level + 1; setLevel(nl);
+        if (nl >= 2) Funnel.mark('level_2');
         setLevelUpText(`⬆ LEVEL ${nl}!`);
         playSound(sndLevelUp.current);
         Animated.sequence([
@@ -2392,6 +2432,7 @@ function AppInner() {
               <Text style={styles.privacyH3}>1.2 Information Collected Automatically</Text>
               <Text style={styles.privacyBullet}>• <Text style={{ fontWeight: '600' }}>Device identifier</Text> — a randomly generated UUID stored locally on your device. Used to track your in-game progress (ORB balance, streak, level). This is not your Android Advertising ID and is not shared with third parties.</Text>
               <Text style={styles.privacyBullet}>• <Text style={{ fontWeight: '600' }}>Game activity</Text> — your in-game scores, tournament points, achievements.</Text>
+              <Text style={styles.privacyBullet}>• <Text style={{ fontWeight: '600' }}>First-session milestones</Text> — one timestamp the first time you reach each of a short fixed list of steps (app opened, language chosen, onboarding finished, first tap, first game, level 2, wallet connected, returned on a later day). Recorded once, never changed. Used to find where new players get stuck. No third-party analytics SDK is present in the app.</Text>
               <Text style={styles.privacyBullet}>• <Text style={{ fontWeight: '600' }}>On-chain transactions</Text> — when you make a paid Fortune Wheel spin (0.01 SOL), we record the transaction signature, payer wallet, and amount in our backend for prize-pool accounting. This data is also publicly verifiable on the Solana blockchain.</Text>
 
               <Text style={styles.privacyH3}>1.3 Information We Do NOT Collect</Text>
@@ -2636,28 +2677,48 @@ function AppInner() {
                    never changes, so it gave the home screen nothing new to say;
                    the quest is a fresh set of five every day. The tapper now
                    lives in the arcade with the other games. ── */}
+              {/* Dark, like the rest of this screen. It used to be a full-bleed
+                  mint-to-cyan slab with near-black text — not ugly, but foreign:
+                  a light-mode block dropped into a dark screen, reading as if it
+                  had been pasted in from another app. Solana green is now the
+                  accent it lights the card with, not the surface it paints. */}
               <TouchableOpacity onPress={() => setScreen('quest')} activeOpacity={0.9} style={styles.questHeroWrap}>
                 <LinearGradient
-                  colors={['#14F195', '#00C2FF']}
+                  colors={['#04140F', '#071D2C', '#0A0A18']}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                   style={styles.questHero}
                 >
                   {/* breathing halo behind the mark */}
                   <Animated.View style={[styles.questHalo, {
-                    opacity: questPulse.interpolate({ inputRange: [0, 1], outputRange: [0.16, 0.42] }),
+                    opacity: questPulse.interpolate({ inputRange: [0, 1], outputRange: [0.10, 0.30] }),
                     transform: [{ scale: questPulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.35] }) }],
                   }]} />
-                  <Animated.Text style={[styles.questHeroMark, {
-                    transform: [{ scale: questPulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }) }],
-                  }]}>◎</Animated.Text>
+                  <Animated.View style={[styles.questHeroDisc, {
+                    transform: [{ scale: questPulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] }) }],
+                  }]}>
+                    <LinearGradient
+                      colors={['#14F195', '#00C2FF']}
+                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                      style={styles.questHeroDiscFill}
+                    >
+                      <Text style={styles.questHeroMark}>◎</Text>
+                    </LinearGradient>
+                  </Animated.View>
 
                   <Text style={styles.questHeroKicker}>{t('quest.kicker')}</Text>
                   <Text style={styles.questHeroTitle}>{t('quest.title')}</Text>
-                  <Text style={styles.questHeroSub}>{t('quest.sub')}</Text>
+                  {/* balanced: Android evens out the line lengths, so no single word
+                      is left hanging on the second line — "speed." used to be — in
+                      any of the five languages, whatever length each one runs to. */}
+                  <Text style={styles.questHeroSub} textBreakStrategy="balanced">{t('quest.sub')}</Text>
 
-                  <View style={styles.questHeroCta}>
+                  <LinearGradient
+                    colors={['#14F195', '#00C2FF']}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                    style={styles.questHeroCta}
+                  >
                     <Text style={styles.questHeroCtaTxt}>{t('quest.play')}</Text>
-                  </View>
+                  </LinearGradient>
                 </LinearGradient>
               </TouchableOpacity>
 
@@ -3302,7 +3363,7 @@ function AppInner() {
                     <LeaderRow
                       key={p.device_id}
                       rank={i + 1}
-                      name={p.username}
+                      name={repairUsername(p.username)}
                       orb={p.season_orb}
                       gold={i === 0}
                       highlight={p.device_id === deviceIdRef.current}
@@ -4235,6 +4296,8 @@ function AppInner() {
           <LanguageSelector onDone={async () => {
             await AsyncStorage.setItem('@seeker_lang_picked', '1');
             setLangPicked(true);
+            Funnel.mark('lang_picked');
+            Funnel.markLanguage(getLang());
           }} />
         </View>
       )}
@@ -4245,6 +4308,7 @@ function AppInner() {
           <Onboarding onDone={async (name) => {
             await AsyncStorage.setItem('@seeker_onboarded', '1');
             setOnboarded(true);
+            Funnel.mark('onboard_done');
             if (name) {
               setUsername(name);
               setPendingUsername(name);
@@ -4767,18 +4831,24 @@ const styles = StyleSheet.create({
 
   // ── Solana Quest hero (home) ──
   questHeroWrap: { marginTop: 8, marginBottom: 4, borderRadius: 26, overflow: 'hidden',
-                   shadowColor: '#14F195', shadowRadius: 22, shadowOpacity: 0.5, elevation: 12 },
+                   borderWidth: 1, borderColor: 'rgba(20,241,149,0.34)',
+                   shadowColor: '#14F195', shadowRadius: 20, shadowOpacity: 0.34, elevation: 10 },
   questHero:     { alignItems: 'center', paddingVertical: 26, paddingHorizontal: 22 },
-  questHalo:     { position: 'absolute', top: 6, width: 150, height: 150, borderRadius: 75,
-                   backgroundColor: '#ffffff' },
-  questHeroMark: { fontSize: 52, color: '#02120C', fontWeight: '900', marginBottom: 6 },
-  questHeroKicker:{ color: 'rgba(2,18,12,0.62)', fontSize: 9.5, fontWeight: '900', letterSpacing: 3 },
-  questHeroTitle:{ color: '#02120C', fontSize: 26, fontWeight: '900', letterSpacing: 2.5, marginTop: 3 },
-  questHeroSub:  { color: 'rgba(2,18,12,0.74)', fontSize: 12.5, fontWeight: '700', marginTop: 6,
-                   textAlign: 'center' },
-  questHeroCta:  { marginTop: 16, backgroundColor: 'rgba(2,18,12,0.86)', paddingVertical: 11,
-                   paddingHorizontal: 34, borderRadius: 16 },
-  questHeroCtaTxt:{ color: '#14F195', fontSize: 13, fontWeight: '900', letterSpacing: 2 },
+  // Concentric with the disc: 26 card padding + 37 disc radius − 84 halo radius.
+  // It was pinned at top: 2, which put its centre 23dp below the disc's and
+  // spread it down behind the title — plainly visible on the device.
+  questHalo:     { position: 'absolute', top: -21, width: 168, height: 168, borderRadius: 84,
+                   backgroundColor: '#14F195' },
+  questHeroDisc: { width: 74, height: 74, borderRadius: 37, marginBottom: 12,
+                   shadowColor: '#14F195', shadowRadius: 16, shadowOpacity: 0.7, elevation: 8 },
+  questHeroDiscFill: { flex: 1, borderRadius: 37, alignItems: 'center', justifyContent: 'center' },
+  questHeroMark: { fontSize: 36, color: '#02120C', fontWeight: '900' },
+  questHeroKicker:{ color: '#14F195', fontSize: 9.5, fontWeight: '900', letterSpacing: 3 },
+  questHeroTitle:{ color: '#F5F3FF', fontSize: 26, fontWeight: '900', letterSpacing: 2.5, marginTop: 4 },
+  questHeroSub:  { color: '#8b93b8', fontSize: 12.5, fontWeight: '700', marginTop: 7,
+                   textAlign: 'center', lineHeight: 18 },
+  questHeroCta:  { marginTop: 17, paddingVertical: 12, paddingHorizontal: 36, borderRadius: 16 },
+  questHeroCtaTxt:{ color: '#02120C', fontSize: 13, fontWeight: '900', letterSpacing: 2 },
   tapHeroTitle:     { color: '#FACC15', fontSize: 16, fontWeight: '900', letterSpacing: 4,
                       textShadowColor: 'rgba(250,204,21,0.4)', textShadowRadius: 8 },
   tapHeroSub:       { color: '#94A3B8', fontSize: 11, textAlign: 'center', paddingHorizontal: 30,

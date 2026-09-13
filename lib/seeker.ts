@@ -92,6 +92,27 @@ export function normalizeSkrDomain(raw: any): string | null {
   return s + '.skr';
 }
 
+/**
+ * Repair a username read back from the database.
+ *
+ * Builds that predate normalizeSkrDomain stored the .skr domain exactly as the
+ * SDK handed it over — a stringified byte array — so those rows read
+ * "99,114,121,...,119.skr" and print that way on every leaderboard. The owner
+ * cannot fix it from inside the app either: the name no longer starts with
+ * "Seeker#", so the adoption effect steps around it as a custom name. Decode
+ * it on read instead.
+ *
+ * Only byte arrays are touched. A plain custom name like "Nightowl" is returned
+ * exactly as stored — running it through normalizeSkrDomain would invent a
+ * ".skr" domain that the player does not own.
+ */
+export function repairUsername(name: string | null | undefined): string {
+  const trimmed = (name ?? '').trim();
+  const body = trimmed.replace(/\.skr\s*$/i, '');
+  if (!/^\d+(\s*,\s*\d+)+$/.test(body)) return trimmed;
+  return normalizeSkrDomain(trimmed) ?? trimmed;
+}
+
 // ── Lazy SDK loader ──────────────────────────────────────────────────────────
 // We wrap the require() so that if seeker-sdk (or any of its native peer deps)
 // fails to load at runtime, the rest of the app continues to function.

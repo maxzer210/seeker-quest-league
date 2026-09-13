@@ -3,9 +3,9 @@
 // Видимая в Home + Settings.
 // ─────────────────────────────────────────────────────────────────────────
 
-export const APP_VERSION = '1.2.0';
-export const BUILD_TIME  = '2026-08-24 17:30';
-export const BUILD_CODE  = 'abyss-pacts';
+export const APP_VERSION = '1.2.6';
+export const BUILD_TIME  = '2026-09-13 11:10';
+export const BUILD_CODE  = 'device-fixes';
 
 /** Compact label for UI: "v1.0.0" */
 export const VERSION_LABEL = `v${APP_VERSION}`;

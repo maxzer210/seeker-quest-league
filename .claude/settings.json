@@ -1,7 +1,4 @@
 {
-  "enabledPlugins": {
-    "expo@claude-plugins-official": true
-  },
   "permissions": {
     "allow": [
       "Bash(npx tsc *)",
@@ -13,5 +10,8 @@
       "Bash(npm outdated*)",
       "mcp__ccd_session__mark_chapter"
     ]
+  },
+  "enabledPlugins": {
+    "expo@claude-plugins-official": true
   }
 }
