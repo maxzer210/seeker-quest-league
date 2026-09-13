@@ -106,3 +106,7 @@ releases/
 # amounts refunded. This repository is public; these stay on the owner's disk.
 SEASON-ZERO-REFUNDS.md
 supabase-season-zero-refunds.sql
+
+# Private half of the project memory — account names, open vulnerabilities,
+# revenue, wallet addresses, device ids. Imported by CLAUDE.md, never versioned.
+CLAUDE.local.md
