@@ -61,7 +61,7 @@ release:
       # survives the cut as a complete thought; the old line cut to
       # "Tap-to-earn arcade. Earn OR..." — and tap-to-earn is the exact thing
       # the one substantive review complained of being bored by.
-      short_description: "Roguelike dungeon crawler. Win real SOL daily."
+      short_description: "Roguelike dungeon crawler. Daily Solana quiz."
       long_description: |
         Seeker Quest League is the first daily-routine arcade game built
         natively for the Solana Mobile Seeker phone.
@@ -80,31 +80,20 @@ release:
         🎰 Six more mini-games: Fortune Wheel, Horse Race, Space Runner,
         Treasure Hunt, Arena, PvP, Seeker Lands.
 
-        💰 Compete in daily SOL tournaments. The prize pool grows live
-        on-chain with every paid spin. Top players take it home every 24 hours.
-
         🟣 Seeker holders get exclusive perks: +5,000 ORB welcome bonus,
         2× ORB rewards forever (Founders), automatic .skr domain as username.
-
-        🪙 Earn SKORA — a real SPL token. 10,000 ORB = 1 SKORA, claimable
-        to your wallet.
 
         ⏰ Five minutes a day, or an hour in the dark. Your call.
 
         Built by Seekers, for Seekers.
       new_in_version: |
-        v1.1.4 — The Abyss Labyrinth
-        🕳 A whole new game inside the app — a roguelike dungeon that is
-        different every run, with torchlight, traps and a Guardian boss
-        🏕 Seeker's Camp — permanent upgrades that survive every death
-        ⚔️ Real combat — telegraphed attacks, dodge-dashes, combo strikes
-        🗺 Multi-floor descents — go deeper for a bigger payout, or extract
-        🎁 Invite a friend — you BOTH earn 2,000 ORB
-        ⚡ 5× bigger energy tank and faster recharge
-        🔔 Reminders for streaks, full energy and tournaments
-        🛠 More reliable SOL payments — no more false "payment failed"
-        🟣 Seeker .skr names now display correctly
-      saga_features_localized: "Seeker-exclusive bonuses, .skr domain support, on-chain SOL prizes."
+        v1.2.6
+        ◎ Solana Quest now shows exactly when the next set arrives — a live countdown that is correct in every time zone
+        🌐 Invites and Space Runner are now translated into Русский, 中文, 日本語 and Français
+        🎨 Cleaner quest screens: the results button no longer sits under the navigation bar, and the home quest card is re-balanced
+        🔒 We now record a few anonymous first-session milestones to find where new players get stuck. Details in the updated privacy policy
+        🛠 Stability fixes
+      saga_features_localized: "Seeker-exclusive bonuses, .skr domain support, daily Solana quiz."
       copyright: "© 2026 Cryptonoframe. All rights reserved."
       sagaFeaturesLocalized: "Exclusive perks for Solana Mobile Seeker holders."
       google_store_package: ""

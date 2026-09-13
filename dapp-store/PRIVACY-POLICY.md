@@ -1,4 +1,4 @@
-﻿# Privacy Policy вЂ” Seeker Quest League
+# Privacy Policy — Seeker Quest League
 
 *Effective date: May 25, 2026*
 *Last updated: May 25, 2026*
@@ -15,30 +15,37 @@ We collect the **minimum information** needed to operate the game and run
 fair tournaments.
 
 ### 1.1 Information You Provide
-- **Username** вЂ” a public name you choose. Optional. Defaults to a random
+- **Username** — a public name you choose. Optional. Defaults to a random
   pseudonym (e.g. `Seeker#A1B2`).
-- **Solana wallet address** вЂ” when you connect your Solana wallet via the
+- **Solana wallet address** — when you connect your Solana wallet via the
   Mobile Wallet Adapter (MWA). This is your public on-chain identifier.
 
 ### 1.2 Information Collected Automatically
-- **Device identifier** вЂ” a randomly generated UUID stored locally on your
+- **Device identifier** — a randomly generated UUID stored locally on your
   device. Used to track your in-game progress (ORB balance, streak, level).
   This is **not** your Android Advertising ID and is **not** shared with
   third parties.
-- **Game activity** вЂ” your in-game scores, tournament points, achievements.
-- **On-chain transactions** вЂ” when you make a paid Fortune Wheel spin
+- **Game activity** — your in-game scores, tournament points, achievements.
+- **First-session milestones** — a timestamp for each of a short, fixed list of
+  steps the first time you reach them: app opened, language chosen, onboarding
+  finished, first tap, first game, reached level 2, wallet connected, returned
+  on a later day. One timestamp per step, recorded once and never changed. We
+  use it to find where new players get stuck. It is first-party only — no
+  third-party analytics SDK is present in the app, and this data is not shared
+  or sold.
+- **On-chain transactions** — when you make a paid Fortune Wheel spin
   (0.01 SOL), we record the transaction signature, payer wallet, and
   amount in our backend for prize-pool accounting. This data is also
   publicly verifiable on the Solana blockchain.
 
 ### 1.3 Information We Do NOT Collect
-- вќЊ Real name, address, phone number, email (unless you voluntarily
+- ❌ Real name, address, phone number, email (unless you voluntarily
   contact our support email)
-- вќЊ Government ID, KYC information
-- вќЊ Contacts, photos, files, camera, microphone, location
-- вќЊ Browsing history outside the App
-- вќЊ Android advertising ID (AAID)
-- вќЊ Analytics tracking via Google, Facebook or other third-party SDKs
+- ❌ Government ID, KYC information
+- ❌ Contacts, photos, files, camera, microphone, location
+- ❌ Browsing history outside the App
+- ❌ Android advertising ID (AAID)
+- ❌ Analytics tracking via Google, Facebook or other third-party SDKs
 
 ---
 
@@ -58,14 +65,14 @@ fair tournaments.
 We **do not sell** your data to anyone.
 
 We share information only:
-- **Publicly on the Solana blockchain** вЂ” any transaction you sign
+- **Publicly on the Solana blockchain** — any transaction you sign
   (paid spins, prize claims) is publicly visible on Solana Explorer
-- **Publicly on the leaderboard** вЂ” your username and score are visible
+- **Publicly on the leaderboard** — your username and score are visible
   to all players
-- **With Supabase** вЂ” our backend service provider. Supabase stores game
+- **With Supabase** — our backend service provider. Supabase stores game
   state, user profiles, and tournament scores under standard data-processing
   terms ([https://supabase.com/privacy](https://supabase.com/privacy))
-- **When required by law** вЂ” if compelled by valid legal process
+- **When required by law** — if compelled by valid legal process
 
 ---
 
@@ -106,9 +113,9 @@ App unsuitable for minors in most jurisdictions.
 ## 7. Your Rights
 
 You may:
-- **Stop playing at any time** вЂ” uninstall the App to remove local data
-- **Disconnect your wallet** вЂ” go to Profile в†’ Wallet в†’ Disconnect
-- **Request data deletion** вЂ” email us at support@seekerquest-league.com with your
+- **Stop playing at any time** — uninstall the App to remove local data
+- **Disconnect your wallet** — go to Profile → Wallet → Disconnect
+- **Request data deletion** — email us at support@seekerquest-league.com with your
   device ID. We will delete your records within 30 days. Note: on-chain
   transactions cannot be deleted.
 

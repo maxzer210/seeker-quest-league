@@ -1,4 +1,4 @@
-﻿# Store Descriptions вЂ” Seeker Quest League
+# Store Descriptions — Seeker Quest League
 
 Copy-paste-ready text for dApp Store listing fields.
 All copy is in English (target audience: global Seeker holders).
@@ -38,71 +38,71 @@ The first daily-routine arcade for Solana Mobile
 ## 3. Long Description (max ~4000 chars)
 
 ```
-рџЋ® Seeker Quest League вЂ” the first daily-routine arcade game built natively for Solana Mobile Seeker.
+🎮 Seeker Quest League — the first daily-routine arcade game built natively for Solana Mobile Seeker.
 
 Tap, play mini-games, spin a fortune wheel and compete in daily SOL tournaments. The prize pool grows live on-chain. Top players take it home every 24 hours.
 
-в”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-рџЋ° SIX MINI-GAMES
-вЂў Fortune Wheel вЂ” spin for ORB, tickets, jackpots
-вЂў Horse Race вЂ” tap-race for 15 seconds vs AI rival
-вЂў Space Runner вЂ” swipe to dodge endless asteroids
-вЂў Treasure Hunt вЂ” open chests of varying rarity
-вЂў Arena вЂ” build a base, raid other players
-вЂў Seeker Lands вЂ” generate passive ORB income
+🎰 SIX MINI-GAMES
+• Fortune Wheel — spin for ORB, tickets, jackpots
+• Horse Race — tap-race for 15 seconds vs AI rival
+• Space Runner — swipe to dodge endless asteroids
+• Treasure Hunt — open chests of varying rarity
+• Arena — build a base, raid other players
+• Seeker Lands — generate passive ORB income
 
-в”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-рџ’° DAILY SOL TOURNAMENTS
-вЂў Every paid 0.01 SOL Wheel spin grows today's prize pool
-вЂў 80% of all spins flow into the pool, live on-chain
-вЂў At 23:59 UTC the pool is split among top-100 players
-вЂў Real SOL. Real money. Paid today, not "at TGE."
+💰 DAILY SOL TOURNAMENTS
+• Every paid 0.01 SOL Wheel spin grows today's prize pool
+• 80% of all spins flow into the pool, live on-chain
+• At 23:59 UTC the pool is split among top-100 players
+• Real SOL. Real money. Paid today, not "at TGE."
 
-в”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-рџџЈ SEEKER-EXCLUSIVE PERKS
-вЂў +5,000 ORB welcome bonus (one-time)
-вЂў 2Г— ORB rewards forever (Founders Program)
-вЂў .skr domain auto-display as your username
-вЂў Premium tier only for SGT holders
-вЂў SKR staking bonuses
+🟣 SEEKER-EXCLUSIVE PERKS
+• +5,000 ORB welcome bonus (one-time)
+• 2× ORB rewards forever (Founders Program)
+• .skr domain auto-display as your username
+• Premium tier only for SGT holders
+• SKR staking bonuses
 
-в”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-рџЄ™ TWO TOKENS
-вЂў ORB вЂ” in-game fuel, off-chain, zero gas
-вЂў SKORA вЂ” real SPL token, claimable to wallet (10,000 ORB = 1 SKORA)
+🪙 TWO TOKENS
+• ORB — in-game fuel, off-chain, zero gas
+• SKORA — real SPL token, claimable to wallet (10,000 ORB = 1 SKORA)
 
-в”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-вЏ° JUST 5 MINUTES A DAY
+⏰ JUST 5 MINUTES A DAY
 Designed to be a morning ritual, not a grind.
-вЂў Morning Claim в†’ free ORB + spin ticket
-вЂў Lands Harvest в†’ collect overnight income
-вЂў 1вЂ“3 paid spins to climb the rank
-вЂў Watch your prize forecast all day
+• Morning Claim → free ORB + spin ticket
+• Lands Harvest → collect overnight income
+• 1–3 paid spins to climb the rank
+• Watch your prize forecast all day
 
-в”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-рџЏ› GENESIS PRE-SEASON IS LIVE
-Be among the first 100 Founders. Get a permanent 2Г— ORB multiplier and an exclusive Founder NFT when Season 1 launches on June 22, 2026.
+🏛 GENESIS PRE-SEASON IS LIVE
+Be among the first 100 Founders. Get a permanent 2× ORB multiplier and an exclusive Founder NFT when Season 1 launches on June 22, 2026.
 
-в”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-рџ”’ TRANSPARENT BY DESIGN
-вЂў Treasury wallet вЂ” publicly verifiable on Solana Explorer
-вЂў Every paid spin вЂ” logged with on-chain signature
-вЂў Prize distribution вЂ” automated, open-source script
-вЂў No anonymous insiders, no VC dump pressure
+🔒 TRANSPARENT BY DESIGN
+• Treasury wallet — publicly verifiable on Solana Explorer
+• Every paid spin — logged with on-chain signature
+• Prize distribution — automated, open-source script
+• No anonymous insiders, no VC dump pressure
 
-в”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Built by Seekers, for Seekers.
 
-рџЊђ https://seekerquest-league.com
-рџ“§ hello@seekerquest-league.com
+🌐 https://seekerquest-league.com
+📧 hello@seekerquest-league.com
 ```
 
 ---
@@ -110,15 +110,15 @@ Built by Seekers, for Seekers.
 ## 4. "What's New" (for first release, max ~500 chars)
 
 ```
-рџљЂ v1.0.0 вЂ” Genesis Pre-Season Launch
+🚀 v1.0.0 — Genesis Pre-Season Launch
 
-вЂў All 6 mini-games shipped
-вЂў Mobile Wallet Adapter integration
-вЂў Paid 0.01 SOL Fortune Wheel spins
-вЂў Live prize pool tracking on-chain
-вЂў SGT verification + Founders Program
-вЂў .skr domain support
-вЂў Daily tournament system
+• All 6 mini-games shipped
+• Mobile Wallet Adapter integration
+• Paid 0.01 SOL Fortune Wheel spins
+• Live prize pool tracking on-chain
+• SGT verification + Founders Program
+• .skr domain support
+• Daily tournament system
 
 Be a Founder. Season 1 launches June 22, 2026.
 ```
@@ -145,7 +145,7 @@ Be a Founder. Season 1 launches June 22, 2026.
 ## 6. Saga / Seeker Features (specific field)
 
 ```
-Built for Solana Mobile Seeker. Exclusive perks for SGT holders: 2Г— ORB rewards forever, .skr domain auto-username, premium tournament tier with on-chain SOL prizes paid daily.
+Built for Solana Mobile Seeker. Exclusive perks for SGT holders: 2× ORB rewards forever, .skr domain auto-username, premium tournament tier with on-chain SOL prizes paid daily.
 ```
 
 ---
@@ -156,12 +156,12 @@ Built for Solana Mobile Seeker. Exclusive perks for SGT holders: 2Г— ORB rewa
 > "5 minutes a day. Real SOL prizes. Built only for Seeker."
 
 **Twitter-friendly (280 chars):**
-> рџЋ® Seeker Quest League is live on Solana Mobile.
+> 🎮 Seeker Quest League is live on Solana Mobile.
 >
-> вЂў 6 mini-games
-> вЂў Daily on-chain SOL tournaments
-> вЂў 2Г— ORB rewards forever for Founders
-> вЂў Auto-detects your .skr domain
+> • 6 mini-games
+> • Daily on-chain SOL tournaments
+> • 2× ORB rewards forever for Founders
+> • Auto-detects your .skr domain
 >
 > Genesis Pre-Season is open. Be in the launch top-100.
 >
@@ -178,11 +178,11 @@ Built for Solana Mobile Seeker. Exclusive perks for SGT holders: 2Г— ORB rewa
 **Website:** https://seekerquest-league.com
 **Privacy Policy:** https://seekerquest-league.com/privacy.html
 **Terms / License:** https://seekerquest-league.com/license
-**X (Twitter):** TODO вЂ” register @seekerquest
-**Telegram:** TODO вЂ” create t.me/seekerquest
+**X (Twitter):** TODO — register @seekerquest
+**Telegram:** TODO — create t.me/seekerquest
 
 ---
 
 *All copy is approved for direct use. Translations to other languages
 should preserve the structure, tone, and exact numbers (0.01 SOL, 5000
-ORB, 2Г—, 23:59 UTC, etc.).*
+ORB, 2×, 23:59 UTC, etc.).*
