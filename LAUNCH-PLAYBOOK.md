@@ -338,93 +338,19 @@ cat dapp-store/config.yaml
 
 ## 📤 PHASE 4 — Submit в dApp Store (1 день)
 
-Запрос пользователя:
-> "Запусти dApp Store CLI submission процесс"
+Current releases use the authenticated Solana Mobile Publisher Portal. The
+legacy CLI and its publisher keypair are intentionally not part of the app
+dependency tree.
 
-### 4.1 Установить CLI
+1. Build and test the signed release APK on a real Seeker.
+2. Copy it to `dapp-store/media/app-release.apk`.
+3. Run `node dapp-store/publish.js` to validate the APK and release notes.
+4. Open `https://portal.solanamobile.com`, upload both assets, review the
+   listing, and submit through the portal.
+5. Save the portal release ID and review status in the release notes.
 
-```bash
-cd C:\sk
-npm install --save-dev @solana-mobile/dapp-store-cli
-```
-
-### 4.2 Создать publisher keypair (ОДИН РАЗ)
-
-```bash
-solana-keygen new --outfile dapp-store\publisher.json
-# ⚠️ КРИТИЧНО: запиши seed phrase. Это identity твоего издателя.
-```
-
-Получить адрес и сказать пользователю:
-```bash
-solana-keygen pubkey dapp-store\publisher.json
-```
-
-→ **Действие пользователя:** перевести **~0.5 SOL mainnet** на этот адрес для gas.
-
-### 4.3 Создать publisher на-chain
-
-```bash
-npx dapp-store create publisher dapp-store/config.yaml -k dapp-store/publisher.json
-```
-
-→ Получишь **publisher address** → запиши в config.yaml:
-```yaml
-publisher:
-  address: <publisher_address>
-```
-
-### 4.4 Создать app на-chain
-
-```bash
-npx dapp-store create app dapp-store/config.yaml -k dapp-store/publisher.json
-```
-
-→ Запиши **app address** в config.yaml.
-
-### 4.5 Подготовить APK
-
-```bash
-# Если ещё не собран — собрать
-cd C:\sk\android
-.\gradlew.bat assembleRelease --no-daemon
-
-# Скопировать в media folder
-Copy-Item C:\sk\android\app\build\outputs\apk\release\app-release.apk `
-  C:\sk\dapp-store\media\app-release.apk
-```
-
-### 4.6 Создать release
-
-```bash
-cd C:\sk
-npx dapp-store create release dapp-store/config.yaml `
-  -k dapp-store/publisher.json `
-  -b "C:\Users\User\AppData\Local\Android\Sdk\build-tools\35.0.0"
-```
-
-→ Запиши **release address** в config.yaml.
-
-### 4.7 Финальный submit
-
-```bash
-npx dapp-store publish submit dapp-store/config.yaml `
-  -k dapp-store/publisher.json `
-  --requestor-is-authorized `
-  --complies-with-solana-dapp-store-policies
-```
-
-→ Submission на ревью. Ожидание **3-7 дней**.
-
-### 4.8 Backup всего
-
-⚠️ КРИТИЧНО:
-```
-[ ] publisher.json — 3 копии (USB, encrypted cloud, бумажный seed)
-[ ] seeker-release.keystore — 3 копии
-[ ] skora-config.json — 3 копии
-[ ] Treasury multisig recovery info — банковская ячейка
-```
+The validation helper never reads an API key, publisher keypair, signing key,
+or seed phrase.
 
 ---
 
@@ -480,16 +406,9 @@ cd C:\sk\android && .\gradlew.bat assembleRelease --no-daemon
 Copy-Item C:\sk\android\app\build\outputs\apk\release\app-release.apk `
   C:\sk\dapp-store\media\app-release.apk -Force
 
-# Create new release on-chain
-npx dapp-store create release dapp-store/config.yaml `
-  -k dapp-store/publisher.json `
-  -b "C:\Users\User\AppData\Local\Android\Sdk\build-tools\35.0.0"
-
-# Submit
-npx dapp-store publish submit dapp-store/config.yaml `
-  -k dapp-store/publisher.json `
-  --requestor-is-authorized `
-  --complies-with-solana-dapp-store-policies
+# Validate assets, then upload them through the Publisher Portal
+node dapp-store/publish.js
+# Open https://portal.solanamobile.com
 ```
 
 Review обновлений: 1-3 дня.
@@ -577,10 +496,10 @@ node scripts/weekly-burn.js
 
 ### dApp Store
 ```
-[ ] @solana-mobile/dapp-store-cli установлен
-[ ] publisher keypair создан
-[ ] Publisher wallet с ~0.5 SOL mainnet
-[ ] config.yaml заполнен (publisher/app/release addresses после создания)
+[ ] Publisher Portal account доступен
+[ ] Подписанный APK скопирован в dapp-store/media/app-release.apk
+[ ] node dapp-store/publish.js завершился READY
+[ ] dapp-store/release-notes.txt проверен перед загрузкой
 [ ] APK скопирован в dapp-store/media/
 [ ] Submission отправлен
 ```

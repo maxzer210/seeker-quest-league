@@ -42,12 +42,14 @@
     "three": "^0.166.1"
   },
   "devDependencies": {
-    "@solana-mobile/dapp-store-cli": "^1.0.0",
     "@solana/spl-token": "^0.4.14",
     "@types/react": "~19.1.0",
     "@types/three": "~0.166.0",
     "patch-package": "^8.0.1",
     "typescript": "~5.9.2"
+  },
+  "overrides": {
+    "rpc-websockets": "9.3.6"
   },
   "private": true
 }

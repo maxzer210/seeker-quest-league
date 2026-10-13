@@ -1,85 +1,83 @@
 #!/usr/bin/env node
 /**
- * Publish the current release APK to the Solana Mobile dApp Store.
+ * Validate the current release assets before uploading them through the
+ * Solana Mobile Publisher Portal.
  *
- * Why this exists instead of calling the CLI straight from PowerShell:
- * the release notes are multi-line and full of emoji, and PowerShell 5.1
- * mangles native-command arguments badly enough that the CLI stopped seeing
- * `--keypair` at all. Spawning with an explicit argv array hands the strings
- * to the process untouched — no shell, no quoting rules, no surprises.
+ * Publishing is intentionally completed in the authenticated web portal. This
+ * helper does not read a publisher keypair or API key and cannot submit.
  *
- * The portal API key is read from the environment and is never printed,
- * logged, or written anywhere by this script.
- *
- *   $env:DAPP_STORE_API_KEY = "<key>"
- *   node dapp-store/publish.js [--dry-run]
+ *   node dapp-store/publish.js
  */
 
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
-const { spawn } = require('child_process');
-
+const { spawnSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');
-const APK = path.join(ROOT, 'android', 'app', 'build', 'outputs', 'apk', 'release', 'app-release.apk');
-const KEYPAIR = path.join(ROOT, 'dapp-store', 'publisher.json');
+const APK = path.join(ROOT, 'dapp-store', 'media', 'app-release.apk');
 const NOTES = path.join(ROOT, 'dapp-store', 'release-notes.txt');
-const CLI = path.join(ROOT, 'node_modules', '@solana-mobile', 'dapp-store-cli', 'bin', 'dapp-store.js');
-
-const dryRun = process.argv.includes('--dry-run');
+const EXPECTED_PACKAGE = 'com.seekerquest.league';
+const MIN_APK_BYTES = 1024 * 1024;
 
 const ok = (m) => console.log(`ok    ${m}`);
 const fail = (m) => { console.error(`FAIL  ${m}`); process.exit(1); };
 
-for (const [label, p] of [['APK', APK], ['publisher keypair', KEYPAIR], ['release notes', NOTES], ['CLI', CLI]]) {
+for (const [label, p] of [['APK', APK], ['release notes', NOTES]]) {
   if (!fs.existsSync(p)) fail(`${label} not found at ${p}`);
 }
-ok(`APK present (${(fs.statSync(APK).size / 1024 / 1024).toFixed(1)} MB)`);
-ok('publisher keypair present');
-ok('CLI present');
+
+const apkSize = fs.statSync(APK).size;
+if (apkSize < MIN_APK_BYTES) fail(`APK is too small (${apkSize} bytes)`);
+const magic = Buffer.alloc(2);
+const apkFd = fs.openSync(APK, 'r');
+fs.readSync(apkFd, magic, 0, 2, 0);
+fs.closeSync(apkFd);
+if (magic.toString('ascii') !== 'PK') fail('APK is not a ZIP/APK archive');
+ok(`APK archive present (${(apkSize / 1024 / 1024).toFixed(1)} MB)`);
 
 const whatsNew = fs.readFileSync(NOTES, 'utf8').trim();
 if (!whatsNew) fail('release notes are empty');
 ok(`release notes (${whatsNew.length} chars)`);
 
-if (!process.env.DAPP_STORE_API_KEY || !process.env.DAPP_STORE_API_KEY.trim()) {
-  console.error('\nDAPP_STORE_API_KEY is not set in this shell.');
-  console.error('Get it from portal.solanamobile.com -> Developer -> API keys, then:\n');
-  console.error('  $env:DAPP_STORE_API_KEY = "<your key>"\n');
-  process.exit(1);
+function findBuildTool(name) {
+  const sdkRoot = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT;
+  if (!sdkRoot) fail('ANDROID_HOME or ANDROID_SDK_ROOT is not set');
+  const buildTools = path.join(sdkRoot, 'build-tools');
+  if (!fs.existsSync(buildTools)) fail(`Android build-tools not found at ${buildTools}`);
+  const versions = fs.readdirSync(buildTools, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+  for (const version of versions) {
+    const candidate = path.join(buildTools, version, name);
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  fail(`${name} not found under ${buildTools}`);
 }
-ok(`API key found in environment (length ${process.env.DAPP_STORE_API_KEY.length}, value not shown)`);
+
+function run(tool, args, label) {
+  const result = spawnSync(tool, args, { cwd: ROOT, encoding: 'utf8', shell: false });
+  if (result.error) fail(`${label}: ${result.error.message}`);
+  if (result.status !== 0) {
+    const details = `${result.stdout || ''}\n${result.stderr || ''}`.trim();
+    fail(`${label}${details ? `: ${details}` : ''}`);
+  }
+  return `${result.stdout || ''}\n${result.stderr || ''}`;
+}
+
+const apksigner = findBuildTool(process.platform === 'win32' ? 'apksigner.bat' : 'apksigner');
+run(apksigner, ['verify', '--verbose', '--print-certs', APK], 'APK signature verification failed');
+ok('APK signature verified');
+
+const aapt2 = findBuildTool(process.platform === 'win32' ? 'aapt2.exe' : 'aapt2');
+const manifest = run(aapt2, ['dump', 'badging', APK], 'APK manifest inspection failed');
+const packageMatch = manifest.match(/package:\s+name='([^']+)'/);
+if (!packageMatch) fail('APK package name was not found');
+if (packageMatch[1] !== EXPECTED_PACKAGE) {
+  fail(`unexpected package ${packageMatch[1]} (expected ${EXPECTED_PACKAGE})`);
+}
+ok(`package id ${EXPECTED_PACKAGE}`);
 
 console.log('\n--- what players will see ---');
 console.log(whatsNew);
 console.log('-----------------------------\n');
-
-if (dryRun) { console.log('dry run - nothing submitted'); process.exit(0); }
-
-// Derived from the APK, so retrying after a dropped upload is treated as the
-// same publication rather than a second one; a genuinely new build gets a new key.
-const hash = crypto.createHash('sha256').update(fs.readFileSync(APK)).digest('hex').slice(0, 32);
-
-const args = [
-  CLI,
-  '--apk-file', APK,
-  '--whats-new', whatsNew,
-  '--keypair', KEYPAIR,
-  '--idempotency-key', hash,
-  '--verbose',
-];
-
-console.log(`submitting (idempotency key ${hash})...\n`);
-
-const child = spawn(process.execPath, args, { stdio: 'inherit', cwd: ROOT });
-
-child.on('close', (code) => {
-  if (code === 0) {
-    console.log('\nSUBMITTED. Track review status at portal.solanamobile.com');
-  } else {
-    console.log(`\nSubmission exited with code ${code}.`);
-    console.log('If the upload dropped mid-flight, resume with the release id printed above:');
-    console.log('  node node_modules/@solana-mobile/dapp-store-cli/bin/dapp-store.js resume --release-id <id>');
-  }
-  process.exit(code ?? 1);
-});
+console.log('READY. Upload dapp-store/media/app-release.apk and dapp-store/release-notes.txt through https://portal.solanamobile.com');

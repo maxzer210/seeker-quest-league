@@ -175,9 +175,11 @@ async function main() {
     auth: { persistSession: false },
   });
 
-  console.log('Mint authority:', keypair.publicKey.toBase58());
+  // Resolve the public on-chain balance before logging so no Keypair-derived
+  // object is ever passed to the logger. The private key remains local.
+  const treasuryBalanceLamports = await connection.getBalance(keypair.publicKey);
   console.log('SKORA mint:    ', mint.toBase58());
-  console.log('Treasury balance:', (await connection.getBalance(keypair.publicKey)) / 1e9, 'SOL');
+  console.log('Treasury balance:', treasuryBalanceLamports / 1e9, 'SOL');
 
   if (!WATCH) {
     await pass(supabase, connection, keypair, mint);

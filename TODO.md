@@ -82,20 +82,16 @@
 | 4 | Иконка 512×512 | 1 ч | ⏳ |
 | 5 | Banner 1024×500 / 1200×600 | 1 ч | ⏳ |
 | 6 | Сайт через Gemini (по WEBSITE-BRIEF.md) | 1-2 ч | ⏳ |
-| 7 | Pополнить publisher wallet ~0.5 SOL mainnet | 5 мин | ⏳ |
-| 8 | Сгенерировать publisher keypair (один раз) | 5 мин | ⏳ |
+| 7 | Проверить доступ к Publisher Portal | 5 мин | ⏳ |
+| 8 | Проверить подпись и package id финального APK | 5 мин | ⏳ |
 
-### dApp Store CLI submission:
+### dApp Store Publisher Portal submission:
 
-```powershell
-cd C:\sk
-npm install --save-dev @solana-mobile/dapp-store-cli
-solana-keygen new --outfile dapp-store\publisher.json
-npx dapp-store create publisher dapp-store/config.yaml -k dapp-store/publisher.json
-npx dapp-store create app dapp-store/config.yaml -k dapp-store/publisher.json
+```text
+Open https://portal.solanamobile.com
 Copy-Item C:\sk\android\app\build\outputs\apk\release\app-release.apk C:\sk\dapp-store\media\app-release.apk
-npx dapp-store create release dapp-store/config.yaml -k dapp-store/publisher.json -b "C:\Users\User\AppData\Local\Android\Sdk\build-tools\35.0.0"
-npx dapp-store publish submit dapp-store/config.yaml -k dapp-store/publisher.json --requestor-is-authorized --complies-with-solana-dapp-store-policies
+node dapp-store/publish.js
+Upload dapp-store/media/app-release.apk and dapp-store/release-notes.txt through the authenticated Publisher Portal.
 ```
 
 ---
